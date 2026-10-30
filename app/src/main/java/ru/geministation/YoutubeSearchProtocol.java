@@ -15,10 +15,18 @@ final class YoutubeSearchProtocol {
         if (!video.matches("[A-Za-z0-9_-]{11}")) throw new IOException("Видео не найдено");
         return "https://www.youtube.com/watch?v=" + video;
     }
-    static String resultsUrl(String query) {
+    static boolean smartTube(String packageName) {
+        return "org.smarttube.stable".equals(packageName) || "org.smarttube.beta".equals(packageName)
+                || "app.smarttube".equals(packageName) || "app.smarttube.fdroid".equals(packageName)
+                || "com.liskovsoft.smartyoutubetv2.tv".equals(packageName);
+    }
+    static String resultsUrl(String query, boolean playFirst) {
         if (!LinkPolicy.searchQuery(query)) throw new IllegalArgumentException("Invalid query");
-        return new HttpUrl.Builder().scheme("https").host("www.youtube.com").addPathSegment("results")
-                .addQueryParameter("search_query", query).build().toString();
+        HttpUrl.Builder url = new HttpUrl.Builder().scheme("https").host("www.youtube.com").addPathSegment("results")
+                .addQueryParameter("search_query", query);
+        // SmartTube's public link handler interprets method=play as search + play first result.
+        if (playFirst) url.addQueryParameter("method", "play");
+        return url.build().toString();
     }
     private YoutubeSearchProtocol() { }
 }

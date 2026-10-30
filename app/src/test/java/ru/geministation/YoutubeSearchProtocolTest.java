@@ -16,10 +16,14 @@ public class YoutubeSearchProtocolTest {
         }
     }
     @Test public void fallbackIsAResultsPageWithAnEncodedQuery() {
-        String url = YoutubeSearchProtocol.resultsUrl("котики & собаки");
+        String url = YoutubeSearchProtocol.resultsUrl("котики & собаки", false);
         HttpUrl parsed = HttpUrl.get(url);
         assertEquals("www.youtube.com", parsed.host());
         assertEquals("/results", parsed.encodedPath());
         assertEquals("котики & собаки", parsed.queryParameter("search_query"));
+        assertNull(parsed.queryParameter("method"));
+        assertTrue(YoutubeSearchProtocol.smartTube("org.smarttube.stable"));
+        assertFalse(YoutubeSearchProtocol.smartTube("org.example.browser"));
+        assertEquals("play", HttpUrl.get(YoutubeSearchProtocol.resultsUrl("котики", true)).queryParameter("method"));
     }
 }

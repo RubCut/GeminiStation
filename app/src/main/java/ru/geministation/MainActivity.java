@@ -196,22 +196,28 @@ public final class MainActivity extends Activity {
                 if (action != null && action.kind == DeviceToolSpec.Kind.OPEN_LINK
                         && !UserLinkAuthorization.presentInUserTurns(action.data, request)) action = null;
                 boolean search = action != null && action.kind == DeviceToolSpec.Kind.SEARCH_YOUTUBE;
-                boolean foundVideo = false;
+                boolean foundVideo = false, nativeSearch = false;
                 if (search) {
                     String url;
-                    try {
-                        final String query = action.data;
-                        url = keyVault.run(() -> !destroyed && resumed, key -> client.searchYoutube(key, query));
-                        foundVideo = true;
-                    } catch (Exception e) {
-                        // The Data API may be disabled/restricted. Open search results instead, never an invented video.
-                        AppLog.add("YouTube: поиск видео недоступен; пробуем страницу результатов (" + e.getClass().getSimpleName() + ")");
-                        url = YoutubeSearchProtocol.resultsUrl(action.data);
+                    if (YoutubeSearchProtocol.smartTube(apps.get(action.number).component.getPackageName())) {
+                        // SmartTube handles this as a native search-and-play request without another API key.
+                        url = YoutubeSearchProtocol.resultsUrl(action.data, true);
+                        nativeSearch = true;
+                    } else {
+                        try {
+                            final String query = action.data;
+                            url = keyVault.run(() -> !destroyed && resumed, key -> client.searchYoutube(key, query));
+                            foundVideo = true;
+                        } catch (Exception e) {
+                            // The Data API may be disabled/restricted. Open search results instead, never an invented video.
+                            AppLog.add("YouTube: поиск видео недоступен; пробуем страницу результатов (" + e.getClass().getSimpleName() + ")");
+                            url = YoutubeSearchProtocol.resultsUrl(action.data, false);
+                        }
                     }
                     action = new DeviceToolSpec.Action(DeviceToolSpec.Kind.OPEN_LINK, action.number, url);
                 }
                 final DeviceToolSpec.Action chosen = action;
-                final boolean videoSearch = search, videoFound = foundVideo;
+                final boolean videoSearch = search, videoFound = foundVideo, nativeVideoSearch = nativeSearch;
                 runOnUiThread(() -> {
                     if (destroyed || !resumed || !flow.answered()) return;
                     String response = result.text;
@@ -219,7 +225,8 @@ public final class MainActivity extends Activity {
                         DeviceActions.Outcome outcome = deviceActions.prepare(chosen, apps);
                         response = outcome.text;
                         if (videoSearch && outcome.navigation != null)
-                            response = videoFound ? "Открываю найденное видео." : "Открываю результаты поиска YouTube.";
+                            response = nativeVideoSearch ? "Ищу и открываю видео в SmartTube." :
+                                    (videoFound ? "Открываю найденное видео." : "Открываю результаты поиска YouTube.");
                         pendingNavigation = outcome.navigation;
                     }
                     try {
