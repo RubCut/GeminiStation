@@ -18,6 +18,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - name: Test web voice settings
+        run: node tools/test_voice_settings.js
       - name: Build debug APK
         shell: bash
         run: |

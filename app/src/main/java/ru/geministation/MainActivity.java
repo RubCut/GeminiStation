@@ -215,16 +215,19 @@ public final class MainActivity extends Activity {
     }
     private void speak(String apiKey, String response) {
         final int generation = speechGeneration.incrementAndGet();
+        // Snapshot once per reply so streaming and fallback cannot use different voices.
+        final String voice = AppSettings.voice(this);
+        AppLog.add("TTS: выбран голос " + voice);
         speechExecutor.execute(() -> {
             try {
                 try (VoicePlayer.Stream stream = voicePlayer.openStream(() -> speechGeneration.get() == generation, () -> onPlaybackStarted(generation))) {
                     try {
-                        client.synthesizeStreaming(apiKey, response, stream::write);
+                        client.synthesizeStreaming(apiKey, response, voice, stream::write);
                         if (speechGeneration.get() != generation) return;
                         stream.drain();
                     } catch (GeminiClient.StreamingUnavailableException unavailable) {
                         AppLog.add("TTS: потоковый режим недоступен, используем обычный синтез");
-                        PcmAudio audio = client.synthesize(apiKey, response);
+                        PcmAudio audio = client.synthesize(apiKey, response, voice);
                         if (speechGeneration.get() != generation) return;
                         voicePlayer.play(audio, () -> speechGeneration.get() == generation, () -> onPlaybackStarted(generation));
                     }

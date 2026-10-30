@@ -11,7 +11,7 @@
 <h1>Gemini Station</h1><p>Настройки и журнал устройства</p>
 <section><p>Доступ без пароля. Любой в вашей локальной сети может изменить настройки и просматривать журнал. HTTP не шифруется — безопаснее подключаться через ADB.</p></section>
 <div id="panel">
-<section><h2>Gemini API</h2><label for="model">Модель</label><input id="model" autocomplete="off"><p><small>Gemini Live отправляет аудио микрофона в Gemini API и может расходовать квоту. Для работы нужен доступ приложения к микрофону станции.</small></p><label for="key">Новый API-ключ</label><input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="Оставьте пустым, чтобы не менять"><button id="save">Сохранить</button><button id="delete" class="secondary">Удалить ключ</button><p id="message" role="status"></p></section>
+<section><h2>Gemini API</h2><label for="model">Модель</label><input id="model" autocomplete="off"><label for="voice">Голос ответа Gemini</label><select id="voice" disabled></select><p><small id="savedVoice">Загружаем сохранённый голос…</small><br><small>Выбор применяется к следующему ответу после сохранения. Текущий ответ не прерывается. Голоса можно прослушать в <a href="https://aistudio.google.com/generate-speech" target="_blank" rel="noopener noreferrer">Google AI Studio</a>.</small></p><p><small>Gemini Live отправляет аудио микрофона в Gemini API и может расходовать квоту. Для работы нужен доступ приложения к микрофону станции.</small></p><label for="key">Новый API-ключ</label><input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="Оставьте пустым, чтобы не менять"><button id="save" disabled>Сохранить</button><button id="delete" class="secondary" disabled>Удалить ключ</button><p id="message" role="status"></p></section>
 <section><h2>Экран станции — экспериментально</h2><p>Свои анимации логотипа Gemini для матрицы 25×16. Подключение использует локальный протокол станции. Работа зависит от прошивки и пока не проверена на этом устройстве.</p><p>Войдите по QR прямо с этой страницы: отсканируйте код телефоном и подтвердите вход в Яндексе. Приложение получит токен аккаунта и сохранит его зашифрованным. Пароль вводится только на стороне Яндекса.</p><p><strong>Внимание:</strong> панель доступна без пароля, а HTTP по локальной сети не шифруется: другие устройства в сети могут получить QR-код и управлять настройками. Используйте только доверенную сеть и не показывайте QR-код посторонним.</p>
 <button id="qrStart">Войти в Яндекс по QR</button><button id="qrCancel" class="secondary" hidden>Отменить вход</button><div id="qrPanel" hidden><p>Отсканируйте QR-код телефоном и подтвердите вход в Яндексе.</p><img id="qrImage" alt="QR-код входа в Яндекс" width="300" height="300" style="max-width:100%;height:auto;background:white"><p id="qrStatus"></p></div><div id="stationPanel" hidden><label for="station">Выберите свою Станцию Макс</label><select id="station"></select><button id="chooseStation">Сохранить станцию</button></div>
 <details><summary>Запасной вариант: импорт настроек Station Max Studio</summary><p><strong>Файл содержит токен аккаунта Яндекса.</strong> Не отправляйте его никому. При импорте по сети токен передаётся по незашифрованному HTTP. Для безопасной передачи можно использовать ADB forward.</p><label for="studio">Файл settings.json из Station Max Studio</label><input id="studio" type="file" accept=".json,application/json"><button id="importLed">Импортировать</button></details><button id="testLed" class="secondary">Проверить экран</button><button id="clearLed" class="secondary">Очистить экран / вернуть часы</button><button id="deleteLed" class="secondary">Выйти из Яндекса</button><p id="ledMessage" role="status"></p></section>
@@ -24,8 +24,18 @@ async function request(path,options={}){
  const response=await fetch(path,{...options,headers:options.body?{'Content-Type':'application/json','X-Gemini-Station':'1'}:{},cache:'no-store'});
  const data=await response.json(); if(!response.ok) throw new Error(data.message||'Ошибка'); return data;
 }
-async function refresh(){try{const data=await request('/api/logs');el('logs').textContent=data.logs.join('\n');return data}catch(e){el('message').textContent=e.message;throw e}}
-async function save(remove){try{await request('/api/config',{method:'POST',body:JSON.stringify({model:el('model').value,key:remove?'':el('key').value,deleteKey:remove})});el('key').value='';el('message').textContent=remove?'Ключ удалён':'Настройки сохранены';await refresh()}catch(e){el('message').textContent=e.message}}
+let settingsLoaded=false, voiceDirty=false;
+async function refresh(){try{
+ const data=await request('/api/logs');el('logs').textContent=data.logs.join('\n');
+ el('savedVoice').textContent='Сохранённый голос: '+data.voice;
+ if(!settingsLoaded){
+  el('model').value=data.model;const select=el('voice');select.textContent='';
+  data.voices.forEach(voice=>{const option=document.createElement('option');option.value=voice;option.textContent=voice;select.appendChild(option)});
+  select.value=data.voice;select.disabled=false;el('save').disabled=false;el('delete').disabled=false;settingsLoaded=true;
+ }else if(!voiceDirty){el('voice').value=data.voice}
+ return data;
+}catch(e){el('message').textContent=e.message;throw e}}
+async function save(remove){try{const voice=el('voice').value;await request('/api/config',{method:'POST',body:JSON.stringify({model:el('model').value,voice,key:remove?'':el('key').value,deleteKey:remove})});if(el('voice').value===voice)voiceDirty=false;el('key').value='';el('message').textContent=remove?'Ключ удалён':'Настройки сохранены';await refresh()}catch(e){el('message').textContent=e.message}}
 async function ledRequest(path,data){try{const result=await request(path,{method:'POST',body:JSON.stringify(data)});el('ledMessage').textContent=result.message;return result}catch(e){el('ledMessage').textContent=e.message;throw e}}
 let authRun=0, authId='';
 function clearAuthView(){el('qrPanel').hidden=true;el('stationPanel').hidden=true;el('qrCancel').hidden=true;el('qrImage').removeAttribute('src');el('qrStart').disabled=false;authId=''}
@@ -57,8 +67,9 @@ el('importLed').addEventListener('click',async()=>{try{const file=el('studio').f
 el('testLed').addEventListener('click',()=>ledRequest('/api/led/test',{}).catch(()=>{}));
 el('clearLed').addEventListener('click',()=>ledRequest('/api/led/clear',{}).catch(()=>{}));
 el('deleteLed').addEventListener('click',()=>{if(confirm('Удалить авторизацию Яндекса и настройки экрана?'))ledRequest('/api/led',{delete:true}).catch(()=>{})});
+el('voice').addEventListener('change',()=>{voiceDirty=true});
 el('save').addEventListener('click',()=>save(false));el('delete').addEventListener('click',()=>{if(confirm('Удалить API-ключ?'))save(true)});el('refresh').addEventListener('click',()=>refresh().catch(()=>{}));
-refresh().then(data=>{el('model').value=data.model}).catch(()=>{});
+refresh().catch(()=>{});
 setInterval(()=>refresh().catch(()=>{}),5000);
 </script>
 </body></html>

@@ -64,16 +64,21 @@ final class GeminiClient {
             return text.toString();
         }
     }
-    /** Separate Gemini TTS model; the conversation model itself generates text only. */
-    PcmAudio synthesize(String apiKey, String text) throws Exception {
-        long started = System.nanoTime();
-        AppLog.add("TTS: подготовка запроса; символов " + text.length());
-        JSONObject voice = new JSONObject().put("voiceConfig", new JSONObject().put("voice", "Kore"));
+    /** Both streaming and non-streaming requests use exactly the same chosen voice. */
+    static JSONObject speechRequest(String text, String voiceName) throws Exception {
+        if (!TtsVoices.valid(voiceName)) throw new IllegalArgumentException("Unknown TTS voice");
+        JSONObject voice = new JSONObject().put("voiceConfig", new JSONObject().put("voice", voiceName));
         JSONObject config = new JSONObject().put("responseModalities", new JSONArray().put("AUDIO"))
                 .put("speechConfig", voice);
-        JSONObject data = new JSONObject().put("contents", new JSONArray().put(new JSONObject()
+        return new JSONObject().put("contents", new JSONArray().put(new JSONObject()
                 .put("role", "user").put("parts", new JSONArray().put(new JSONObject().put("text", text)))))
                 .put("generationConfig", config);
+    }
+    /** Separate Gemini TTS model; the conversation model itself generates text only. */
+    PcmAudio synthesize(String apiKey, String text, String voiceName) throws Exception {
+        long started = System.nanoTime();
+        AppLog.add("TTS: подготовка запроса; символов " + text.length());
+        JSONObject data = speechRequest(text, voiceName);
         Request request = new Request.Builder()
                 .url("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash-lite-tts:generateContent")
                 .tag(String.class, "speech")
@@ -110,14 +115,9 @@ final class GeminiClient {
         StreamingUnavailableException(int status) { super("Gemini TTS streaming: HTTP " + status); }
     }
     /** Starts playback from the first PCM chunk, without waiting for the full TTS response. */
-    void synthesizeStreaming(String apiKey, String text, AudioConsumer consumer) throws Exception {
+    void synthesizeStreaming(String apiKey, String text, String voiceName, AudioConsumer consumer) throws Exception {
         long started = System.nanoTime();
-        JSONObject voice = new JSONObject().put("voiceConfig", new JSONObject().put("voice", "Kore"));
-        JSONObject config = new JSONObject().put("responseModalities", new JSONArray().put("AUDIO"))
-                .put("speechConfig", voice);
-        JSONObject data = new JSONObject().put("contents", new JSONArray().put(new JSONObject()
-                .put("role", "user").put("parts", new JSONArray().put(new JSONObject().put("text", text)))))
-                .put("generationConfig", config);
+        JSONObject data = speechRequest(text, voiceName);
         Request request = new Request.Builder()
                 .url("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash-lite-tts:streamGenerateContent?alt=sse")
                 .tag(String.class, "speech").header("x-goog-api-key", apiKey)

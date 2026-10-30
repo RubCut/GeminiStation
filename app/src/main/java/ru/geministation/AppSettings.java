@@ -9,8 +9,14 @@ final class AppSettings {
         return context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE).getString("model", DEFAULT_MODEL);
     }
     static boolean validModel(String model) { return model != null && model.matches("[A-Za-z0-9._-]{1,80}"); }
-    static boolean saveModel(Context context, String model) {
-        return context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE).edit().putString("model", model).commit();
+    static String voice(Context context) {
+        String stored = context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE).getString("voice", TtsVoices.DEFAULT);
+        return TtsVoices.orDefault(stored);
+    }
+    static boolean save(Context context, String model, String voice) {
+        if (!validModel(model) || !TtsVoices.valid(voice)) return false;
+        return context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE).edit()
+                .putString("model", model).putString("voice", voice).commit();
     }
     private AppSettings() { }
 }
