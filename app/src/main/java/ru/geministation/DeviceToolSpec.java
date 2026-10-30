@@ -5,7 +5,7 @@ import org.json.JSONObject;
 
 /** Strict allowlist for Gemini function calls; model output never becomes an Intent or shell command. */
 final class DeviceToolSpec {
-    enum Kind { OPEN_APP, OPEN_LINK, SEARCH_YOUTUBE, OPEN_SETTINGS, GO_HOME, SET_VOLUME, ADJUST_VOLUME, GET_VOLUME }
+    enum Kind { OPEN_APP, OPEN_LINK, SEARCH_YOUTUBE, OPEN_SETTINGS, GO_HOME, SET_VOLUME, ADJUST_VOLUME, GET_VOLUME, MEDIA_CONTROL }
     static final class Action {
         final Kind kind;
         final int number;
@@ -34,6 +34,9 @@ final class DeviceToolSpec {
         declarations.put(function("adjust_volume", "Сделать громкость мультимедиа немного выше или ниже.",
                 new JSONObject().put("direction", new JSONObject().put("type", "STRING").put("enum", new JSONArray().put("up").put("down"))), "direction"));
         declarations.put(function("get_volume", "Узнать текущую громкость мультимедиа.", new JSONObject(), null));
+        declarations.put(function("media_control", "Отправить команду текущему Android-медиаплееру. Доступны play (продолжить), pause, stop, next, previous, fast_forward и rewind. Не используй для запуска конкретной песни, узнавания текущего трека или перемотки на точное время. Android выбирает плеер, выполнение не подтверждается.",
+                new JSONObject().put("action", new JSONObject().put("type", "STRING")
+                        .put("enum", new JSONArray().put("play").put("pause").put("stop").put("next").put("previous").put("fast_forward").put("rewind"))), "action"));
         return declarations;
     }
     private static JSONObject function(String name, String description, JSONObject properties, String required) throws Exception {
@@ -80,6 +83,11 @@ final class DeviceToolSpec {
                 if ("up".equals(direction)) return new Action(Kind.ADJUST_VOLUME, 1);
                 if ("down".equals(direction)) return new Action(Kind.ADJUST_VOLUME, -1);
                 return null;
+            }
+            case "media_control": {
+                Object requested = args.opt("action");
+                if (!(requested instanceof String) || MediaCommands.parse((String) requested) == null) return null;
+                return new Action(Kind.MEDIA_CONTROL, 0, (String) requested);
             }
             case "get_volume": return new Action(Kind.GET_VOLUME, 0);
             default: return null;

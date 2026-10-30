@@ -6,6 +6,8 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.media.AudioManager;
 import android.provider.Settings;
+import android.os.SystemClock;
+import android.view.KeyEvent;
 
 /** Actions are executed on the UI thread; navigation waits until the spoken acknowledgement finishes. */
 final class DeviceActions {
@@ -50,6 +52,8 @@ final class DeviceActions {
                     if (!canOpen(intent)) return new Outcome("Не удалось найти рабочий стол.", null);
                     return new Outcome("Возвращаюсь на рабочий стол.", () -> canOpen(intent) && open(intent));
                 }
+                case MEDIA_CONTROL:
+                    return media(action);
                 case GET_VOLUME:
                 case SET_VOLUME:
                 case ADJUST_VOLUME:
@@ -60,6 +64,21 @@ final class DeviceActions {
             AppLog.add("Действие: ошибка подготовки " + e.getClass().getSimpleName());
             return new Outcome("Не удалось выполнить команду на устройстве.", null);
         }
+    }
+    private Outcome media(DeviceToolSpec.Action action) {
+        MediaCommands.Command command = MediaCommands.parse(action.data);
+        AudioManager audio = (AudioManager) activity.getSystemService(Activity.AUDIO_SERVICE);
+        if (audio == null || command == null) return new Outcome("Управление медиаплеером недоступно.", null);
+        long downTime = SystemClock.uptimeMillis();
+        boolean sent = MediaCommands.send(command, (code, down) -> audio.dispatchMediaKeyEvent(
+                new KeyEvent(downTime, SystemClock.uptimeMillis(), down ? KeyEvent.ACTION_DOWN : KeyEvent.ACTION_UP, code, 0)));
+        if (!sent) {
+            AppLog.add("Медиа: не удалось отправить команду");
+            return new Outcome("Не удалось отправить команду медиаплееру.", null);
+        }
+        // dispatchMediaKeyEvent has no success callback; do not claim the player complied.
+        AppLog.add("Медиа: отправлена команда " + command.id + "; ответ плеера недоступен");
+        return new Outcome("Отправлена команда медиаплееру: " + command.description + ".", null);
     }
     private Outcome volume(DeviceToolSpec.Action action) {
         AudioManager audio = (AudioManager) activity.getSystemService(Activity.AUDIO_SERVICE);
