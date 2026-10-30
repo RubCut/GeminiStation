@@ -55,6 +55,7 @@ public final class MainActivity extends Activity {
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
+        WakeWordController.get(this).dialogOpening();
         secrets = new SecretStore(this);
         client = new GeminiClient();
         led = LedController.get(this);
@@ -399,12 +400,19 @@ public final class MainActivity extends Activity {
         }
         return super.onKeyDown(keyCode, event);
     }
-    @Override protected void onResume() { super.onResume(); resumed = true; if (initialStartPending && !permissionPending) startInitial(); }
+    @Override protected void onResume() {
+        super.onResume(); resumed = true;
+        // The background detector must release the mic before Gemini Live can acquire it.
+        WakeWordController.get(this).pauseForDialog(() -> {
+            if (resumed && !destroyed && initialStartPending && !permissionPending) startInitial();
+        });
+    }
     @Override protected void onStop() {
         resumed = false;
         super.onStop();
         if (listening) AppLog.add("Речь #" + recognitionAttempt + ": отмена при уходе с экрана через " + recognitionElapsed() + " мс");
         cancelRecognition(); stopSpeaking(); stopSpinner(); stopPulse(); led.show(null);
+        WakeWordController.get(this).dialogClosed();
         // Don't leave an invisible assistant listening or waiting on a network request.
         if (!permissionPending && !isChangingConfigurations()) finish();
     }

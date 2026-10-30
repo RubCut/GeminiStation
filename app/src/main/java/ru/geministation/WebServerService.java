@@ -58,6 +58,7 @@ public final class WebServerService extends Service {
             server.start(5000, false);
             running = true;
             AppLog.add("Веб-сервер запущен на порту " + PORT);
+            WakeWordController.get(this).serviceStarted();
             LedController.get(this).serverStarted();
         } catch (Exception e) {
             running = false;
@@ -67,6 +68,7 @@ public final class WebServerService extends Service {
     }
     @Override public int onStartCommand(Intent intent, int flags, int startId) { return START_STICKY; }
     @Override public void onDestroy() {
+        WakeWordController.get(this).serviceStopped();
         if (server != null) { server.closeAuth(); server.stop(); }
         running = false;
         AppLog.add("Веб-сервер остановлен");
@@ -137,7 +139,9 @@ public final class WebServerService extends Service {
                     JSONObject result = new JSONObject().put("logs", AppLog.snapshot()).put("model", AppSettings.model(context))
                             .put("voice", AppSettings.voice(context)).put("voices", new org.json.JSONArray(TtsVoices.ALL))
                             .put("buttonServiceConnected", AssistantButtonService.isConnected())
-                            .put("buttonEnabled", AppSettings.buttonEnabled(context));
+                            .put("buttonEnabled", AppSettings.buttonEnabled(context))
+                            .put("wakeEnabled", AppSettings.wakeEnabled(context))
+                            .put("wakeStatus", WakeWordController.get(context).status());
                     return reply(Response.Status.OK, "application/json; charset=utf-8", result.toString());
                 }
                 if (session.getMethod() == Method.POST && "/api/voice/sample".equals(path)) {
@@ -257,13 +261,17 @@ public final class WebServerService extends Service {
                     if (data.has("buttonEnabled") && !(data.opt("buttonEnabled") instanceof Boolean))
                         return json(Response.Status.BAD_REQUEST, "Некорректное состояние кнопки");
                     boolean buttonEnabled = data.has("buttonEnabled") ? data.optBoolean("buttonEnabled") : AppSettings.buttonEnabled(context);
+                    if (data.has("wakeEnabled") && !(data.opt("wakeEnabled") instanceof Boolean))
+                        return json(Response.Status.BAD_REQUEST, "Некорректное состояние голосовой активации");
+                    boolean wakeEnabled = data.has("wakeEnabled") ? data.optBoolean("wakeEnabled") : AppSettings.wakeEnabled(context);
                     String key = data.optString("key", "").trim();
                     boolean deleteKey = data.optBoolean("deleteKey", false);
                     if (!AppSettings.validModel(model) || !TtsVoices.valid(voice) || key.length() > 512 || (deleteKey && !key.isEmpty()))
                         return json(Response.Status.BAD_REQUEST, "Некорректные настройки");
                     SecretStore store = new SecretStore(context);
                     if (deleteKey) store.clear(); else if (!key.isEmpty()) store.save(key);
-                    if (!AppSettings.save(context, model, voice, buttonEnabled)) return json(Response.Status.INTERNAL_ERROR, "Не удалось сохранить настройки");
+                    if (!AppSettings.save(context, model, voice, buttonEnabled, wakeEnabled)) return json(Response.Status.INTERNAL_ERROR, "Не удалось сохранить настройки");
+                    WakeWordController.get(context).settingsChanged();
                     AppLog.add(deleteKey ? "API-ключ удалён через веб-интерфейс" : "Настройки сохранены через веб-интерфейс");
                     return json(Response.Status.OK, "Настройки сохранены");
                 }

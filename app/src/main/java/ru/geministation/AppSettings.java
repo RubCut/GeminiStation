@@ -16,10 +16,14 @@ final class AppSettings {
     static boolean buttonEnabled(Context context) {
         return context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE).getBoolean("button_enabled", false);
     }
-    static boolean save(Context context, String model, String voice, boolean buttonEnabled) {
+    static boolean wakeEnabled(Context context) {
+        return context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE).getBoolean("wake_enabled", false);
+    }
+    static boolean save(Context context, String model, String voice, boolean buttonEnabled, boolean wakeEnabled) {
         if (!validModel(model) || !TtsVoices.valid(voice)) return false;
         return context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE).edit()
-                .putString("model", model).putString("voice", voice).putBoolean("button_enabled", buttonEnabled).commit();
+                .putString("model", model).putString("voice", voice).putBoolean("button_enabled", buttonEnabled)
+                .putBoolean("wake_enabled", wakeEnabled).commit();
     }
     private AppSettings() { }
 }
