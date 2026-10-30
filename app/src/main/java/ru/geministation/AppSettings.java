@@ -23,11 +23,15 @@ final class AppSettings {
         String value = context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE).getString("wake_sensitivity", WakeSensitivity.DEFAULT);
         return WakeSensitivity.normalize(value);
     }
-    static boolean save(Context context, String model, String voice, boolean buttonEnabled, boolean wakeEnabled, String wakeSensitivity) {
+    static boolean audioDuckEnabled(Context context) {
+        return context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE).getBoolean("audio_duck", true);
+    }
+    static boolean save(Context context, String model, String voice, boolean buttonEnabled, boolean wakeEnabled, String wakeSensitivity, boolean audioDuckEnabled) {
         if (!validModel(model) || !TtsVoices.valid(voice) || !WakeSensitivity.valid(wakeSensitivity)) return false;
         return context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE).edit()
                 .putString("model", model).putString("voice", voice).putBoolean("button_enabled", buttonEnabled)
-                .putBoolean("wake_enabled", wakeEnabled).putString("wake_sensitivity", WakeSensitivity.normalize(wakeSensitivity)).commit();
+                .putBoolean("wake_enabled", wakeEnabled).putString("wake_sensitivity", WakeSensitivity.normalize(wakeSensitivity))
+                .putBoolean("audio_duck", audioDuckEnabled).commit();
     }
     static String systemPrompt(Context context) {
         return context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE).getString("system_prompt", SystemPrompt.DEFAULT);

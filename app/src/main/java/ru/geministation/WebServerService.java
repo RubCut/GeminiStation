@@ -142,6 +142,7 @@ public final class WebServerService extends Service {
                             .put("apiKeys", ApiKeyVault.get(context).metadata())
                             .put("buttonServiceConnected", AssistantButtonService.isConnected())
                             .put("buttonEnabled", AppSettings.buttonEnabled(context))
+                            .put("audioDuckEnabled", AppSettings.audioDuckEnabled(context))
                             .put("wakeEnabled", AppSettings.wakeEnabled(context))
                             .put("wakeStatus", WakeWordController.get(context).status())
                             .put("wakeSensitivity", AppSettings.wakeSensitivity(context))
@@ -328,6 +329,9 @@ public final class WebServerService extends Service {
                     if (data.has("buttonEnabled") && !(data.opt("buttonEnabled") instanceof Boolean))
                         return json(Response.Status.BAD_REQUEST, "Некорректное состояние кнопки");
                     boolean buttonEnabled = data.has("buttonEnabled") ? data.optBoolean("buttonEnabled") : AppSettings.buttonEnabled(context);
+                    if (data.has("audioDuckEnabled") && !(data.opt("audioDuckEnabled") instanceof Boolean))
+                        return json(Response.Status.BAD_REQUEST, "Некорректная настройка приглушения");
+                    boolean audioDuckEnabled = data.has("audioDuckEnabled") ? data.optBoolean("audioDuckEnabled") : AppSettings.audioDuckEnabled(context);
                     if (data.has("wakeEnabled") && !(data.opt("wakeEnabled") instanceof Boolean))
                         return json(Response.Status.BAD_REQUEST, "Некорректное состояние голосовой активации");
                     boolean wakeEnabled = data.has("wakeEnabled") ? data.optBoolean("wakeEnabled") : AppSettings.wakeEnabled(context);
@@ -345,7 +349,7 @@ public final class WebServerService extends Service {
                         try { vault.add(key); }
                         catch (IllegalArgumentException e) { return json(Response.Status.BAD_REQUEST, e.getMessage()); }
                     }
-                    if (!AppSettings.save(context, model, voice, buttonEnabled, wakeEnabled, wakeSensitivity)) return json(Response.Status.INTERNAL_ERROR, "Не удалось сохранить настройки");
+                    if (!AppSettings.save(context, model, voice, buttonEnabled, wakeEnabled, wakeSensitivity, audioDuckEnabled)) return json(Response.Status.INTERNAL_ERROR, "Не удалось сохранить настройки");
                     WakeWordController.get(context).settingsChanged();
                     AppLog.add(deleteKey ? "API-ключ удалён через веб-интерфейс" : "Настройки сохранены через веб-интерфейс");
                     return json(Response.Status.OK, "Настройки сохранены");

@@ -15,7 +15,7 @@ for (const [, id] of markup.matchAll(/(?:href|for|aria-describedby|aria-labelled
 }
 assert.match(markup, /<input type="range" id="wakeSensitivity" min="1" max="100" step="1"/);
 assert.match(markup, /<input type="number" id="sensitivityNumber" min="1" max="100" step="1"/);
-const saved = {model:'gemini-3.5-flash-lite', voice:'Kore', voices:['Kore','Puck','Aoede'], logs:[], buttonEnabled:false, buttonServiceConnected:false, wakeEnabled:false, wakeStatus:"Выключена", wakeSensitivity:"normal", wakeRms:-1, wakePeak:-1, dnsEnabled:true, dnsBypassVpn:true, dnsServer:"https://d.webshiftvpn.ru/dns-query", vpnActive:false, systemPrompt:"Старый промпт", defaultSystemPrompt:"Исходный промпт", apiKeys:[{id:"11111111-1111-4111-8111-111111111111"}]};
+const saved = {model:'gemini-3.5-flash-lite', voice:'Kore', voices:['Kore','Puck','Aoede'], logs:[], buttonEnabled:false, audioDuckEnabled:true, buttonServiceConnected:false, wakeEnabled:false, wakeStatus:"Выключена", wakeSensitivity:"normal", wakeRms:-1, wakePeak:-1, dnsEnabled:true, dnsBypassVpn:true, dnsServer:"https://d.webshiftvpn.ru/dns-query", vpnActive:false, systemPrompt:"Старый промпт", defaultSystemPrompt:"Исходный промпт", apiKeys:[{id:"11111111-1111-4111-8111-111111111111"}]};
 const writes = [], samples = [];
 let sampleError = false, blockPlayback = false, revoked = [];
 function page() {
@@ -33,7 +33,7 @@ function page() {
   }
   const context = vm.createContext({document:{getElementById:element,createElement:()=>({})},
     fetch:async(path, options)=>{
-      if(path==='/api/config') {const body=JSON.parse(options.body); writes.push(body); saved.model=body.model; saved.voice=body.voice; saved.buttonEnabled=body.buttonEnabled; saved.wakeEnabled=body.wakeEnabled; saved.wakeSensitivity=body.wakeSensitivity;}
+      if(path==='/api/config') {const body=JSON.parse(options.body); writes.push(body); saved.model=body.model; saved.voice=body.voice; saved.buttonEnabled=body.buttonEnabled; saved.audioDuckEnabled=body.audioDuckEnabled; saved.wakeEnabled=body.wakeEnabled; saved.wakeSensitivity=body.wakeSensitivity;}
       if(path==='/api/network') {const body=JSON.parse(options.body); writes.push({network:body}); saved.dnsEnabled=body.enabled; saved.dnsBypassVpn=body.bypassVpn; saved.dnsServer=body.server;}
       if(path==='/api/prompt') {const body=JSON.parse(options.body); writes.push({prompt:body}); saved.systemPrompt=body.reset?saved.defaultSystemPrompt:body.prompt;}
       if(path==='/api/keys') {
@@ -55,6 +55,14 @@ function page() {
   let p=page(); await vm.runInContext('refresh()',p.context);
   assert.equal(p.element('voice').value,'Kore');
   assert.equal(p.element('voice').disabled,false);
+  assert.equal(p.element('audioDuckEnabled').checked,true);
+  p.element('audioDuckEnabled').checked=false;p.element('audioDuckEnabled').handlers.change();
+  await vm.runInContext('refresh()',p.context);
+  assert.equal(p.element('audioDuckEnabled').checked,false,'poll must preserve unsaved audio-focus choice');
+  await p.element('saveDuckSettings').handlers.click();
+  assert.equal(saved.audioDuckEnabled,false);
+  assert.equal(p.element('duckMessage').textContent,'Настройки сохранены');
+
   assert.equal(p.element('keyCount').textContent,'Сохранено ключей: 1');
   assert.equal(p.element('dnsEnabled').checked,true);
   assert.equal(p.element('dnsBypassVpn').checked,true);
@@ -130,6 +138,7 @@ function page() {
   assert.equal(saved.voice,'Puck');
   p=page(); await vm.runInContext('refresh()',p.context);
   assert.equal(p.element('voice').value,'Puck', 'reload restores the saved voice');
+  assert.equal(p.element('audioDuckEnabled').checked,false, 'reload restores audio focus setting');
   assert.equal(p.element('buttonEnabled').checked,true, 'reload restores the button setting');
   assert.equal(p.element('wakeEnabled').checked,true, 'reload restores the wake setting');
   assert.equal(p.element('wakeSensitivity').value,'100', 'reload restores sensitivity');

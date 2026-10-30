@@ -132,6 +132,11 @@ details{margin-top:18px;border-top:1px solid #303441;padding-top:16px}summary{co
       <div class="actions"><button id="sampleVoice" class="secondary" disabled>▶ &nbsp; Прослушать голос</button><button id="saveVoice" disabled>Сохранить голос</button></div><p class="status-message" id="voiceMessage" role="status"></p><p class="status-message" id="sampleStatus" role="status"></p><audio id="sampleAudio" controls hidden style="width:100%;margin-top:12px"></audio>
       <div class="privacy"><svg class="icon"><use href="#i-info"/></svg><span>Образец запрашивается через Gemini TTS и может расходовать квоту. Выбор применяется со следующего ответа.</span></div>
      </article>
+     <article class="card"><div class="card-head"><span class="card-icon blue"><svg class="icon"><use href="#i-volume"/></svg></span><div><h3>Фоновый звук</h3><p>Приглушение других приложений во время диалога.</p></div></div>
+      <div class="toggle-line"><div class="toggle-copy"><strong>Приглушать фоновый звук</strong><span>Ассистент попросит Android приглушить другие приложения, не меняя системную громкость.</span></div><label class="switch"><input type="checkbox" id="audioDuckEnabled" aria-label="Приглушать фоновый звук" disabled><span class="switch-track"></span></label></div>
+      <p class="field-hint">Android определяет уровень приглушения: он может быть значительно сильнее 15%, а некоторые приложения могут остановиться. После ответа фоновый звук должен вернуться; зависит от прошивки и приложения.</p>
+      <div class="actions"><button id="saveDuckSettings" disabled>Сохранить</button></div><p class="status-message" id="duckMessage" role="status"></p>
+     </article>
      <article class="card"><div class="card-head"><span class="card-icon blue"><svg class="icon"><use href="#i-grid"/></svg></span><div><h3>DNS для Gemini</h3><p>Используется для Gemini Live, ответов, TTS и поиска YouTube.</p></div></div>
       <div class="toggle-line"><div class="toggle-copy"><strong>Использовать свой DNS</strong><span>Если выключено, используется системный DNS станции.</span></div><label class="switch"><input type="checkbox" id="dnsEnabled" aria-label="Использовать свой DNS" disabled><span class="switch-track"></span></label></div>
       <div class="field"><label class="field-label" for="dnsServer">IP DNS-сервера или HTTPS URL DNS-over-HTTPS</label><input id="dnsServer" spellcheck="false" autocomplete="off" placeholder="1.1.1.1 или https://d.webshiftvpn.ru/dns-query" disabled><p class="field-hint">По умолчанию WebShift. IP использует обычный незашифрованный DNS; HTTPS — DNS-over-HTTPS. Настройка не меняет DNS других приложений.</p></div>
@@ -197,7 +202,7 @@ async function request(path,options={}){
  const data=await response.json(); if(!response.ok) throw new Error(data.message||'Ошибка'); return data;
 }
 let networkDirty=false, promptDirty=false, networkBusy=false, promptBusy=false;
-let settingsLoaded=false, voiceDirty=false, buttonDirty=false, wakeDirty=false, wakeSensitivityDirty=false, keyBusy=false, keyIds=null;
+let settingsLoaded=false, voiceDirty=false, buttonDirty=false, audioDuckDirty=false, wakeDirty=false, wakeSensitivityDirty=false, keyBusy=false, keyIds=null;
 function validSensitivity(value){return /^(?:[1-9]|[1-9][0-9]|100)$/.test(value)}
 function sensitivityError(message){
  el('sensitivityError').textContent=message;
@@ -266,8 +271,8 @@ async function refresh(){try{
  if(!settingsLoaded){
   el('model').value=data.model;const select=el('voice');select.textContent='';
   data.voices.forEach(voice=>{const option=document.createElement('option');option.value=voice;option.textContent=voice;select.appendChild(option)});
-  select.value=data.voice;select.disabled=false;el('model').disabled=false;el('key').disabled=false;el('buttonEnabled').checked=data.buttonEnabled;el('buttonEnabled').disabled=false;el('wakeEnabled').checked=data.wakeEnabled;el('wakeEnabled').disabled=false;setSensitivity(data.wakeSensitivity);el('wakeSensitivity').disabled=false;el('sensitivityNumber').disabled=false;el('saveWakeSettings').disabled=false;el('saveVoice').disabled=false;el('save').disabled=false;el('saveButtonSettings').disabled=false;el('sampleVoice').disabled=false;settingsLoaded=true;
- }else{if(!voiceDirty)el('voice').value=data.voice;if(!buttonDirty)el('buttonEnabled').checked=data.buttonEnabled;if(!wakeDirty)el('wakeEnabled').checked=data.wakeEnabled;if(!wakeSensitivityDirty)setSensitivity(data.wakeSensitivity)}
+  select.value=data.voice;select.disabled=false;el('model').disabled=false;el('key').disabled=false;el('buttonEnabled').checked=data.buttonEnabled;el('buttonEnabled').disabled=false;el('audioDuckEnabled').checked=data.audioDuckEnabled;el('audioDuckEnabled').disabled=false;el('saveDuckSettings').disabled=false;el('wakeEnabled').checked=data.wakeEnabled;el('wakeEnabled').disabled=false;setSensitivity(data.wakeSensitivity);el('wakeSensitivity').disabled=false;el('sensitivityNumber').disabled=false;el('saveWakeSettings').disabled=false;el('saveVoice').disabled=false;el('save').disabled=false;el('saveButtonSettings').disabled=false;el('sampleVoice').disabled=false;settingsLoaded=true;
+ }else{if(!voiceDirty)el('voice').value=data.voice;if(!buttonDirty)el('buttonEnabled').checked=data.buttonEnabled;if(!audioDuckDirty)el('audioDuckEnabled').checked=data.audioDuckEnabled;if(!wakeDirty)el('wakeEnabled').checked=data.wakeEnabled;if(!wakeSensitivityDirty)setSensitivity(data.wakeSensitivity)}
  return data;
 }catch(e){setConnection(false);el('message').textContent=e.message;throw e}}
 let sampleUrl='';
@@ -287,11 +292,12 @@ async function sampleVoice(){
 }
 async function save(remove,feedback='message'){
  try{
-  const voice=el('voice').value, buttonEnabled=el('buttonEnabled').checked, wakeEnabled=el('wakeEnabled').checked, wakeSensitivity=getSensitivity();
+  const voice=el('voice').value, buttonEnabled=el('buttonEnabled').checked, audioDuckEnabled=el('audioDuckEnabled').checked, wakeEnabled=el('wakeEnabled').checked, wakeSensitivity=getSensitivity();
   if(wakeSensitivity===null){sensitivityError('Введите целое число от 1 до 100.');el('sensitivityNumber').focus();return}
-  await request('/api/config',{method:'POST',body:JSON.stringify({model:el('model').value,voice,buttonEnabled,wakeEnabled,wakeSensitivity,key:'',deleteKey:remove})});
+  await request('/api/config',{method:'POST',body:JSON.stringify({model:el('model').value,voice,buttonEnabled,audioDuckEnabled,wakeEnabled,wakeSensitivity,key:'',deleteKey:remove})});
   if(el('voice').value===voice)voiceDirty=false;
   if(el('buttonEnabled').checked===buttonEnabled)buttonDirty=false;
+  if(el('audioDuckEnabled').checked===audioDuckEnabled)audioDuckDirty=false;
   if(el('wakeEnabled').checked===wakeEnabled)wakeDirty=false;
   if(getSensitivity()===wakeSensitivity)wakeSensitivityDirty=false;
   el(feedback).textContent=remove?'Ключи удалены':'Настройки сохранены';await refresh();
@@ -352,6 +358,8 @@ el('savePrompt').addEventListener('click',()=>saveSystemPrompt(false));
 el('resetPrompt').addEventListener('click',()=>saveSystemPrompt(true));
 el('voice').addEventListener('change',()=>{voiceDirty=true});
 el('buttonEnabled').addEventListener('change',()=>{buttonDirty=true});
+el('audioDuckEnabled').addEventListener('change',()=>{audioDuckDirty=true});
+el('saveDuckSettings').addEventListener('click',()=>save(false,'duckMessage'));
 el('wakeEnabled').addEventListener('change',()=>{wakeDirty=true});
 el('wakeSensitivity').addEventListener('input',sliderChanged);
 el('wakeSensitivity').addEventListener('change',sliderChanged);

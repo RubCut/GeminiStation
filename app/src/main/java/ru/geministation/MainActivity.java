@@ -6,6 +6,8 @@ import android.animation.PropertyValuesHolder;
 import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.content.Intent;
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
@@ -37,6 +39,8 @@ public final class MainActivity extends Activity {
     private final AtomicInteger speechGeneration = new AtomicInteger();
     private final VoicePlayer voicePlayer = new VoicePlayer();
     private SoundCuePlayer soundCuePlayer;
+    private BackgroundAudioFocus backgroundAudioFocus;
+    private SharedPreferences preferences;
     private DeviceActions deviceActions;
     private DeviceActions.Navigation pendingNavigation;
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -57,11 +61,25 @@ public final class MainActivity extends Activity {
     private volatile boolean destroyed, resumed;
     private boolean initialStartPending = true, permissionPending, micHandoffReady;
 
+    private final SharedPreferences.OnSharedPreferenceChangeListener preferenceListener = (prefs, key) -> {
+        if (!"audio_duck".equals(key)) return;
+        handler.post(() -> {
+            if (destroyed) return;
+            if (!AppSettings.audioDuckEnabled(this)) backgroundAudioFocus.release();
+            else if (resumed && (flow.phase() == ConversationFlow.Phase.LISTENING
+                    || flow.phase() == ConversationFlow.Phase.THINKING || flow.phase() == ConversationFlow.Phase.SPEAKING))
+                backgroundAudioFocus.acquire();
+        });
+    };
+
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         WakeWordController.get(this).dialogOpening();
         keyVault = ApiKeyVault.get(this);
         soundCuePlayer = new SoundCuePlayer(this);
+        backgroundAudioFocus = new BackgroundAudioFocus(this);
+        preferences = getSharedPreferences("MainActivity", Context.MODE_PRIVATE);
+        preferences.registerOnSharedPreferenceChangeListener(preferenceListener);
         deviceActions = new DeviceActions(this);
         client = new GeminiClient(getApplicationContext());
         led = LedController.get(this);
@@ -161,6 +179,7 @@ public final class MainActivity extends Activity {
         flow.finish();
         cancelRecognition();
         stopSpeaking();
+        backgroundAudioFocus.release();
         handler.postDelayed(() -> { if (!destroyed) finish(); }, 5000);
     }
     private void closeForSilence() {
@@ -169,6 +188,7 @@ public final class MainActivity extends Activity {
         cancelRecognition();
         stopSpeaking();
         soundCuePlayer.play(R.raw.no_answer, "нет ответа", () -> {
+            backgroundAudioFocus.release();
             if (!destroyed && resumed) finish();
         });
     }
@@ -177,6 +197,7 @@ public final class MainActivity extends Activity {
     }
     private void submit(String question) {
         if (!flow.recognized()) return;
+        backgroundAudioFocus.acquire();
         showText(question);
         startSpinner();
         try {
@@ -261,6 +282,7 @@ public final class MainActivity extends Activity {
         });
     }
     private void speak(String response) {
+        backgroundAudioFocus.acquire();
         final int generation = speechGeneration.incrementAndGet();
         // Snapshot once per reply so streaming and fallback cannot use different voices.
         final String voice = AppSettings.voice(this);
@@ -284,8 +306,10 @@ public final class MainActivity extends Activity {
                 if (speechGeneration.get() != generation) return;
                 AppLog.add("TTS: воспроизведение завершено");
                 runOnUiThread(() -> {
-                    if (!destroyed && resumed && speechGeneration.get() == generation)
+                    if (!destroyed && resumed && speechGeneration.get() == generation) {
+                        backgroundAudioFocus.release();
                         handler.postDelayed(() -> { if (!destroyed && resumed && speechGeneration.get() == generation) beginFollowUp(); }, 350);
+                    }
                 });
             } catch (Exception e) {
                 AppLog.add("TTS: ошибка обработки " + e.getClass().getSimpleName());
@@ -295,6 +319,7 @@ public final class MainActivity extends Activity {
                             ? " (" + e.getMessage() + ")" : "";
                     AppLog.add("TTS: синтез не удался" + detail + "; ответ оставлен на экране");
                     stopSpinner(); stopPulse();
+                    backgroundAudioFocus.release();
                     // Keep the answer visible briefly, then allow a follow-up even if audio failed.
                     handler.postDelayed(() -> { if (!destroyed && resumed && speechGeneration.get() == generation) beginFollowUp(); }, 2000);
                 });
@@ -302,6 +327,7 @@ public final class MainActivity extends Activity {
         });
     }
     private void beginFollowUp() {
+        backgroundAudioFocus.release();
         if (pendingNavigation != null) {
             DeviceActions.Navigation navigation = pendingNavigation;
             pendingNavigation = null;
@@ -324,6 +350,7 @@ public final class MainActivity extends Activity {
             return;
         }
         initialStartPending = false;
+        backgroundAudioFocus.acquire();
         // Confirmation of activation, not an indication that Gemini Live is ready yet.
         // Play before opening Live's microphone so the cue isn't sent for transcription.
         soundCuePlayer.play(R.raw.assistant_start, "активация", () -> {
@@ -416,6 +443,7 @@ public final class MainActivity extends Activity {
             public void onPartial(String value) {
                 if (!active()) return;
                 boolean firstSpeech = !heardSpeech;
+                if (firstSpeech) backgroundAudioFocus.acquire();
                 heardSpeech = true;
                 if (firstSpeech && !waitingForFinal) scheduleSpeechDeadline(attempt);
                 partialCount++;
@@ -489,6 +517,7 @@ public final class MainActivity extends Activity {
         soundCuePlayer.cancel();
         pendingNavigation = null;
         cancelRecognition(); stopSpeaking(); stopSpinner(); stopPulse(); led.show(null);
+        backgroundAudioFocus.release();
         WakeWordController.get(this).dialogClosed();
         // Don't leave an invisible assistant listening or waiting on a network request.
         if (!permissionPending && !isChangingConfigurations()) finish();
@@ -498,6 +527,8 @@ public final class MainActivity extends Activity {
         led.show(null);
         handler.removeCallbacksAndMessages(null);
         soundCuePlayer.close();
+        preferences.unregisterOnSharedPreferenceChangeListener(preferenceListener);
+        backgroundAudioFocus.release();
         pendingNavigation = null;
         cancelRecognition();
         stopSpeaking();
