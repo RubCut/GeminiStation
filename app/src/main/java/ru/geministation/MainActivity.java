@@ -114,7 +114,7 @@ public final class MainActivity extends Activity {
         root.setTranslationY(dp(12));
         root.animate().alpha(1f).translationY(0f).setDuration(350).start();
         root.requestFocus();
-        showText("Слушаю…");
+        showText("Подключаюсь…");
     }
     private void showText(String value) { text.setText(value); }
     private void animatePulse(boolean speaking) {
@@ -333,7 +333,7 @@ public final class MainActivity extends Activity {
         listeningPolicy.reset();
         // Keep the answer on screen during follow-up silence; replace it as soon as speech begins.
         animatePulse(false); led.show("listening");
-        if (!followUp) showText("Слушаю…");
+        if (!followUp) showText("Подключаюсь…");
         startLiveRecognition(attempt, followUp);
     }
     private void startLiveRecognition(final int attempt, final boolean followUp) {
@@ -348,6 +348,7 @@ public final class MainActivity extends Activity {
             public void onReady() {
                 if (!active()) return;
                 AppLog.add("Речь #" + attempt + ": прямой микрофон готов через " + recognitionElapsed() + " мс");
+                if (!followUp) showText("Слушаю…");
                 if (!heardSpeech && !waitingForFinal) scheduleNoSpeechTimeout(attempt, ListeningPolicy.NO_SPEECH_MS);
             }
             public void onPartial(String value) {
