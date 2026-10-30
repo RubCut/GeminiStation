@@ -26,11 +26,7 @@ final class YandexCloud {
     static JSONObject request(Request request) throws Exception {
         try (Response r = HTTP.newCall(request).execute()) {
             if (!r.isSuccessful()) throw new IOException("HTTP " + r.code());
-            if (r.body() == null) throw new IOException("empty response");
-            okio.BufferedSource source = r.body().source();
-            source.request(2 * 1024 * 1024L + 1);
-            if (source.buffer().size() > 2 * 1024 * 1024L) throw new IOException("response too large");
-            return new JSONObject(source.readUtf8());
+            return new JSONObject(HttpLimits.readUtf8(r.body(), 2 * 1024 * 1024));
         }
     }
     static String musicToken(Context c) throws Exception {
@@ -45,17 +41,28 @@ final class YandexCloud {
         return token;
     }
     static final class Track {
-        final String id, title;
-        Track(String id, String title) { this.id = id; this.title = title; }
+        final String id, title, account;
+        Track(String id, String title) { this(id, title, null); }
+        Track(String id, String title, String account) { this.id = id; this.title = title; this.account = account; }
+    }
+    static String musicAccount(Context c) throws Exception {
+        String config = new SecretStore(c, "led_secrets").load();
+        if (config.isEmpty()) throw new IOException("no account");
+        byte[] digest = java.security.MessageDigest.getInstance("SHA-256").digest(config.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        return android.util.Base64.encodeToString(digest, android.util.Base64.NO_WRAP);
     }
     static Track search(Context c, String query) throws Exception {
         if (!LinkPolicy.searchQuery(query)) throw new IOException("bad query");
+        String account = musicAccount(c);
         String token = musicToken(c);
+        if (!account.equals(musicAccount(c))) throw new IOException("account changed");
         HttpUrl url = HttpUrl.get("https://api.music.yandex.net/search").newBuilder()
                 .addQueryParameter("text", query).addQueryParameter("type", "track").build();
         JSONObject result = request(new Request.Builder().url(url).header("Authorization", "OAuth " + token).build())
                 .optJSONObject("result");
-        return parseSearch(result);
+        if (!account.equals(musicAccount(c))) throw new IOException("account changed");
+        Track found = parseSearch(result);
+        return new Track(found.id, found.title, account);
     }
     static Track parseSearch(JSONObject result) throws Exception {
         JSONObject tracks = result == null ? null : result.optJSONObject("tracks");

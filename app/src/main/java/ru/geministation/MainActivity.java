@@ -274,7 +274,7 @@ public final class MainActivity extends Activity {
                     if (result.call != null) {
                         if (remoteText != null) {
                             response = remoteText;
-                            if (foundTrack != null) pendingNavigation = () -> { led.playMusic(foundTrack.id); return true; };
+                            if (foundTrack != null) pendingNavigation = () -> { led.playMusic(foundTrack.id, foundTrack.account); return true; };
                         } else {
                             DeviceActions.Outcome outcome = deviceActions.prepare(chosen, apps);
                             response = outcome.text;

@@ -21,6 +21,16 @@ public class LinkPolicyTest {
         history.put(new JSONObject().put("role", "user").put("parts", new JSONArray().put(new JSONObject().put("text", "Открой " + url))));
         assertTrue(UserLinkAuthorization.presentInUserTurns(url, history));
     }
+    @Test public void userLinkMustBeAWholeUrlNotASubstring() throws Exception {
+        String url = "https://example.com";
+        assertFalse(UserLinkAuthorization.containsWholeUrl("https://example.com.evil/path", url));
+        assertFalse(UserLinkAuthorization.containsWholeUrl("https://other.test/?redirect=https://example.com", url));
+        assertFalse(UserLinkAuthorization.containsWholeUrl("https://example.com/private", url));
+        assertFalse(UserLinkAuthorization.containsWholeUrl("https://other.test/(https://example.com)", url));
+        assertFalse(UserLinkAuthorization.containsWholeUrl("https://example.com)private", url));
+        assertTrue(UserLinkAuthorization.containsWholeUrl("Открой (https://example.com)", url));
+        assertTrue(UserLinkAuthorization.containsWholeUrl("Открой https://example.com сейчас", url));
+    }
     @Test public void onlyBrowsableViewFiltersProduceWebHints() {
         LinkHintFilter filter = new LinkHintFilter();
         filter.data("https", "*.youtube.com"); filter.data("intent", "ignored");

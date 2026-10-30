@@ -101,7 +101,11 @@ final class VoicePlayer {
                 written += count;
             }
             long frames = written / (audio.channels * 2);
-            while (active.getAsBoolean() && Integer.toUnsignedLong(track.getPlaybackHeadPosition()) < frames) Thread.sleep(40);
+            long deadline = android.os.SystemClock.elapsedRealtime() + frames * 1000 / audio.rate + 5000;
+            while (active.getAsBoolean() && Integer.toUnsignedLong(track.getPlaybackHeadPosition()) < frames) {
+                if (android.os.SystemClock.elapsedRealtime() >= deadline) throw new IOException("Audio playback timeout");
+                Thread.sleep(40);
+            }
         } finally {
             synchronized (lock) {
                 if (current == track) current = null;

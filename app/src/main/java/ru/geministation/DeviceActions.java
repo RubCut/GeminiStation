@@ -54,6 +54,8 @@ final class DeviceActions {
                 }
                 case MEDIA_CONTROL:
                     return media(action);
+                case MEDIA_SEEK:
+                    return new Outcome(MediaSeek.seek(activity, action.data, action.number), null);
                 case GET_VOLUME:
                 case SET_VOLUME:
                 case ADJUST_VOLUME:

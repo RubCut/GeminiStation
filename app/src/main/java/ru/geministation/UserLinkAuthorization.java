@@ -14,8 +14,26 @@ final class UserLinkAuthorization {
             if (parts == null) continue;
             for (int j = 0; j < parts.length(); j++) {
                 JSONObject part = parts.optJSONObject(j);
-                if (part != null && part.optString("text", "").contains(url)) return true;
+                if (part != null && containsWholeUrl(part.optString("text", ""), url)) return true;
             }
+        }
+        return false;
+    }
+    // Never authorize a URL just because it is a prefix or query-string fragment of another URL.
+    // Deliberately conservative: if punctuation is ambiguous, ask the user for the exact URL again.
+    static boolean containsWholeUrl(String text, String url) {
+        int from = 0;
+        while (from <= text.length() - url.length()) {
+            int i = text.indexOf(url, from);
+            if (i < 0) return false;
+            int end = i + url.length();
+            int left = i, right = end;
+            while (left > 0 && "([{<\"«“".indexOf(text.charAt(left - 1)) >= 0) left--;
+            while (right < text.length() && ")]}>\"»”".indexOf(text.charAt(right)) >= 0) right++;
+            boolean before = left == 0 || Character.isWhitespace(text.charAt(left - 1));
+            boolean after = right == text.length() || Character.isWhitespace(text.charAt(right));
+            if (before && after) return true;
+            from = i + 1;
         }
         return false;
     }

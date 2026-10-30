@@ -80,7 +80,7 @@ final class GeminiClient {
             if (!response.isSuccessful()) throw new IOException("Gemini API: HTTP " + response.code() +
                     ". Проверьте ключ, модель и доступность сервиса.");
             if (response.body() == null) throw new IOException("Пустой ответ Gemini");
-            JSONObject payload = new JSONObject(response.body().string());
+            JSONObject payload = new JSONObject(HttpLimits.readUtf8(response.body(), 2 * 1024 * 1024));
             if (RateLimitSignals.apiPayload(payload)) throw new KeyRotation.RateLimit("Gemini API");
             GeminiToolProtocol.Result result = GeminiToolProtocol.parse(payload);
             AppLog.add("Текст: ответ обработан за " + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started)

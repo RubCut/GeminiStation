@@ -141,6 +141,7 @@ public final class WebServerService extends Service {
                             .put("voice", AppSettings.voice(context)).put("voices", new org.json.JSONArray(TtsVoices.ALL))
                             .put("apiKeys", ApiKeyVault.get(context).metadata())
                             .put("buttonServiceConnected", AssistantButtonService.isConnected())
+                            .put("mediaAccessGranted", MediaSeek.accessGranted(context))
                             .put("buttonEnabled", AppSettings.buttonEnabled(context))
                             .put("audioDuckEnabled", AppSettings.audioDuckEnabled(context))
                             .put("wakeEnabled", AppSettings.wakeEnabled(context))
@@ -185,6 +186,17 @@ public final class WebServerService extends Service {
                         AppLog.add("TTS: не удалось получить образец голоса " + voice + safe);
                         return json(Response.Status.INTERNAL_ERROR, "Не удалось получить образец Gemini" + safe + ". Проверьте ключ, сеть и доступ к TTS.");
                     } finally { sampleInProgress.set(false); }
+                }
+                if (session.getMethod() == Method.POST && "/api/media/settings".equals(path)) {
+                    if (!WebSecurity.permittedWrite(host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station")))
+                        return json(Response.Status.FORBIDDEN, "Запрос отклонён");
+                    try {
+                        Intent settings = new Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        context.startActivity(settings);
+                        return json(Response.Status.OK, "Открываем системные настройки на станции. Включите доступ Gemini Station — управление медиа.");
+                    } catch (RuntimeException e) {
+                        return json(Response.Status.BAD_REQUEST, "Не удалось открыть настройки. Используйте команду ADB ниже.");
+                    }
                 }
                 if (session.getMethod() == Method.POST && "/api/home".equals(path)) {
                     if (!WebSecurity.permittedWrite(host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station")))

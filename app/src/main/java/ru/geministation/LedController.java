@@ -159,7 +159,7 @@ final class LedController {
                 AppLog.add("LED: Яндекс вернул HTTP " + response.code());
                 throw new Exception("Cloud request failed");
             }
-            return response.body().string();
+            return HttpLimits.readUtf8(response.body(), 1024 * 1024);
         }
     }
     private String token(String json) throws Exception {
@@ -225,17 +225,17 @@ final class LedController {
         return connection.connect(hello.toString(), 6000);
     }
     /** Experimental playback on the already selected local station; no playback ACK is available. */
-    void playMusic(String id) {
-        if (id == null || !id.matches("[0-9]{1,20}")) return;
+    void playMusic(String id, String account) {
+        if (id == null || !id.matches("[0-9]{1,20}") || account == null) return;
         executor.execute(() -> {
             try {
                 SecretStore store = new SecretStore(context, "led_secrets");
                 String cfg = store.load();
-                if (cfg.isEmpty()) return;
+                if (cfg.isEmpty() || !account.equals(YandexCloud.musicAccount(context))) throw new Exception("account changed");
                 String auth = token(cfg);
-                if (!cfg.equals(store.load()) || !connect(auth)) throw new Exception("not connected");
+                if (!cfg.equals(store.load()) || !account.equals(YandexCloud.musicAccount(context)) || !connect(auth)) throw new Exception("not connected");
                 JSONObject payload = new JSONObject().put("command", "playMusic").put("id", id).put("type", "track");
-                if (!cfg.equals(store.load()) || !connection.send(envelope(auth, payload, UUID.randomUUID().toString()).toString()))
+                if (!cfg.equals(store.load()) || !account.equals(YandexCloud.musicAccount(context)) || !connection.send(envelope(auth, payload, UUID.randomUUID().toString()).toString()))
                     throw new Exception("not sent");
                 AppLog.add("Музыка: команда станции отправлена; воспроизведение не подтверждено");
             } catch (Exception e) { AppLog.add("Музыка: не удалось отправить команду станции (" + e.getClass().getSimpleName() + ")"); }

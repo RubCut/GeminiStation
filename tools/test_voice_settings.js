@@ -15,7 +15,7 @@ for (const [, id] of markup.matchAll(/(?:href|for|aria-describedby|aria-labelled
 }
 assert.match(markup, /<input type="range" id="wakeSensitivity" min="1" max="100" step="1"/);
 assert.match(markup, /<input type="number" id="sensitivityNumber" min="1" max="100" step="1"/);
-const saved = {model:'gemini-3.5-flash-lite', voice:'Kore', voices:['Kore','Puck','Aoede'], logs:[], buttonEnabled:false, audioDuckEnabled:true, buttonServiceConnected:false, wakeEnabled:false, wakeStatus:"Выключена", wakeSensitivity:"normal", wakeRms:-1, wakePeak:-1, dnsEnabled:true, dnsBypassVpn:true, dnsServer:"https://d.webshiftvpn.ru/dns-query", vpnActive:false, systemPrompt:"Старый промпт", defaultSystemPrompt:"Исходный промпт", apiKeys:[{id:"11111111-1111-4111-8111-111111111111"}]};
+const saved = {model:'gemini-3.5-flash-lite', voice:'Kore', voices:['Kore','Puck','Aoede'], logs:[], buttonEnabled:false, audioDuckEnabled:true, buttonServiceConnected:false, mediaAccessGranted:false, wakeEnabled:false, wakeStatus:"Выключена", wakeSensitivity:"normal", wakeRms:-1, wakePeak:-1, dnsEnabled:true, dnsBypassVpn:true, dnsServer:"https://d.webshiftvpn.ru/dns-query", vpnActive:false, systemPrompt:"Старый промпт", defaultSystemPrompt:"Исходный промпт", apiKeys:[{id:"11111111-1111-4111-8111-111111111111"}]};
 const writes = [], samples = [];
 let sampleError = false, blockPlayback = false, revoked = [];
 function page() {
@@ -56,6 +56,9 @@ function page() {
   assert.equal(p.element('voice').value,'Kore');
   assert.equal(p.element('voice').disabled,false);
   assert.equal(p.element('audioDuckEnabled').checked,true);
+  assert.match(p.element('mediaStatus').textContent,/не разрешён/);
+  saved.mediaAccessGranted=true;await vm.runInContext('refresh()',p.context);
+  assert.match(p.element('mediaStatus').textContent,/разрешён/);
   p.element('audioDuckEnabled').checked=false;p.element('audioDuckEnabled').handlers.change();
   await vm.runInContext('refresh()',p.context);
   assert.equal(p.element('audioDuckEnabled').checked,false,'poll must preserve unsaved audio-focus choice');
