@@ -4,7 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Gemini Station</title>
 <style>
-:root{color-scheme:dark;font:16px system-ui,sans-serif;background:#101725;color:#e7eefc}body{max-width:760px;margin:0 auto;padding:24px}h1{margin-bottom:4px}p{line-height:1.5;color:#b7c8e3}section{background:#1b273b;padding:20px;border-radius:12px;margin:16px 0}label{display:block;margin:12px 0 6px}select,input{box-sizing:border-box;width:100%;padding:12px;border:1px solid #53647d;border-radius:8px;background:#101725;color:white;font:inherit}button{margin:14px 8px 0 0;padding:10px 16px;border:0;border-radius:8px;background:#a8c7fa;color:#10223d;font-weight:bold;cursor:pointer}button.secondary{background:#384963;color:#fff}pre{white-space:pre-wrap;overflow:auto;max-height:360px;color:#c3d6fa}#message{min-height:1.5em}small{color:#b7c8e3}
+:root{color-scheme:dark;font:16px system-ui,sans-serif;background:#101725;color:#e7eefc}body{max-width:760px;margin:0 auto;padding:24px}h1{margin-bottom:4px}p{line-height:1.5;color:#b7c8e3}section{background:#1b273b;padding:20px;border-radius:12px;margin:16px 0}label{display:block;margin:12px 0 6px}select,input{box-sizing:border-box;width:100%;padding:12px;border:1px solid #53647d;border-radius:8px;background:#101725;color:white;font:inherit}button{margin:14px 8px 0 0;padding:10px 16px;border:0;border-radius:8px;background:#a8c7fa;color:#10223d;font-weight:bold;cursor:pointer}button.secondary{background:#384963;color:#fff}input[type=checkbox]{width:auto;margin-right:8px}pre{white-space:pre-wrap;overflow:auto;max-height:360px;color:#c3d6fa}#message{min-height:1.5em}small{color:#b7c8e3}
 </style>
 </head>
 <body>
@@ -15,6 +15,7 @@
 <section><h2>Экран станции — экспериментально</h2><p>Свои анимации логотипа Gemini для матрицы 25×16. Подключение использует локальный протокол станции. Работа зависит от прошивки и пока не проверена на этом устройстве.</p><p>Войдите по QR прямо с этой страницы: отсканируйте код телефоном и подтвердите вход в Яндексе. Приложение получит токен аккаунта и сохранит его зашифрованным. Пароль вводится только на стороне Яндекса.</p><p><strong>Внимание:</strong> панель доступна без пароля, а HTTP по локальной сети не шифруется: другие устройства в сети могут получить QR-код и управлять настройками. Используйте только доверенную сеть и не показывайте QR-код посторонним.</p>
 <button id="qrStart">Войти в Яндекс по QR</button><button id="qrCancel" class="secondary" hidden>Отменить вход</button><div id="qrPanel" hidden><p>Отсканируйте QR-код телефоном и подтвердите вход в Яндексе.</p><img id="qrImage" alt="QR-код входа в Яндекс" width="300" height="300" style="max-width:100%;height:auto;background:white"><p id="qrStatus"></p></div><div id="stationPanel" hidden><label for="station">Выберите свою Станцию Макс</label><select id="station"></select><button id="chooseStation">Сохранить станцию</button></div>
 <details><summary>Запасной вариант: импорт настроек Station Max Studio</summary><p><strong>Файл содержит токен аккаунта Яндекса.</strong> Не отправляйте его никому. При импорте по сети токен передаётся по незашифрованному HTTP. Для безопасной передачи можно использовать ADB forward.</p><label for="studio">Файл settings.json из Station Max Studio</label><input id="studio" type="file" accept=".json,application/json"><button id="importLed">Импортировать</button></details><button id="testLed" class="secondary">Проверить экран</button><button id="clearLed" class="secondary">Очистить экран / вернуть часы</button><button id="deleteLed" class="secondary">Выйти из Яндекса</button><p id="ledMessage" role="status"></p></section>
+<section><h2>Кнопка ассистента</h2><p>На этой прошивке Яндекс возвращает Алису как системного ассистента. Можно отдельно включить экспериментальную службу кнопки: в настройках специальных возможностей на станции выберите «Gemini Station — кнопка ассистента». Служба получает события клавиш и обрабатывает только кнопку голосового ассистента (231); содержимое экрана не читается. Включение необязательно, на работу системной Алисы и других её функций это может повлиять. Поддержка зависит от прошивки.</p><label for="buttonEnabled"><input type="checkbox" id="buttonEnabled" disabled>Включить вызов Gemini кнопкой 231</label><button id="saveButtonSettings" disabled>Сохранить настройки</button><p><small>Сохраняются все поля настроек на странице. Чтобы полностью прекратить получение событий клавиш, отключите службу также в системных настройках.</small></p><p id="buttonStatus" role="status">Проверяем состояние службы…</p></section>
 <section><h2>Журнал</h2><small>Последние 500 событий в памяти: этапы, время и ошибки без ключей и текста диалогов.</small><pre id="logs"></pre><button id="refresh" class="secondary">Обновить</button></section>
 </div>
 <script>
@@ -24,15 +25,16 @@ async function request(path,options={}){
  const response=await fetch(path,{...options,headers:options.body?{'Content-Type':'application/json','X-Gemini-Station':'1'}:{},cache:'no-store'});
  const data=await response.json(); if(!response.ok) throw new Error(data.message||'Ошибка'); return data;
 }
-let settingsLoaded=false, voiceDirty=false;
+let settingsLoaded=false, voiceDirty=false, buttonDirty=false;
 async function refresh(){try{
  const data=await request('/api/logs');el('logs').textContent=data.logs.join('\n');
  el('savedVoice').textContent='Сохранённый голос: '+data.voice;
+ el('buttonStatus').textContent=(data.buttonServiceConnected?'Служба кнопки подключена.':'Служба кнопки не подключена.')+' Сохранённый перехват: '+(data.buttonEnabled?'включён':'выключен')+'.';
  if(!settingsLoaded){
   el('model').value=data.model;const select=el('voice');select.textContent='';
   data.voices.forEach(voice=>{const option=document.createElement('option');option.value=voice;option.textContent=voice;select.appendChild(option)});
-  select.value=data.voice;select.disabled=false;el('save').disabled=false;el('delete').disabled=false;el('sampleVoice').disabled=false;settingsLoaded=true;
- }else if(!voiceDirty){el('voice').value=data.voice}
+  select.value=data.voice;select.disabled=false;el('buttonEnabled').checked=data.buttonEnabled;el('buttonEnabled').disabled=false;el('save').disabled=false;el('saveButtonSettings').disabled=false;el('delete').disabled=false;el('sampleVoice').disabled=false;settingsLoaded=true;
+ }else{if(!voiceDirty)el('voice').value=data.voice;if(!buttonDirty)el('buttonEnabled').checked=data.buttonEnabled}
  return data;
 }catch(e){el('message').textContent=e.message;throw e}}
 let sampleUrl='';
@@ -50,7 +52,7 @@ async function sampleVoice(){
  }catch(e){el('sampleStatus').textContent=e.message||'Не удалось загрузить образец'}
  finally{button.disabled=false}
 }
-async function save(remove){try{const voice=el('voice').value;await request('/api/config',{method:'POST',body:JSON.stringify({model:el('model').value,voice,key:remove?'':el('key').value,deleteKey:remove})});if(el('voice').value===voice)voiceDirty=false;el('key').value='';el('message').textContent=remove?'Ключ удалён':'Настройки сохранены';await refresh()}catch(e){el('message').textContent=e.message}}
+async function save(remove){try{const voice=el('voice').value, buttonEnabled=el('buttonEnabled').checked;await request('/api/config',{method:'POST',body:JSON.stringify({model:el('model').value,voice,buttonEnabled,key:remove?'':el('key').value,deleteKey:remove})});if(el('voice').value===voice)voiceDirty=false;if(el('buttonEnabled').checked===buttonEnabled)buttonDirty=false;el('key').value='';el('message').textContent=remove?'Ключ удалён':'Настройки сохранены';await refresh()}catch(e){el('message').textContent=e.message}}
 async function ledRequest(path,data){try{const result=await request(path,{method:'POST',body:JSON.stringify(data)});el('ledMessage').textContent=result.message;return result}catch(e){el('ledMessage').textContent=e.message;throw e}}
 let authRun=0, authId='';
 function clearAuthView(){el('qrPanel').hidden=true;el('stationPanel').hidden=true;el('qrCancel').hidden=true;el('qrImage').removeAttribute('src');el('qrStart').disabled=false;authId=''}
@@ -83,7 +85,9 @@ el('testLed').addEventListener('click',()=>ledRequest('/api/led/test',{}).catch(
 el('clearLed').addEventListener('click',()=>ledRequest('/api/led/clear',{}).catch(()=>{}));
 el('deleteLed').addEventListener('click',()=>{if(confirm('Удалить авторизацию Яндекса и настройки экрана?'))ledRequest('/api/led',{delete:true}).catch(()=>{})});
 el('voice').addEventListener('change',()=>{voiceDirty=true});
+el('buttonEnabled').addEventListener('change',()=>{buttonDirty=true});
 el('sampleVoice').addEventListener('click',()=>sampleVoice());
+el('saveButtonSettings').addEventListener('click',()=>save(false));
 el('save').addEventListener('click',()=>save(false));el('delete').addEventListener('click',()=>{if(confirm('Удалить API-ключ?'))save(true)});el('refresh').addEventListener('click',()=>refresh().catch(()=>{}));
 refresh().catch(()=>{});
 setInterval(()=>refresh().catch(()=>{}),5000);

@@ -135,7 +135,9 @@ public final class WebServerService extends Service {
             try {
                 if (session.getMethod() == Method.GET && "/api/logs".equals(path)) {
                     JSONObject result = new JSONObject().put("logs", AppLog.snapshot()).put("model", AppSettings.model(context))
-                            .put("voice", AppSettings.voice(context)).put("voices", new org.json.JSONArray(TtsVoices.ALL));
+                            .put("voice", AppSettings.voice(context)).put("voices", new org.json.JSONArray(TtsVoices.ALL))
+                            .put("buttonServiceConnected", AssistantButtonService.isConnected())
+                            .put("buttonEnabled", AppSettings.buttonEnabled(context));
                     return reply(Response.Status.OK, "application/json; charset=utf-8", result.toString());
                 }
                 if (session.getMethod() == Method.POST && "/api/voice/sample".equals(path)) {
@@ -252,13 +254,16 @@ public final class WebServerService extends Service {
                     String model = data.optString("model", "").trim();
                     // Older clients that omit voice retain the previously saved choice.
                     String voice = data.has("voice") ? data.optString("voice", "") : AppSettings.voice(context);
+                    if (data.has("buttonEnabled") && !(data.opt("buttonEnabled") instanceof Boolean))
+                        return json(Response.Status.BAD_REQUEST, "Некорректное состояние кнопки");
+                    boolean buttonEnabled = data.has("buttonEnabled") ? data.optBoolean("buttonEnabled") : AppSettings.buttonEnabled(context);
                     String key = data.optString("key", "").trim();
                     boolean deleteKey = data.optBoolean("deleteKey", false);
                     if (!AppSettings.validModel(model) || !TtsVoices.valid(voice) || key.length() > 512 || (deleteKey && !key.isEmpty()))
                         return json(Response.Status.BAD_REQUEST, "Некорректные настройки");
                     SecretStore store = new SecretStore(context);
                     if (deleteKey) store.clear(); else if (!key.isEmpty()) store.save(key);
-                    if (!AppSettings.save(context, model, voice)) return json(Response.Status.INTERNAL_ERROR, "Не удалось сохранить настройки");
+                    if (!AppSettings.save(context, model, voice, buttonEnabled)) return json(Response.Status.INTERNAL_ERROR, "Не удалось сохранить настройки");
                     AppLog.add(deleteKey ? "API-ключ удалён через веб-интерфейс" : "Настройки сохранены через веб-интерфейс");
                     return json(Response.Status.OK, "Настройки сохранены");
                 }

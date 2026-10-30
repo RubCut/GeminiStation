@@ -13,10 +13,13 @@ final class AppSettings {
         String stored = context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE).getString("voice", TtsVoices.DEFAULT);
         return TtsVoices.orDefault(stored);
     }
-    static boolean save(Context context, String model, String voice) {
+    static boolean buttonEnabled(Context context) {
+        return context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE).getBoolean("button_enabled", false);
+    }
+    static boolean save(Context context, String model, String voice, boolean buttonEnabled) {
         if (!validModel(model) || !TtsVoices.valid(voice)) return false;
         return context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE).edit()
-                .putString("model", model).putString("voice", voice).commit();
+                .putString("model", model).putString("voice", voice).putBoolean("button_enabled", buttonEnabled).commit();
     }
     private AppSettings() { }
 }
