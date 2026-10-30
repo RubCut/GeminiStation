@@ -121,7 +121,7 @@ details{margin-top:18px;border-top:1px solid #303441;padding-top:16px}summary{co
       <div class="field"><label class="field-label" for="model">Модель</label><input id="model" autocomplete="off" spellcheck="false" disabled><p class="field-hint">Используется для ответов ассистента.</p></div>
       <div class="actions"><button id="save" disabled>Сохранить настройки</button></div><p class="status-message" id="message" role="status"></p>
       <div class="divider"></div>
-      <div class="field"><label class="field-label" for="key">Добавить API-ключ</label><input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="Новый ключ Gemini" disabled><p class="field-hint">До 10 ключей. При лимите 429 приложение попробует следующий; ключи хранятся зашифрованными и не показываются повторно.</p></div>
+      <div class="field"><label class="field-label" for="key">Добавить API-ключ</label><input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="Новый ключ Gemini" disabled><p class="field-hint">До 10 ключей. При лимите 429 следующий ключ выбирается отдельно для текста, озвучивания и распознавания; ключи хранятся зашифрованными и не показываются повторно.</p></div>
       <div class="actions"><button id="addKey" class="secondary" disabled>Добавить ключ</button></div>
       <div class="field"><label class="field-label" for="keyList">Сохранённые ключи</label><select id="keyList" disabled></select><p class="field-hint" id="keyCount">Загружаем список…</p></div>
       <div class="actions"><button id="delete" class="danger" disabled>Удалить выбранный ключ</button></div><p class="status-message" id="keyMessage" role="status"></p>

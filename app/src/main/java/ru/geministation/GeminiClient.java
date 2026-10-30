@@ -73,11 +73,13 @@ final class GeminiClient {
                 .header("x-goog-api-key", apiKey)
                 .post(RequestBody.create(data.toString(), MediaType.get("application/json; charset=utf-8"))).build();
         try (Response response = client().newCall(request).execute()) {
-            if (response.code() == 429) throw new KeyRotation.RateLimit("Gemini API");
+            if (RateLimitSignals.httpResponse(response)) throw new KeyRotation.RateLimit("Gemini API");
             if (!response.isSuccessful()) throw new IOException("Gemini API: HTTP " + response.code() +
                     ". Проверьте ключ, модель и доступность сервиса.");
             if (response.body() == null) throw new IOException("Пустой ответ Gemini");
-            GeminiToolProtocol.Result result = GeminiToolProtocol.parse(new JSONObject(response.body().string()));
+            JSONObject payload = new JSONObject(response.body().string());
+            if (RateLimitSignals.apiPayload(payload)) throw new KeyRotation.RateLimit("Gemini API");
+            GeminiToolProtocol.Result result = GeminiToolProtocol.parse(payload);
             AppLog.add("Текст: ответ обработан за " + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started)
                     + (result.call == null ? " мс; получен текст" : " мс; получена команда"));
             return result;
@@ -93,7 +95,7 @@ final class GeminiClient {
         Request request = new Request.Builder().url(url).tag(String.class, "youtube")
                 .header("x-goog-api-key", apiKey).get().build();
         try (Response response = client().newBuilder().callTimeout(12, TimeUnit.SECONDS).build().newCall(request).execute()) {
-            if (response.code() == 429) throw new KeyRotation.RateLimit("YouTube API");
+            if (RateLimitSignals.httpResponse(response)) throw new KeyRotation.RateLimit("YouTube API");
             if (!response.isSuccessful()) throw new IOException("YouTube API: HTTP " + response.code());
             if (response.body() == null) throw new IOException("Пустой ответ поиска YouTube");
             okio.BufferedSource source = response.body().source();
@@ -123,7 +125,7 @@ final class GeminiClient {
                 .header("x-goog-api-key", apiKey)
                 .post(RequestBody.create(data.toString(), MediaType.get("application/json; charset=utf-8"))).build();
         try (Response response = client().newCall(request).execute()) {
-            if (response.code() == 429) throw new KeyRotation.RateLimit("Gemini TTS");
+            if (RateLimitSignals.httpResponse(response)) throw new KeyRotation.RateLimit("Gemini TTS");
             if (!response.isSuccessful()) throw new IOException("Gemini TTS: HTTP " + response.code());
             if (response.body() == null || response.body().contentLength() > 12 * 1024 * 1024)
                 throw new IOException("Invalid TTS response size");
@@ -132,6 +134,7 @@ final class GeminiClient {
             source.request(12 * 1024 * 1024L + 1);
             if (source.buffer().size() > 12 * 1024 * 1024L) throw new IOException("TTS response too large");
             JSONObject json = new JSONObject(source.readUtf8());
+            if (RateLimitSignals.apiPayload(json)) throw new KeyRotation.RateLimit("Gemini TTS");
             JSONArray candidates = json.optJSONArray("candidates");
             if (candidates == null || candidates.length() == 0) throw new IOException("Gemini TTS returned no audio");
             JSONObject content = candidates.getJSONObject(0).optJSONObject("content");
@@ -165,9 +168,9 @@ final class GeminiClient {
         AppLog.add("TTS: потоковый запрос запущен; символов " + text.length());
         long total = 0; int chunks = 0;
         try (Response response = client().newCall(request).execute()) {
+            if (RateLimitSignals.httpResponse(response)) throw new KeyRotation.RateLimit("Gemini TTS");
             if (response.code() == 404 || response.code() == 405 || response.code() == 501)
                 throw new StreamingUnavailableException(response.code());
-            if (response.code() == 429) throw new KeyRotation.RateLimit("Gemini TTS");
             if (!response.isSuccessful()) throw new IOException("Gemini TTS: HTTP " + response.code());
             String contentType = response.header("Content-Type", "").toLowerCase(java.util.Locale.ROOT);
             if (!contentType.startsWith("text/event-stream")) throw new StreamingUnavailableException(response.code());

@@ -171,7 +171,7 @@ public final class WebServerService extends Service {
                         ApiKeyVault vault = ApiKeyVault.get(context);
                         if (vault.keys().isEmpty()) return json(Response.Status.BAD_REQUEST, "Сначала сохраните API-ключ Gemini");
                         AppLog.add("TTS: запрос образца голоса " + voice);
-                        PcmAudio sample = vault.run(() -> true, key -> sampleClient.synthesize(key,
+                        PcmAudio sample = vault.run(KeyRotationDomains.Domain.TTS, () -> true, key -> sampleClient.synthesize(key,
                                 "Привет! Я голосовой помощник Gemini. Так звучит мой голос на русском языке.", voice));
                         byte[] wav = sample.toWav();
                         Response response = newFixedLengthResponse(Response.Status.OK, "audio/wav", new ByteArrayInputStream(wav), wav.length);

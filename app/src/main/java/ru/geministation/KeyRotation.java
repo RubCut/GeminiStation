@@ -24,8 +24,13 @@ final class KeyRotation {
 
     synchronized Attempt attempt(List<Entry> keys) {
         List<Entry> ordered = new ArrayList<>(keys);
-        int start = 0;
+        int start = -1;
         for (int i = 0; i < ordered.size(); i++) if (ordered.get(i).id.equals(preferredId)) { start = i; break; }
+        // A key can be removed while this process is alive. Forget stale preferences.
+        if (start < 0) {
+            start = 0;
+            preferredId = ordered.isEmpty() ? null : ordered.get(0).id;
+        }
         Collections.rotate(ordered, -start);
         return new Attempt(this, ordered);
     }

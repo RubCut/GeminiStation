@@ -109,7 +109,7 @@ final class LiveTranscriber {
             @Override public void onFailure(WebSocket webSocket, Throwable error, Response response) {
                 int code = response == null ? 0 : response.code();
                 String detail = error.getClass().getSimpleName() + (code == 0 ? "" : ", HTTP " + code);
-                fail("Ошибка Gemini Live" + (code == 0 ? "" : " (HTTP " + code + ")"), detail, code == 429);
+                fail("Ошибка Gemini Live" + (code == 0 ? "" : " (HTTP " + code + ")"), detail, RateLimitSignals.httpResponse(response));
             }
             @Override public void onClosing(WebSocket webSocket, int code, String reason) {
                 fail("Gemini Live завершил соединение (" + code + ")", "WebSocket code " + code, RateLimitSignals.closeReason(reason));

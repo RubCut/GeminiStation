@@ -11,7 +11,8 @@ final class ApiKeyVault {
     static final int MAX_KEYS = 10;
     private static ApiKeyVault instance;
     private final SecretStore store;
-    final KeyRotation rotation = new KeyRotation(() -> AppLog.add("Gemini: лимит 429, переключаем API-ключ"));
+    private final KeyRotationDomains rotations = new KeyRotationDomains(domain ->
+            AppLog.add("Лимит API (" + domain.name() + "): переключаем ключ"));
 
     static synchronized ApiKeyVault get(Context context) {
         if (instance == null) instance = new ApiKeyVault(context);
@@ -51,7 +52,10 @@ final class ApiKeyVault {
     private void save(List<KeyRotation.Entry> keys) throws Exception {
         store.save(KeyListCodec.encode(keys));
     }
-    <T> T run(java.util.function.BooleanSupplier active, KeyRotation.Operation<T> op) throws Exception {
-        return rotation.run(keys(), active, op);
+    KeyRotation.Attempt attempt(KeyRotationDomains.Domain domain) throws Exception {
+        return rotations.rotation(domain).attempt(keys());
+    }
+    <T> T run(KeyRotationDomains.Domain domain, java.util.function.BooleanSupplier active, KeyRotation.Operation<T> op) throws Exception {
+        return rotations.rotation(domain).run(keys(), active, op);
     }
 }

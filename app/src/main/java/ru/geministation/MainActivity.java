@@ -191,7 +191,7 @@ public final class MainActivity extends Activity {
             try {
                 VisibleApps apps = VisibleApps.load(getApplicationContext());
                 JSONArray appList = apps.promptList();
-                GeminiToolProtocol.Result result = keyVault.run(() -> !destroyed && resumed, key -> client.generate(key, model, request, appList));
+                GeminiToolProtocol.Result result = keyVault.run(KeyRotationDomains.Domain.TEXT, () -> !destroyed && resumed, key -> client.generate(key, model, request, appList));
                 DeviceToolSpec.Action action = result.call == null ? null : DeviceToolSpec.parse(result.call, apps.size());
                 if (action != null && action.kind == DeviceToolSpec.Kind.OPEN_LINK
                         && !UserLinkAuthorization.presentInUserTurns(action.data, request)) action = null;
@@ -206,7 +206,7 @@ public final class MainActivity extends Activity {
                     } else {
                         try {
                             final String query = action.data;
-                            url = keyVault.run(() -> !destroyed && resumed, key -> client.searchYoutube(key, query));
+                            url = keyVault.run(KeyRotationDomains.Domain.YOUTUBE, () -> !destroyed && resumed, key -> client.searchYoutube(key, query));
                             foundVideo = true;
                         } catch (Exception e) {
                             // The Data API may be disabled/restricted. Open search results instead, never an invented video.
@@ -267,7 +267,7 @@ public final class MainActivity extends Activity {
         AppLog.add("TTS: выбран голос " + voice);
         speechExecutor.execute(() -> {
             try {
-                keyVault.run(() -> speechGeneration.get() == generation, apiKey -> {
+                keyVault.run(KeyRotationDomains.Domain.TTS, () -> speechGeneration.get() == generation, apiKey -> {
                     try (VoicePlayer.Stream stream = voicePlayer.openStream(() -> speechGeneration.get() == generation, () -> onPlaybackStarted(generation))) {
                         try {
                             client.synthesizeStreaming(apiKey, response, voice, stream::write);
@@ -396,7 +396,7 @@ public final class MainActivity extends Activity {
         animatePulse(false); led.show("listening");
         if (!followUp) showText("Подключаюсь…");
         final KeyRotation.Attempt keys;
-        try { keys = keyVault.rotation.attempt(keyVault.keys()); }
+        try { keys = keyVault.attempt(KeyRotationDomains.Domain.LIVE); }
         catch (Exception e) { showErrorAndClose("Не удалось прочитать API-ключи."); return; }
         if (keys.isEmpty()) { showErrorAndClose("Добавьте API-ключ в веб-интерфейсе на порту 6529."); return; }
         startLiveRecognition(attempt, followUp, keys);
