@@ -30,8 +30,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public final class MainActivity extends Activity {
     private static final int MICROPHONE_REQUEST = 100;
-    private static final long FOLLOW_UP_SILENCE_MS = 12000;
-    private static final long INITIAL_SILENCE_MS = 18000;
     private static final long FINAL_RESULT_TIMEOUT_MS = 15000;
     private static final long MAX_UTTERANCE_MS = 45000;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -41,6 +39,7 @@ public final class MainActivity extends Activity {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final JSONArray history = new JSONArray();
     private final ConversationFlow flow = new ConversationFlow();
+    private final ListeningPolicy listeningPolicy = new ListeningPolicy();
     private GeminiClient client;
     private SecretStore secrets;
     private LiveTranscriber liveTranscriber;
@@ -285,6 +284,11 @@ public final class MainActivity extends Activity {
         clearRecognitionTimeout();
         recognitionTimeout = () -> {
             if (!listening || attempt != recognitionAttempt || heardSpeech) return;
+            if (listeningPolicy.grantGrace(liveTranscriber != null && liveTranscriber.hasRecentSignal(350))) {
+                AppLog.add("Речь #" + attempt + ": сигнал у границы тайм-аута; ждём расшифровку ещё 1 с");
+                scheduleNoSpeechTimeout(attempt, ListeningPolicy.SIGNAL_GRACE_MS);
+                return;
+            }
             AppLog.add("Речь #" + attempt + ": тишина " + recognitionElapsed() + " мс");
             closeForSilence();
         };
@@ -321,6 +325,7 @@ public final class MainActivity extends Activity {
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) { showErrorAndClose("Нет доступа к микрофону."); return; }
         final int attempt = ++recognitionAttempt;
         recognitionStarted = SystemClock.elapsedRealtime(); partialCount = 0; heardSpeech = false;
+        listeningPolicy.reset();
         // Keep the answer on screen during follow-up silence; replace it as soon as speech begins.
         animatePulse(false); led.show("listening");
         if (!followUp) showText("Слушаю…");
@@ -338,7 +343,7 @@ public final class MainActivity extends Activity {
             public void onReady() {
                 if (!active()) return;
                 AppLog.add("Речь #" + attempt + ": прямой микрофон готов через " + recognitionElapsed() + " мс");
-                if (!heardSpeech && !waitingForFinal) scheduleNoSpeechTimeout(attempt, followUp ? FOLLOW_UP_SILENCE_MS : INITIAL_SILENCE_MS);
+                if (!heardSpeech && !waitingForFinal) scheduleNoSpeechTimeout(attempt, ListeningPolicy.NO_SPEECH_MS);
             }
             public void onPartial(String value) {
                 if (!active()) return;

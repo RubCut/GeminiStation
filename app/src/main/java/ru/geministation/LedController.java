@@ -25,7 +25,10 @@ import org.json.JSONObject;
 
 /** Optional LED display. UI calls only schedule work; voice flow never waits for it. */
 final class LedController {
-    private static final long REFRESH_MS = 2600;
+    // Each phase GIF contains 60 seconds of repeated animation. Refresh only for unusually long turns.
+    private static final long REFRESH_MS = 59000;
+    private static final long RETRY_MS = 3000;
+    private static final int MAX_RETRIES = 3;
     private static LedController instance;
     static synchronized LedController get(Context context) {
         if (instance == null) instance = new LedController(context.getApplicationContext());
@@ -41,7 +44,8 @@ final class LedController {
     private volatile int generation;
     // The following three fields are only touched from the main thread.
     private String active, desired;
-    private Runnable refresh, idleClose;
+    private Runnable refresh, idleClose, retry;
+    private int retries;
     private long requestedAt;
     // These fields are only touched by the single LED executor.
     private String cachedConfig, cachedToken;
@@ -51,7 +55,7 @@ final class LedController {
     private long lastLoggedAt;
     private LedController(Context context) { this.context = context; }
 
-    // Called on the main thread. Coalesce changes and keep refreshing the current short GIF.
+    // Called on the main thread. Coalesce changes and avoid restarting the animation each cycle.
     void show(String next) {
         if (next == null) {
             if (active != null) clear();
@@ -64,6 +68,7 @@ final class LedController {
             @Override public void run() {
                 if (active == null) return;
                 requestedAt = SystemClock.elapsedRealtime();
+                retries = 0;
                 dispatch();
                 main.postDelayed(this, REFRESH_MS);
             }
@@ -81,28 +86,49 @@ final class LedController {
     }
     private void change(String value) {
         if (idleClose != null) { main.removeCallbacks(idleClose); idleClose = null; }
+        if (retry != null) { main.removeCallbacks(retry); retry = null; }
+        retries = 0;
         desired = value; requestedAt = SystemClock.elapsedRealtime(); generation++;
         dispatch();
     }
     private void dispatch() {
         if (desired == null || !inFlight.compareAndSet(false, true)) return;
+        if (retry != null) { main.removeCallbacks(retry); retry = null; }
         final int version = generation;
         final String frame = desired;
         final long started = requestedAt;
         executor.execute(() -> {
-            try { send(frame, version, started); }
+            boolean success = false;
+            try { success = send(frame, version, started); }
             finally {
+                final boolean sent = success;
                 inFlight.set(false);
-                main.post(() -> { if (version != generation && desired != null) dispatch(); });
+                main.post(() -> {
+                    if (version != generation) {
+                        if (desired != null) dispatch();
+                    } else if (!sent) {
+                        scheduleRetry(version);
+                    }
+                });
             }
         });
+    }
+    private void scheduleRetry(int version) {
+        if (version != generation || desired == null || retry != null || retries >= MAX_RETRIES) return;
+        retries++;
+        retry = () -> {
+            retry = null;
+            if (version == generation) dispatch();
+        };
+        main.postDelayed(retry, RETRY_MS);
     }
     /** Discard old credentials and socket after account or station changes. */
     void invalidate() {
         active = null; desired = null; generation++;
         if (refresh != null) main.removeCallbacks(refresh);
         if (idleClose != null) main.removeCallbacks(idleClose);
-        refresh = null; idleClose = null;
+        if (retry != null) main.removeCallbacks(retry);
+        refresh = null; idleClose = null; retry = null; retries = 0;
         executor.execute(() -> {
             cachedConfig = null; cachedToken = null; cachedUntil = 0; tokenRejected.set(false);
             if (connection != null) connection.close();
@@ -198,7 +224,9 @@ final class LedController {
                 try {
                     JSONObject reply = new JSONObject(message);
                     if (reply.has("error") || reply.has("errorText")) {
-                        tokenRejected.set(true); AppLog.add("LED: станция вернула ошибку; токен будет обновлён"); return true;
+                        tokenRejected.set(true); AppLog.add("LED: станция вернула ошибку; токен будет обновлён");
+                        main.post(() -> scheduleRetry(generation));
+                        return true;
                     }
                 } catch (Exception ignored) { }
                 return false;
@@ -207,22 +235,22 @@ final class LedController {
         JSONObject hello = envelope(auth, new JSONObject().put("command", "softwareVersion"), UUID.randomUUID().toString());
         return connection.connect(hello.toString(), 6000);
     }
-    private void send(String frame, int version, long started) {
+    private boolean send(String frame, int version, long started) {
         String stage = "настройки";
         try {
             String cfg = new SecretStore(context, "led_secrets").load();
-            if (cfg.isEmpty() || version != generation) return;
+            if (cfg.isEmpty() || version != generation) return true;
             stage = "авторизация Яндекса";
             String auth = token(cfg);
-            if (version != generation) return;
+            if (version != generation) return true;
             stage = "локальное подключение";
             if (!connect(auth)) throw new Exception("local connection failed");
-            if (version != generation) return;
+            if (version != generation) return true;
             String url = "http://127.0.0.1:6529/led/" + frame + ".gif";
             JSONObject payload = new JSONObject().put("command", "externalCommandBypass")
                     .put("data", Base64.encodeToString(LedProtocol.command(url), Base64.NO_WRAP));
             JSONObject command = envelope(auth, payload, UUID.randomUUID().toString());
-            if (version != generation) return;
+            if (version != generation) return true;
             if (!connection.send(command.toString())) {
                 connection.close(); throw new Exception("local send failed");
             }
@@ -232,8 +260,10 @@ final class LedController {
                         + " мс; показ на экране не подтверждён");
                 lastLoggedFrame = frame; lastLoggedAt = now;
             }
+            return true;
         } catch (Exception e) {
             if (version == generation) AppLog.add("LED: " + stage + ": ошибка " + e.getClass().getSimpleName() + "; проверьте настройки и сеть");
+            return false;
         }
     }
 }

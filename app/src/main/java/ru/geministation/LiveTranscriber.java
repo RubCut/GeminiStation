@@ -220,6 +220,10 @@ final class LiveTranscriber {
         releaseResources();
         listener.onFinal(value);
     }
+    boolean hasRecentSignal(long windowMs) {
+        long at = lastSignalAt;
+        return at > 0 && SystemClock.elapsedRealtime() - at < windowMs;
+    }
     void finishInput() {
         if (stopped.get() || !ending.compareAndSet(false, true)) return;
         AppLog.add("Live STT: вручную завершён ввод; ждём итог");

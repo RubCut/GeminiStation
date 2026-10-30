@@ -21,7 +21,7 @@ public class LedAssetTest {
             pos += len;
         }
     }
-    @Test public void animationsAreShortFiniteAndFitTheMatrix() throws Exception {
+    @Test public void animationsAreLongFiniteAndFitTheMatrix() throws Exception {
         for (String name : new String[]{"listening", "thinking", "speaking", "clear"}) {
             File file = asset(name); assertTrue(name, file.isFile());
             byte[] data = Files.readAllBytes(file.toPath());
@@ -54,7 +54,12 @@ public class LedAssetTest {
                 } else fail("Unknown GIF block " + marker + " in " + name);
             }
             assertTrue(name, count >= 2);
-            assertTrue(name + " duration=" + total, total > 0 && total <= (name.equals("clear") ? 500 : 2500));
+            if (name.equals("clear")) {
+                assertTrue(name + " duration=" + total, total > 0 && total <= 500);
+            } else {
+                assertEquals(name + " duration", 60000, total);
+                assertEquals(name + " frames", 300, count);
+            }
         }
     }
 }
