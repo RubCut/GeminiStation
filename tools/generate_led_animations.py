@@ -1,8 +1,8 @@
 """Generate original 25x16 Gemini LED animations. Requires Pillow.
 
-Sixty seconds of repeated frames let firmware that ignores GIF loop metadata
-play without the application restarting a short GIF every few seconds. Files
-remain finite so the station can eventually recover if the app is killed.
+Each file contains a minute of repeated frames for firmware that ignores GIF
+loop metadata, plus explicit looping like Station Max Studio. The app sends a
+separate short clear GIF when the dialog ends.
 """
 import math
 from pathlib import Path
@@ -36,4 +36,4 @@ for mode in ("listening", "thinking", "speaking"):
         frames.append(image.convert("P"))
     frames[0].save(OUT / f"{mode}.gif", format="GIF", save_all=True,
                    append_images=frames[1:], duration=FRAME_MS,
-                   disposal=2, optimize=False)
+                   loop=0, disposal=2, optimize=False)

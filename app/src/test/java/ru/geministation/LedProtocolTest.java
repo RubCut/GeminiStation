@@ -5,6 +5,11 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class LedProtocolTest {
+    @Test public void preservesVersionQueryInScreenCommand() {
+        String url = "http://127.0.0.1:6529/led/listening.gif?v=0123456789abcdef";
+        byte[] command = LedProtocol.command(url);
+        assertTrue(new String(command, StandardCharsets.UTF_8).contains(url));
+    }
     @Test public void encodesScreenCommandAsTwoProtobufStrings() {
         String url = "http://127.0.0.1:6529/led/thinking.gif";
         byte[] encoded = LedProtocol.command(url);

@@ -21,14 +21,25 @@ public class LedAssetTest {
             pos += len;
         }
     }
-    @Test public void animationsAreLongFiniteAndFitTheMatrix() throws Exception {
+    @Test public void animationsLoopAndClearRemainsFinite() throws Exception {
         for (String name : new String[]{"listening", "thinking", "speaking", "clear"}) {
             File file = asset(name); assertTrue(name, file.isFile());
             byte[] data = Files.readAllBytes(file.toPath());
             String text = new String(data, StandardCharsets.ISO_8859_1);
             assertTrue(name, text.startsWith("GIF89a") || text.startsWith("GIF87a"));
-            // No infinite loop: the firmware can return to its normal display.
-            assertFalse(name, text.contains("NETSCAPE2.0"));
+            int loop = text.indexOf("NETSCAPE2.0");
+            if (name.equals("clear")) {
+                assertEquals("clear GIF must not loop", -1, loop);
+            } else {
+                assertTrue(name + " missing loop extension", loop >= 3);
+                assertEquals(0x21, u(data, loop - 3));
+                assertEquals(0xff, u(data, loop - 2));
+                assertEquals(11, u(data, loop - 1));
+                assertEquals(3, u(data, loop + 11));
+                assertEquals(1, u(data, loop + 12));
+                assertEquals("zero means unlimited looping", 0, word(data, loop + 13));
+                assertEquals(0, u(data, loop + 15));
+            }
             assertEquals(25, word(data, 6)); assertEquals(16, word(data, 8));
             int packed = u(data, 10), pos = 13;
             if ((packed & 0x80) != 0) pos += 3 * (1 << ((packed & 7) + 1));

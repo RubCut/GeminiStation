@@ -6,6 +6,9 @@ import android.os.Looper;
 import android.os.SystemClock;
 import android.util.Base64;
 import java.net.Proxy;
+import java.io.InputStream;
+import java.util.HashMap;
+import java.util.Map;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
 import java.util.UUID;
@@ -25,8 +28,6 @@ import org.json.JSONObject;
 
 /** Optional LED display. UI calls only schedule work; voice flow never waits for it. */
 final class LedController {
-    // Each phase GIF contains 60 seconds of repeated animation. Refresh only for unusually long turns.
-    private static final long REFRESH_MS = 59000;
     private static final long RETRY_MS = 3000;
     private static final int MAX_RETRIES = 3;
     private static LedController instance;
@@ -42,15 +43,16 @@ final class LedController {
     private final AtomicBoolean inFlight = new AtomicBoolean();
     private final AtomicBoolean tokenRejected = new AtomicBoolean();
     private volatile int generation;
-    // The following three fields are only touched from the main thread.
+    // The following fields are only touched from the main thread.
     private String active, desired;
-    private Runnable refresh, idleClose, retry;
+    private Runnable idleClose, retry;
     private int retries;
     private long requestedAt;
     // These fields are only touched by the single LED executor.
     private String cachedConfig, cachedToken;
     private long cachedUntil;
     private LedConnection connection;
+    private final Map<String, String> assetUrls = new HashMap<>();
     private String lastLoggedFrame;
     private long lastLoggedAt;
     private LedController(Context context) { this.context = context; }
@@ -63,22 +65,10 @@ final class LedController {
         }
         active = next;
         change(next);
-        if (refresh != null) main.removeCallbacks(refresh);
-        refresh = new Runnable() {
-            @Override public void run() {
-                if (active == null) return;
-                requestedAt = SystemClock.elapsedRealtime();
-                retries = 0;
-                dispatch();
-                main.postDelayed(this, REFRESH_MS);
-            }
-        };
-        main.postDelayed(refresh, REFRESH_MS);
     }
     /** Replaces the current animation with a very short, finite blank GIF. No account changes. */
     void clear() {
         active = null;
-        if (refresh != null) { main.removeCallbacks(refresh); refresh = null; }
         change("clear");
         final int version = generation;
         idleClose = () -> executor.execute(() -> { if (version == generation && connection != null) connection.close(); });
@@ -125,10 +115,9 @@ final class LedController {
     /** Discard old credentials and socket after account or station changes. */
     void invalidate() {
         active = null; desired = null; generation++;
-        if (refresh != null) main.removeCallbacks(refresh);
         if (idleClose != null) main.removeCallbacks(idleClose);
         if (retry != null) main.removeCallbacks(retry);
-        refresh = null; idleClose = null; retry = null; retries = 0;
+        idleClose = null; retry = null; retries = 0;
         executor.execute(() -> {
             cachedConfig = null; cachedToken = null; cachedUntil = 0; tokenRejected.set(false);
             if (connection != null) connection.close();
@@ -235,6 +224,16 @@ final class LedController {
         JSONObject hello = envelope(auth, new JSONObject().put("command", "softwareVersion"), UUID.randomUUID().toString());
         return connection.connect(hello.toString(), 6000);
     }
+    private String assetUrl(String frame) throws Exception {
+        String url = assetUrls.get(frame);
+        if (url == null) {
+            try (InputStream source = context.getAssets().open("led/" + frame + ".gif")) {
+                url = LedAssetUrl.build(frame, source);
+            }
+            assetUrls.put(frame, url);
+        }
+        return url;
+    }
     private boolean send(String frame, int version, long started) {
         String stage = "настройки";
         try {
@@ -246,7 +245,7 @@ final class LedController {
             stage = "локальное подключение";
             if (!connect(auth)) throw new Exception("local connection failed");
             if (version != generation) return true;
-            String url = "http://127.0.0.1:6529/led/" + frame + ".gif";
+            String url = assetUrl(frame);
             JSONObject payload = new JSONObject().put("command", "externalCommandBypass")
                     .put("data", Base64.encodeToString(LedProtocol.command(url), Base64.NO_WRAP));
             JSONObject command = envelope(auth, payload, UUID.randomUUID().toString());
