@@ -34,8 +34,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public final class MainActivity extends Activity {
     private static final int MICROPHONE_REQUEST = 100;
-    private static final long FOLLOW_UP_SILENCE_MS = 8000;
-    private static final long INITIAL_SILENCE_MS = 12000;
+    private static final long FOLLOW_UP_SILENCE_MS = 12000;
+    private static final long INITIAL_SILENCE_MS = 18000;
     private static final long FINAL_RESULT_TIMEOUT_MS = 15000;
     private static final long MAX_UTTERANCE_MS = 45000;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -194,10 +194,18 @@ public final class MainActivity extends Activity {
         final int generation = speechGeneration.incrementAndGet();
         speechExecutor.execute(() -> {
             try {
-                PcmAudio audio = client.synthesize(apiKey, response);
-                if (speechGeneration.get() != generation) return;
-                AppLog.add("TTS: начало воспроизведения");
-                voicePlayer.play(audio, () -> speechGeneration.get() == generation);
+                try (VoicePlayer.Stream stream = voicePlayer.openStream(() -> speechGeneration.get() == generation)) {
+                    try {
+                        client.synthesizeStreaming(apiKey, response, stream::write);
+                        if (speechGeneration.get() != generation) return;
+                        stream.drain();
+                    } catch (GeminiClient.StreamingUnavailableException unavailable) {
+                        AppLog.add("TTS: потоковый режим недоступен, используем обычный синтез");
+                        PcmAudio audio = client.synthesize(apiKey, response);
+                        if (speechGeneration.get() != generation) return;
+                        voicePlayer.play(audio, () -> speechGeneration.get() == generation);
+                    }
+                }
                 if (speechGeneration.get() != generation) return;
                 AppLog.add("TTS: воспроизведение завершено");
                 runOnUiThread(() -> {

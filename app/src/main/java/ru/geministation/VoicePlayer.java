@@ -4,6 +4,7 @@ import android.media.AudioAttributes;
 import android.media.AudioFormat;
 import android.media.AudioTrack;
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.util.function.BooleanSupplier;
 
 /** Playback is called on a worker; stop() can interrupt it from the UI thread. */
@@ -14,6 +15,62 @@ final class VoicePlayer {
         synchronized (lock) {
             if (current != null) {
                 try { current.pause(); current.flush(); } catch (IllegalStateException ignored) { }
+            }
+        }
+    }
+    Stream openStream(BooleanSupplier active) { return new Stream(active); }
+    final class Stream implements AutoCloseable {
+        private final BooleanSupplier active;
+        private AudioTrack track;
+        private int rate, channels;
+        private long frames;
+        private Stream(BooleanSupplier active) { this.active = active; }
+        void write(PcmAudio audio) throws IOException {
+            if (!active.getAsBoolean()) throw new InterruptedIOException("Playback canceled");
+            if (track == null) {
+                rate = audio.rate; channels = audio.channels;
+                int channel = channels == 1 ? AudioFormat.CHANNEL_OUT_MONO : AudioFormat.CHANNEL_OUT_STEREO;
+                int min = AudioTrack.getMinBufferSize(rate, channel, AudioFormat.ENCODING_PCM_16BIT);
+                if (min <= 0) throw new IOException("Audio output unavailable");
+                AudioTrack newTrack = new AudioTrack.Builder()
+                        .setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ASSISTANT)
+                                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
+                        .setAudioFormat(new AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                                .setSampleRate(rate).setChannelMask(channel).build())
+                        .setTransferMode(AudioTrack.MODE_STREAM).setBufferSizeInBytes(min).build();
+                track = newTrack;
+                if (newTrack.getState() != AudioTrack.STATE_INITIALIZED) throw new IOException("Audio output unavailable");
+                synchronized (lock) {
+                    if (!active.getAsBoolean()) throw new InterruptedIOException("Playback canceled");
+                    current = newTrack;
+                    newTrack.play();
+                }
+                AppLog.add("TTS: начато потоковое воспроизведение");
+            }
+            if (rate != audio.rate || channels != audio.channels) throw new IOException("Audio format changed mid-stream");
+            int offset = 0;
+            while (offset < audio.samples.length && active.getAsBoolean()) {
+                int count = track.write(audio.samples, offset, Math.min(4096, audio.samples.length - offset));
+                if (count <= 0) throw new IOException("Audio playback failed");
+                offset += count;
+            }
+            if (!active.getAsBoolean()) throw new InterruptedIOException("Playback canceled");
+            frames += offset / (2 * channels);
+        }
+        void drain() throws Exception {
+            if (track == null) throw new IOException("No audio to play");
+            long deadline = android.os.SystemClock.elapsedRealtime() + frames * 1000 / rate + 5000;
+            while (active.getAsBoolean() && Integer.toUnsignedLong(track.getPlaybackHeadPosition()) < frames) {
+                if (android.os.SystemClock.elapsedRealtime() >= deadline) throw new IOException("Audio playback timeout");
+                Thread.sleep(40);
+            }
+        }
+        @Override public void close() {
+            synchronized (lock) {
+                if (track != null) {
+                    if (current == track) current = null;
+                    track.release(); track = null;
+                }
             }
         }
     }

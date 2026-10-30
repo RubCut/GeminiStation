@@ -34,6 +34,9 @@ final class LiveTranscriber {
     private final AtomicBoolean ending = new AtomicBoolean();
     private final AtomicBoolean captureStarted = new AtomicBoolean();
     private final AtomicBoolean binaryFrameLogged = new AtomicBoolean();
+    private final TranscriptAccumulator transcript = new TranscriptAccumulator();
+    private volatile long lastSignalAt;
+    private Runnable transcriptTimer;
     private volatile WebSocket socket;
     private AudioRecord recording;
     private long started;
@@ -81,17 +84,25 @@ final class LiveTranscriber {
                     JSONObject partial = content.optJSONObject("interimInputTranscription");
                     if (partial != null) {
                         String value = partial.optString("text", "");
-                        if (!value.trim().isEmpty()) main.post(() -> { if (!stopped.get()) listener.onPartial(value); });
+                        if (!value.trim().isEmpty()) {
+                            String display = transcript.partial(value);
+                            main.post(() -> {
+                                if (!stopped.get()) { listener.onPartial(display); scheduleTranscriptCompletion(3000); }
+                            });
+                        }
                     }
                     JSONObject result = content.optJSONObject("inputTranscription");
                     if (result != null) {
                         String value = result.optString("text", "").trim();
-                        if (!value.isEmpty() && stopped.compareAndSet(false, true)) {
-                            AppLog.add("Live STT: итог получен за " + (SystemClock.elapsedRealtime() - started) + " мс; символов " + value.length());
-                            releaseResources();
-                            main.post(() -> listener.onFinal(value));
+                        if (!value.isEmpty()) {
+                            String display = transcript.addFinal(value);
+                            main.post(() -> {
+                                if (!stopped.get()) { listener.onPartial(display); scheduleTranscriptCompletion(1200); }
+                            });
                         }
                     }
+                    if (content.optBoolean("turnComplete", false) && !transcript.best().isEmpty())
+                        main.post(() -> completeTranscript(!transcript.hasFinal()));
                 } catch (Exception e) { fail("Не удалось обработать ответ Gemini Live", e.getClass().getSimpleName()); }
             }
             @Override public void onFailure(WebSocket webSocket, Throwable error, Response response) {
@@ -152,12 +163,15 @@ final class LiveTranscriber {
                 if (stopped.get() || ending.get()) break;
                 count -= count % 2;
                 if (count == 0) continue;
+                long frameSquares = 0;
                 for (int i = 0; i < count; i += 2) {
                     int sample = (short) ((buffer[i] & 0xff) | (buffer[i + 1] << 8));
                     peak = Math.max(peak, Math.abs(sample));
-                    sumSquares += (long) sample * sample; samples++;
+                    long square = (long) sample * sample;
+                    frameSquares += square; sumSquares += square; samples++;
                 }
                 long now = SystemClock.elapsedRealtime();
+                if (frameSquares / (count / 2) >= 400L * 400L) lastSignalAt = now;
                 if (now - lastLevel >= 2000 && samples > 0) {
                     int rms = (int) Math.sqrt((double) sumSquares / samples);
                     AppLog.add("Live STT: уровень микрофона RMS=" + rms + " пик=" + peak + " (0–32768)");
@@ -181,6 +195,31 @@ final class LiveTranscriber {
             AppLog.add("Live STT: запись микрофона остановлена");
         }
     }
+    private void scheduleTranscriptCompletion(long delay) {
+        if (transcriptTimer != null) main.removeCallbacks(transcriptTimer);
+        final long start = SystemClock.elapsedRealtime();
+        transcriptTimer = new Runnable() {
+            @Override public void run() {
+                if (stopped.get()) return;
+                long now = SystemClock.elapsedRealtime();
+                // Avoid cutting the user off if they are still speaking. A noisy room cannot block forever.
+                if (!ending.get() && now - lastSignalAt < 700 && now - start < 4500) {
+                    main.postDelayed(this, 250); return;
+                }
+                completeTranscript(!transcript.hasFinal());
+            }
+        };
+        main.postDelayed(transcriptTimer, delay);
+    }
+    private void completeTranscript(boolean interimOnly) {
+        String value = transcript.best();
+        if (value.isEmpty() || !stopped.compareAndSet(false, true)) return;
+        if (transcriptTimer != null) main.removeCallbacks(transcriptTimer);
+        AppLog.add("Live STT: итог через " + (SystemClock.elapsedRealtime() - started) + " мс; символов " + value.length()
+                + (interimOnly ? "; использован промежуточный результат" : ""));
+        releaseResources();
+        listener.onFinal(value);
+    }
     void finishInput() {
         if (stopped.get() || !ending.compareAndSet(false, true)) return;
         AppLog.add("Live STT: вручную завершён ввод; ждём итог");
@@ -194,11 +233,13 @@ final class LiveTranscriber {
     void cancel() {
         if (!stopped.compareAndSet(false, true)) return;
         AppLog.add("Live STT: сессия закрыта");
+        if (transcriptTimer != null) main.removeCallbacks(transcriptTimer);
         releaseResources();
     }
     private void fail(String message, String detail) {
         if (!stopped.compareAndSet(false, true)) return;
         AppLog.add("Live STT: " + detail);
+        if (transcriptTimer != null) main.removeCallbacks(transcriptTimer);
         releaseResources();
         main.post(() -> listener.onError(message));
     }

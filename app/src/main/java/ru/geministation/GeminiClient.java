@@ -4,6 +4,9 @@ import android.util.Base64;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.BufferedReader;
+import java.nio.charset.StandardCharsets;
 import java.net.Proxy;
 import java.util.concurrent.TimeUnit;
 import okhttp3.HttpUrl;
@@ -101,6 +104,62 @@ final class GeminiClient {
             }
             throw new IOException("Gemini TTS returned no audio");
         }
+    }
+    interface AudioConsumer { void accept(PcmAudio audio) throws Exception; }
+    static final class StreamingUnavailableException extends IOException {
+        StreamingUnavailableException(int status) { super("Gemini TTS streaming: HTTP " + status); }
+    }
+    /** Starts playback from the first PCM chunk, without waiting for the full TTS response. */
+    void synthesizeStreaming(String apiKey, String text, AudioConsumer consumer) throws Exception {
+        long started = System.nanoTime();
+        JSONObject voice = new JSONObject().put("voiceConfig", new JSONObject().put("voice", "Kore"));
+        JSONObject config = new JSONObject().put("responseModalities", new JSONArray().put("AUDIO"))
+                .put("speechConfig", voice);
+        JSONObject data = new JSONObject().put("contents", new JSONArray().put(new JSONObject()
+                .put("role", "user").put("parts", new JSONArray().put(new JSONObject().put("text", text)))))
+                .put("generationConfig", config);
+        Request request = new Request.Builder()
+                .url("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash-lite-tts:streamGenerateContent?alt=sse")
+                .tag(String.class, "speech").header("x-goog-api-key", apiKey)
+                .header("Accept", "text/event-stream")
+                .post(RequestBody.create(data.toString(), MediaType.get("application/json; charset=utf-8"))).build();
+        AppLog.add("TTS: потоковый запрос запущен; символов " + text.length());
+        long total = 0; int chunks = 0;
+        try (Response response = client.newCall(request).execute()) {
+            if (response.code() == 404 || response.code() == 405 || response.code() == 501)
+                throw new StreamingUnavailableException(response.code());
+            if (!response.isSuccessful()) throw new IOException("Gemini TTS: HTTP " + response.code());
+            String contentType = response.header("Content-Type", "").toLowerCase(java.util.Locale.ROOT);
+            if (!contentType.startsWith("text/event-stream")) throw new StreamingUnavailableException(response.code());
+            if (response.body() == null) throw new IOException("Empty TTS stream");
+            try (BufferedReader input = new BufferedReader(new InputStreamReader(response.body().byteStream(), StandardCharsets.UTF_8))) {
+                SseReader events = new SseReader(input);
+                for (String event; (event = events.next()) != null;) {
+                    if ("[DONE]".equals(event)) break;
+                    JSONObject json = new JSONObject(event);
+                    if (json.has("error")) throw new IOException("TTS stream error");
+                    JSONArray candidates = json.optJSONArray("candidates");
+                    if (candidates == null || candidates.length() == 0) continue;
+                    JSONObject content = candidates.getJSONObject(0).optJSONObject("content");
+                    JSONArray parts = content == null ? null : content.optJSONArray("parts");
+                    if (parts == null) continue;
+                    for (int i = 0; i < parts.length(); i++) {
+                        JSONObject audio = parts.getJSONObject(i).optJSONObject("inlineData");
+                        if (audio == null) continue;
+                        String encoded = audio.optString("data", "");
+                        if (encoded.isEmpty()) continue;
+                        if (encoded.length() > 1024 * 1024) throw new IOException("TTS chunk too large");
+                        PcmAudio pcm = PcmAudio.decode(Base64.decode(encoded, Base64.DEFAULT), audio.optString("mimeType", ""));
+                        total += pcm.samples.length;
+                        if (total > 8 * 1024 * 1024) throw new IOException("TTS stream too large");
+                        if (++chunks == 1) AppLog.add("TTS: первый аудиофрагмент через " + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started) + " мс");
+                        consumer.accept(pcm);
+                    }
+                }
+            }
+        }
+        if (chunks == 0) throw new IOException("TTS stream returned no audio");
+        AppLog.add("TTS: поток получен; фрагментов " + chunks + ", байт " + total);
     }
     okhttp3.WebSocket openTranscriptionSocket(String apiKey, okhttp3.WebSocketListener listener) {
         Request request = new Request.Builder()
