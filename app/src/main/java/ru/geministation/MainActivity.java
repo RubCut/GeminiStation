@@ -37,6 +37,8 @@ public final class MainActivity extends Activity {
     private final AtomicInteger speechGeneration = new AtomicInteger();
     private final VoicePlayer voicePlayer = new VoicePlayer();
     private SoundCuePlayer soundCuePlayer;
+    private DeviceActions deviceActions;
+    private DeviceActions.Navigation pendingNavigation;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final JSONArray history = new JSONArray();
     private final ConversationFlow flow = new ConversationFlow();
@@ -60,6 +62,7 @@ public final class MainActivity extends Activity {
         WakeWordController.get(this).dialogOpening();
         keyVault = ApiKeyVault.get(this);
         soundCuePlayer = new SoundCuePlayer(this);
+        deviceActions = new DeviceActions(this);
         client = new GeminiClient();
         led = LedController.get(this);
         buildUi();
@@ -75,6 +78,7 @@ public final class MainActivity extends Activity {
         if (listening) finishVoiceInput();
         else if (flow.phase() == ConversationFlow.Phase.SPEAKING) {
             stopSpeaking();
+            pendingNavigation = null;
             beginFollowUp();
         }
     }
@@ -185,9 +189,39 @@ public final class MainActivity extends Activity {
         AppLog.add("Диалог: запрос к Gemini начат");
         executor.execute(() -> {
             try {
-                String response = keyVault.run(() -> !destroyed && resumed, key -> client.generate(key, model, request));
+                VisibleApps apps = VisibleApps.load(getApplicationContext());
+                JSONArray appList = apps.promptList();
+                GeminiToolProtocol.Result result = keyVault.run(() -> !destroyed && resumed, key -> client.generate(key, model, request, appList));
+                DeviceToolSpec.Action action = result.call == null ? null : DeviceToolSpec.parse(result.call, apps.size());
+                if (action != null && action.kind == DeviceToolSpec.Kind.OPEN_LINK
+                        && !UserLinkAuthorization.presentInUserTurns(action.data, request)) action = null;
+                boolean search = action != null && action.kind == DeviceToolSpec.Kind.SEARCH_YOUTUBE;
+                boolean foundVideo = false;
+                if (search) {
+                    String url;
+                    try {
+                        final String query = action.data;
+                        url = keyVault.run(() -> !destroyed && resumed, key -> client.searchYoutube(key, query));
+                        foundVideo = true;
+                    } catch (Exception e) {
+                        // The Data API may be disabled/restricted. Open search results instead, never an invented video.
+                        AppLog.add("YouTube: поиск видео недоступен; пробуем страницу результатов (" + e.getClass().getSimpleName() + ")");
+                        url = YoutubeSearchProtocol.resultsUrl(action.data);
+                    }
+                    action = new DeviceToolSpec.Action(DeviceToolSpec.Kind.OPEN_LINK, action.number, url);
+                }
+                final DeviceToolSpec.Action chosen = action;
+                final boolean videoSearch = search, videoFound = foundVideo;
                 runOnUiThread(() -> {
                     if (destroyed || !resumed || !flow.answered()) return;
+                    String response = result.text;
+                    if (result.call != null) {
+                        DeviceActions.Outcome outcome = deviceActions.prepare(chosen, apps);
+                        response = outcome.text;
+                        if (videoSearch && outcome.navigation != null)
+                            response = videoFound ? "Открываю найденное видео." : "Открываю результаты поиска YouTube.";
+                        pendingNavigation = outcome.navigation;
+                    }
                     try {
                         history.put(turn("user", question)); history.put(turn("model", response));
                         while (history.length() > 20) { history.remove(0); history.remove(0); }
@@ -261,6 +295,13 @@ public final class MainActivity extends Activity {
         });
     }
     private void beginFollowUp() {
+        if (pendingNavigation != null) {
+            DeviceActions.Navigation navigation = pendingNavigation;
+            pendingNavigation = null;
+            if (!navigation.open()) showErrorAndClose("Не удалось открыть экран. Проверьте журнал.");
+            else { flow.finish(); finish(); }
+            return;
+        }
         if (!flow.followUp()) return;
         AppLog.add("Диалог: ожидание ответа пользователя");
         soundCuePlayer.play(R.raw.waiting_for_answer, "ожидание ответа", () -> {
@@ -439,6 +480,7 @@ public final class MainActivity extends Activity {
         super.onStop();
         if (listening) AppLog.add("Речь #" + recognitionAttempt + ": отмена при уходе с экрана через " + recognitionElapsed() + " мс");
         soundCuePlayer.cancel();
+        pendingNavigation = null;
         cancelRecognition(); stopSpeaking(); stopSpinner(); stopPulse(); led.show(null);
         WakeWordController.get(this).dialogClosed();
         // Don't leave an invisible assistant listening or waiting on a network request.
@@ -449,6 +491,7 @@ public final class MainActivity extends Activity {
         led.show(null);
         handler.removeCallbacksAndMessages(null);
         soundCuePlayer.cancel();
+        pendingNavigation = null;
         cancelRecognition();
         stopSpeaking();
         client.cancel(); executor.shutdownNow(); speechExecutor.shutdownNow();

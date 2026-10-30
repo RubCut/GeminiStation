@@ -31,16 +31,14 @@ final class GeminiClient {
         client = bootstrap.newBuilder().dns(cachedDns).readTimeout(90, TimeUnit.SECONDS)
                 .eventListenerFactory(call -> new NetworkDiagnostics(
                         "speech".equals(call.request().tag(String.class)) ? "Gemini TTS" :
-                                "transcribe".equals(call.request().tag(String.class)) ? "Gemini Live" : "Gemini текст", cachedDns::clear)).build();
+                                "transcribe".equals(call.request().tag(String.class)) ? "Gemini Live" :
+                                        "youtube".equals(call.request().tag(String.class)) ? "YouTube поиск" : "Gemini текст", cachedDns::clear)).build();
     }
-    String generate(String apiKey, String model, JSONArray history) throws Exception {
+    GeminiToolProtocol.Result generate(String apiKey, String model, JSONArray history, JSONArray apps) throws Exception {
         if (!model.matches("[A-Za-z0-9._-]{1,80}")) throw new IOException("Неверное имя модели");
         long started = System.nanoTime();
         AppLog.add("Текст: подготовка запроса; реплик в истории " + history.length());
-        JSONObject data = new JSONObject();
-        data.put("contents", history);
-        data.put("systemInstruction", new JSONObject().put("parts", new JSONArray().put(new JSONObject().put("text",
-                "Ты голосовой помощник Gemini Station. Отвечай по-русски кратко и естественно, если пользователь не попросил иначе."))));
+        JSONObject data = GeminiToolProtocol.request(history, apps);
         Request request = new Request.Builder()
                 .url("https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent")
                 .header("x-goog-api-key", apiKey)
@@ -50,19 +48,29 @@ final class GeminiClient {
             if (!response.isSuccessful()) throw new IOException("Gemini API: HTTP " + response.code() +
                     ". Проверьте ключ, модель и доступность сервиса.");
             if (response.body() == null) throw new IOException("Пустой ответ Gemini");
-            JSONObject json = new JSONObject(response.body().string());
-            JSONArray candidates = json.optJSONArray("candidates");
-            if (candidates == null || candidates.length() == 0) throw new IOException("Gemini не вернул ответ (возможно, запрос заблокирован фильтром).");
-            JSONObject content = candidates.getJSONObject(0).optJSONObject("content");
-            JSONArray parts = content == null ? null : content.optJSONArray("parts");
-            StringBuilder text = new StringBuilder();
-            if (parts != null) for (int i = 0; i < parts.length(); i++) {
-                String part = parts.getJSONObject(i).optString("text", "");
-                if (!part.isEmpty()) { if (text.length() > 0) text.append('\n'); text.append(part); }
-            }
-            if (text.length() == 0) throw new IOException("Gemini вернул ответ без текста.");
-            AppLog.add("Текст: ответ обработан за " + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started) + " мс; символов " + text.length());
-            return text.toString();
+            GeminiToolProtocol.Result result = GeminiToolProtocol.parse(new JSONObject(response.body().string()));
+            AppLog.add("Текст: ответ обработан за " + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started)
+                    + (result.call == null ? " мс; получен текст" : " мс; получена команда"));
+            return result;
+        }
+    }
+    /** Search only real YouTube Data API results; never invent video identifiers. */
+    String searchYoutube(String apiKey, String query) throws Exception {
+        if (!LinkPolicy.searchQuery(query)) throw new IOException("Некорректный поисковый запрос");
+        HttpUrl url = new HttpUrl.Builder().scheme("https").host("www.googleapis.com")
+                .addPathSegment("youtube").addPathSegment("v3").addPathSegment("search")
+                .addQueryParameter("part", "snippet").addQueryParameter("type", "video")
+                .addQueryParameter("maxResults", "1").addQueryParameter("q", query).build();
+        Request request = new Request.Builder().url(url).tag(String.class, "youtube")
+                .header("x-goog-api-key", apiKey).get().build();
+        try (Response response = client.newBuilder().callTimeout(12, TimeUnit.SECONDS).build().newCall(request).execute()) {
+            if (response.code() == 429) throw new KeyRotation.RateLimit("YouTube API");
+            if (!response.isSuccessful()) throw new IOException("YouTube API: HTTP " + response.code());
+            if (response.body() == null) throw new IOException("Пустой ответ поиска YouTube");
+            okio.BufferedSource source = response.body().source();
+            source.request(1024 * 1024L + 1);
+            if (source.buffer().size() > 1024 * 1024L) throw new IOException("YouTube response too large");
+            return YoutubeSearchProtocol.videoUrl(new JSONObject(source.readUtf8()));
         }
     }
     /** Both streaming and non-streaming requests use exactly the same chosen voice. */
