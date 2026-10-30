@@ -23,7 +23,7 @@ jobs:
       - name: Build debug APK
         shell: bash
         run: |
-          if ! ./gradlew --no-daemon testDebugUnitTest assembleDebug > build-output.txt 2>&1; then
+          if ! ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleDebug :keytester:testDebugUnitTest :keytester:assembleDebug > build-output.txt 2>&1; then
             tail -n 80 build-output.txt
             while IFS= read -r line; do printf '::error::%s\n' "$line"; done < <(tail -n 35 build-output.txt)
             exit 1
@@ -34,5 +34,12 @@ jobs:
         with:
           name: GeminiStation-debug
           path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload button tester APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ButtonTester-debug
+          path: keytester/build/outputs/apk/debug/keytester-debug.apk
           if-no-files-found: error
           retention-days: 14
