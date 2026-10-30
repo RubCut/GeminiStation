@@ -42,7 +42,7 @@ public final class MainActivity extends Activity {
     private final ConversationFlow flow = new ConversationFlow();
     private final ListeningPolicy listeningPolicy = new ListeningPolicy();
     private GeminiClient client;
-    private SecretStore secrets;
+    private ApiKeyVault keyVault;
     private LiveTranscriber liveTranscriber;
     private TextView text;
     private ImageView logo;
@@ -51,13 +51,14 @@ public final class MainActivity extends Activity {
     private Runnable recognitionTimeout;
     private long recognitionStarted;
     private int recognitionAttempt, partialCount, handoffGeneration;
-    private boolean waitingForFinal, heardSpeech, listening, destroyed, resumed;
+    private boolean waitingForFinal, heardSpeech, listening;
+    private volatile boolean destroyed, resumed;
     private boolean initialStartPending = true, permissionPending, micHandoffReady;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         WakeWordController.get(this).dialogOpening();
-        secrets = new SecretStore(this);
+        keyVault = ApiKeyVault.get(this);
         soundCuePlayer = new SoundCuePlayer(this);
         client = new GeminiClient();
         led = LedController.get(this);
@@ -174,10 +175,9 @@ public final class MainActivity extends Activity {
         if (!flow.recognized()) return;
         showText(question);
         startSpinner();
-        final String apiKey;
-        try { apiKey = secrets.load(); }
-        catch (Exception e) { showErrorAndClose("Не удалось прочитать API-ключ. Проверьте веб-настройки."); return; }
-        if (apiKey.isEmpty()) { showErrorAndClose("Добавьте API-ключ в веб-интерфейсе на порту 6529."); return; }
+        try {
+            if (keyVault.keys().isEmpty()) { showErrorAndClose("Добавьте API-ключ в веб-интерфейсе на порту 6529."); return; }
+        } catch (Exception e) { showErrorAndClose("Не удалось прочитать API-ключи. Проверьте веб-настройки."); return; }
         final JSONArray request;
         try { request = new JSONArray(history.toString()); request.put(turn("user", question)); }
         catch (Exception e) { showErrorAndClose("Не удалось подготовить запрос."); return; }
@@ -185,7 +185,7 @@ public final class MainActivity extends Activity {
         AppLog.add("Диалог: запрос к Gemini начат");
         executor.execute(() -> {
             try {
-                String response = client.generate(apiKey, model, request);
+                String response = keyVault.run(() -> !destroyed && resumed, key -> client.generate(key, model, request));
                 runOnUiThread(() -> {
                     if (destroyed || !resumed || !flow.answered()) return;
                     try {
@@ -195,7 +195,7 @@ public final class MainActivity extends Activity {
                     // Keep the thinking animation until audio actually starts.
                     showText(response);
                     AppLog.add("Диалог: текст ответа получен; начинаем синтез");
-                    speak(apiKey, response);
+                    speak(response);
                 });
             } catch (Exception e) {
                 AppLog.add("Текст: ошибка обработки " + e.getClass().getSimpleName());
@@ -219,25 +219,27 @@ public final class MainActivity extends Activity {
             animatePulse(true); led.show("speaking");
         });
     }
-    private void speak(String apiKey, String response) {
+    private void speak(String response) {
         final int generation = speechGeneration.incrementAndGet();
         // Snapshot once per reply so streaming and fallback cannot use different voices.
         final String voice = AppSettings.voice(this);
         AppLog.add("TTS: выбран голос " + voice);
         speechExecutor.execute(() -> {
             try {
-                try (VoicePlayer.Stream stream = voicePlayer.openStream(() -> speechGeneration.get() == generation, () -> onPlaybackStarted(generation))) {
-                    try {
-                        client.synthesizeStreaming(apiKey, response, voice, stream::write);
-                        if (speechGeneration.get() != generation) return;
-                        stream.drain();
-                    } catch (GeminiClient.StreamingUnavailableException unavailable) {
-                        AppLog.add("TTS: потоковый режим недоступен, используем обычный синтез");
-                        PcmAudio audio = client.synthesize(apiKey, response, voice);
-                        if (speechGeneration.get() != generation) return;
-                        voicePlayer.play(audio, () -> speechGeneration.get() == generation, () -> onPlaybackStarted(generation));
+                keyVault.run(() -> speechGeneration.get() == generation, apiKey -> {
+                    try (VoicePlayer.Stream stream = voicePlayer.openStream(() -> speechGeneration.get() == generation, () -> onPlaybackStarted(generation))) {
+                        try {
+                            client.synthesizeStreaming(apiKey, response, voice, stream::write);
+                            if (speechGeneration.get() == generation) stream.drain();
+                        } catch (GeminiClient.StreamingUnavailableException unavailable) {
+                            AppLog.add("TTS: потоковый режим недоступен, используем обычный синтез");
+                            PcmAudio audio = client.synthesize(apiKey, response, voice);
+                            if (speechGeneration.get() == generation)
+                                voicePlayer.play(audio, () -> speechGeneration.get() == generation, () -> onPlaybackStarted(generation));
+                        }
                     }
-                }
+                    return null;
+                });
                 if (speechGeneration.get() != generation) return;
                 AppLog.add("TTS: воспроизведение завершено");
                 runOnUiThread(() -> {
@@ -279,7 +281,7 @@ public final class MainActivity extends Activity {
         soundCuePlayer.play(R.raw.assistant_start, "активация", () -> {
             if (!resumed || destroyed || flow.phase() != ConversationFlow.Phase.NEW) return;
             try {
-                if (secrets.load().isEmpty()) { showErrorAndClose("Добавьте API-ключ в веб-интерфейсе на порту 6529."); return; }
+                if (keyVault.keys().isEmpty()) { showErrorAndClose("Добавьте API-ключ в веб-интерфейсе на порту 6529."); return; }
             } catch (Exception e) { showErrorAndClose("Не удалось прочитать API-ключ. Проверьте веб-настройки."); return; }
             if (flow.initialListening()) startListening(false);
         });
@@ -345,13 +347,14 @@ public final class MainActivity extends Activity {
         // Keep the answer on screen during follow-up silence; replace it as soon as speech begins.
         animatePulse(false); led.show("listening");
         if (!followUp) showText("Подключаюсь…");
-        startLiveRecognition(attempt, followUp);
+        final KeyRotation.Attempt keys;
+        try { keys = keyVault.rotation.attempt(keyVault.keys()); }
+        catch (Exception e) { showErrorAndClose("Не удалось прочитать API-ключи."); return; }
+        if (keys.isEmpty()) { showErrorAndClose("Добавьте API-ключ в веб-интерфейсе на порту 6529."); return; }
+        startLiveRecognition(attempt, followUp, keys);
     }
-    private void startLiveRecognition(final int attempt, final boolean followUp) {
-        final String key;
-        try { key = secrets.load(); }
-        catch (Exception e) { showErrorAndClose("Не удалось прочитать API-ключ."); return; }
-        if (key.isEmpty()) { showErrorAndClose("Добавьте API-ключ в веб-интерфейсе на порту 6529."); return; }
+    private void startLiveRecognition(final int attempt, final boolean followUp, final KeyRotation.Attempt keys) {
+        final String key = keys.key();
         listening = true; waitingForFinal = false;
         AppLog.add("Речь #" + attempt + ": режим Gemini Live" + (followUp ? "; продолжение" : "; первый запрос"));
         liveTranscriber = new LiveTranscriber(client, key, new LiveTranscriber.Listener() {
@@ -378,11 +381,19 @@ public final class MainActivity extends Activity {
                 liveTranscriber = null;
                 submit(value);
             }
-            public void onError(String message) {
+            public void onError(String message, boolean rateLimited, boolean retrySafe) {
                 if (!active()) return;
+                boolean hasNext = rateLimited && keys.advance();
+                if (rateLimited && retrySafe && hasNext && !waitingForFinal) {
+                    AppLog.add("Gemini Live: лимит 429, переключаем API-ключ");
+                    liveTranscriber = null;
+                    startLiveRecognition(attempt, followUp, keys);
+                    return;
+                }
                 AppLog.add("Речь #" + attempt + ": ошибка Gemini Live");
                 finishRecognition();
                 liveTranscriber = null;
+                if (rateLimited && !retrySafe) message = "Лимит Gemini Live (429). Повторите запрос";
                 showErrorAndClose(message + ". Подробности — в веб-логах.");
             }
         });

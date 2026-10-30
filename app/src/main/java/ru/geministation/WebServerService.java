@@ -138,6 +138,7 @@ public final class WebServerService extends Service {
                 if (session.getMethod() == Method.GET && "/api/logs".equals(path)) {
                     JSONObject result = new JSONObject().put("logs", AppLog.snapshot()).put("model", AppSettings.model(context))
                             .put("voice", AppSettings.voice(context)).put("voices", new org.json.JSONArray(TtsVoices.ALL))
+                            .put("apiKeys", ApiKeyVault.get(context).metadata())
                             .put("buttonServiceConnected", AssistantButtonService.isConnected())
                             .put("buttonEnabled", AppSettings.buttonEnabled(context))
                             .put("wakeEnabled", AppSettings.wakeEnabled(context))
@@ -160,11 +161,11 @@ public final class WebServerService extends Service {
                     if (!sampleInProgress.compareAndSet(false, true))
                         return json(Response.Status.SERVICE_UNAVAILABLE, "Другой образец уже загружается; попробуйте немного позже");
                     try {
-                        String key = new SecretStore(context).load();
-                        if (key.isEmpty()) return json(Response.Status.BAD_REQUEST, "Сначала сохраните API-ключ Gemini");
+                        ApiKeyVault vault = ApiKeyVault.get(context);
+                        if (vault.keys().isEmpty()) return json(Response.Status.BAD_REQUEST, "Сначала сохраните API-ключ Gemini");
                         AppLog.add("TTS: запрос образца голоса " + voice);
-                        PcmAudio sample = sampleClient.synthesize(key,
-                                "Привет! Я голосовой помощник Gemini. Так звучит мой голос на русском языке.", voice);
+                        PcmAudio sample = vault.run(() -> true, key -> sampleClient.synthesize(key,
+                                "Привет! Я голосовой помощник Gemini. Так звучит мой голос на русском языке.", voice));
                         byte[] wav = sample.toWav();
                         Response response = newFixedLengthResponse(Response.Status.OK, "audio/wav", new ByteArrayInputStream(wav), wav.length);
                         response.addHeader("Cache-Control", "no-store");
@@ -247,6 +248,30 @@ public final class WebServerService extends Service {
                     });
                     return json(Response.Status.OK, deleted ? "Настройки LED удалены" : "Настройки LED сохранены");
                 }
+                if (session.getMethod() == Method.POST && "/api/keys".equals(path)) {
+                    if (!WebSecurity.permittedWrite(host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station")))
+                        return json(Response.Status.FORBIDDEN, "Запрос отклонён");
+                    String lengthHeader = session.getHeaders().get("content-length");
+                    long length = lengthHeader == null ? -1 : Long.parseLong(lengthHeader);
+                    if (length < 1 || length > 2048 || session.getHeaders().containsKey("transfer-encoding"))
+                        return json(Response.Status.BAD_REQUEST, "Недопустимый размер запроса");
+                    Map<String, String> files = new HashMap<>(); session.parseBody(files);
+                    JSONObject data = new JSONObject(files.get("postData"));
+                    ApiKeyVault vault = ApiKeyVault.get(context);
+                    String action = data.optString("action", "");
+                    if ("add".equals(action)) {
+                        if (!(data.opt("key") instanceof String)) return json(Response.Status.BAD_REQUEST, "Некорректный ключ");
+                        try { vault.add(data.getString("key").trim()); }
+                        catch (IllegalArgumentException e) { return json(Response.Status.BAD_REQUEST, e.getMessage()); }
+                        AppLog.add("API: ключ добавлен через веб-интерфейс");
+                    } else if ("delete".equals(action)) {
+                        String id = data.optString("id", "");
+                        if (!id.matches("[0-9a-f-]{36}") || !vault.remove(id))
+                            return json(Response.Status.BAD_REQUEST, "Ключ не найден; обновите страницу");
+                        AppLog.add("API: ключ удалён через веб-интерфейс");
+                    } else return json(Response.Status.BAD_REQUEST, "Неизвестное действие");
+                    return json(Response.Status.OK, "Сохранено");
+                }
                 if (session.getMethod() == Method.POST && "/api/config".equals(path)) {
                     if (!WebSecurity.permittedWrite(host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station")))
                         return json(Response.Status.FORBIDDEN, "Запрос отклонён");
@@ -275,8 +300,12 @@ public final class WebServerService extends Service {
                     boolean deleteKey = data.optBoolean("deleteKey", false);
                     if (!AppSettings.validModel(model) || !TtsVoices.valid(voice) || key.length() > 512 || (deleteKey && !key.isEmpty()))
                         return json(Response.Status.BAD_REQUEST, "Некорректные настройки");
-                    SecretStore store = new SecretStore(context);
-                    if (deleteKey) store.clear(); else if (!key.isEmpty()) store.save(key);
+                    ApiKeyVault vault = ApiKeyVault.get(context);
+                    if (deleteKey) vault.clear();
+                    else if (!key.isEmpty()) {
+                        try { vault.add(key); }
+                        catch (IllegalArgumentException e) { return json(Response.Status.BAD_REQUEST, e.getMessage()); }
+                    }
                     if (!AppSettings.save(context, model, voice, buttonEnabled, wakeEnabled, wakeSensitivity)) return json(Response.Status.INTERNAL_ERROR, "Не удалось сохранить настройки");
                     WakeWordController.get(context).settingsChanged();
                     AppLog.add(deleteKey ? "API-ключ удалён через веб-интерфейс" : "Настройки сохранены через веб-интерфейс");

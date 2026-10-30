@@ -119,8 +119,12 @@ details{margin-top:18px;border-top:1px solid #303441;padding-top:16px}summary{co
     <div class="cards">
      <article class="card"><div class="card-head"><span class="card-icon"><svg class="icon"><use href="#i-sparkle"/></svg></span><div><h3>Gemini API</h3><p>Модель и ключ для работы ассистента.</p></div></div>
       <div class="field"><label class="field-label" for="model">Модель</label><input id="model" autocomplete="off" spellcheck="false" disabled><p class="field-hint">Используется для ответов ассистента.</p></div>
-      <div class="field"><label class="field-label" for="key">API-ключ</label><input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="Оставьте пустым, чтобы не менять" disabled><p class="field-hint">Ключ хранится на станции в зашифрованном виде и не отображается повторно.</p></div>
-      <div class="actions"><button id="save" disabled>Сохранить изменения</button><button id="delete" class="danger" disabled>Удалить ключ</button></div><p class="status-message" id="message" role="status"></p>
+      <div class="actions"><button id="save" disabled>Сохранить настройки</button></div><p class="status-message" id="message" role="status"></p>
+      <div class="divider"></div>
+      <div class="field"><label class="field-label" for="key">Добавить API-ключ</label><input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="Новый ключ Gemini" disabled><p class="field-hint">До 10 ключей. При лимите 429 приложение попробует следующий; ключи хранятся зашифрованными и не показываются повторно.</p></div>
+      <div class="actions"><button id="addKey" class="secondary" disabled>Добавить ключ</button></div>
+      <div class="field"><label class="field-label" for="keyList">Сохранённые ключи</label><select id="keyList" disabled></select><p class="field-hint" id="keyCount">Загружаем список…</p></div>
+      <div class="actions"><button id="delete" class="danger" disabled>Удалить выбранный ключ</button></div><p class="status-message" id="keyMessage" role="status"></p>
       <div class="privacy"><svg class="icon"><use href="#i-lock"/></svg><span>Gemini Live отправляет запрос и аудио в Gemini API и может расходовать квоту.</span></div>
      </article>
      <article class="card"><div class="card-head"><span class="card-icon blue"><svg class="icon"><use href="#i-volume"/></svg></span><div><h3>Голос ответа</h3><p>Выберите, как будет звучать ассистент.</p></div></div>
@@ -183,7 +187,7 @@ async function request(path,options={}){
 }
 const sensitivityLevels=['low','normal','high'];
 const sensitivityLabels=['Низкая','Средняя','Высокая'];
-let settingsLoaded=false, voiceDirty=false, buttonDirty=false, wakeDirty=false, wakeSensitivityDirty=false;
+let settingsLoaded=false, voiceDirty=false, buttonDirty=false, wakeDirty=false, wakeSensitivityDirty=false, keyBusy=false, keyIds=null;
 function updateSensitivityVisual(){
  const slider=el('wakeSensitivity');
  const parsed=Number(slider.value), index=Number.isInteger(parsed)&&parsed>=0&&parsed<3?parsed:1;
@@ -204,8 +208,20 @@ function setConnection(online){
  el('connectionDot').setAttribute('data-state',online?'online':'offline');
  el('connectionStatus').textContent=online?'Станция на связи':'Нет связи со станцией';
 }
+function updateKeys(keys){
+ const list=el('keyList'), signature=keys.map(key=>key.id).join(',');
+ if(signature!==keyIds){
+  const previous=list.value;list.textContent='';
+  keys.forEach((key,index)=>{const option=document.createElement('option');option.value=key.id;option.textContent='Ключ '+(index+1);list.appendChild(option)});
+  if(keys.some(key=>key.id===previous))list.value=previous;
+  keyIds=signature;
+ }
+ el('keyCount').textContent=keys.length?'Сохранено ключей: '+keys.length:'Нет сохранённых ключей';
+ list.disabled=keyBusy||!keys.length;el('delete').disabled=keyBusy||!keys.length;el('addKey').disabled=keyBusy;
+}
 async function refresh(){try{
  const data=await request('/api/logs');setConnection(true);el('logs').textContent=data.logs.join('\n')||'Пока нет событий.';
+ updateKeys(data.apiKeys||[]);
  el('savedVoice').textContent='Сохранённый голос: '+data.voice;
  el('overviewVoice').textContent=data.voice;
  el('overviewWake').textContent=data.wakeEnabled?'Включена':'Выключена';
@@ -220,7 +236,7 @@ async function refresh(){try{
  if(!settingsLoaded){
   el('model').value=data.model;const select=el('voice');select.textContent='';
   data.voices.forEach(voice=>{const option=document.createElement('option');option.value=voice;option.textContent=voice;select.appendChild(option)});
-  select.value=data.voice;select.disabled=false;el('model').disabled=false;el('key').disabled=false;el('buttonEnabled').checked=data.buttonEnabled;el('buttonEnabled').disabled=false;el('wakeEnabled').checked=data.wakeEnabled;el('wakeEnabled').disabled=false;setSensitivity(data.wakeSensitivity);el('wakeSensitivity').disabled=false;el('saveWakeSettings').disabled=false;el('saveVoice').disabled=false;el('save').disabled=false;el('saveButtonSettings').disabled=false;el('delete').disabled=false;el('sampleVoice').disabled=false;settingsLoaded=true;
+  select.value=data.voice;select.disabled=false;el('model').disabled=false;el('key').disabled=false;el('buttonEnabled').checked=data.buttonEnabled;el('buttonEnabled').disabled=false;el('wakeEnabled').checked=data.wakeEnabled;el('wakeEnabled').disabled=false;setSensitivity(data.wakeSensitivity);el('wakeSensitivity').disabled=false;el('saveWakeSettings').disabled=false;el('saveVoice').disabled=false;el('save').disabled=false;el('saveButtonSettings').disabled=false;el('sampleVoice').disabled=false;settingsLoaded=true;
  }else{if(!voiceDirty)el('voice').value=data.voice;if(!buttonDirty)el('buttonEnabled').checked=data.buttonEnabled;if(!wakeDirty)el('wakeEnabled').checked=data.wakeEnabled;if(!wakeSensitivityDirty)setSensitivity(data.wakeSensitivity)}
  return data;
 }catch(e){setConnection(false);el('message').textContent=e.message;throw e}}
@@ -242,12 +258,12 @@ async function sampleVoice(){
 async function save(remove,feedback='message'){
  try{
   const voice=el('voice').value, buttonEnabled=el('buttonEnabled').checked, wakeEnabled=el('wakeEnabled').checked, wakeSensitivity=getSensitivity();
-  await request('/api/config',{method:'POST',body:JSON.stringify({model:el('model').value,voice,buttonEnabled,wakeEnabled,wakeSensitivity,key:remove?'':el('key').value,deleteKey:remove})});
+  await request('/api/config',{method:'POST',body:JSON.stringify({model:el('model').value,voice,buttonEnabled,wakeEnabled,wakeSensitivity,key:'',deleteKey:remove})});
   if(el('voice').value===voice)voiceDirty=false;
   if(el('buttonEnabled').checked===buttonEnabled)buttonDirty=false;
   if(el('wakeEnabled').checked===wakeEnabled)wakeDirty=false;
   if(getSensitivity()===wakeSensitivity)wakeSensitivityDirty=false;
-  el('key').value='';el(feedback).textContent=remove?'Ключ удалён':'Настройки сохранены';await refresh();
+  el(feedback).textContent=remove?'Ключи удалены':'Настройки сохранены';await refresh();
  }catch(e){el(feedback).textContent=e.message}
 }
 async function ledRequest(path,data){try{const result=await request(path,{method:'POST',body:JSON.stringify(data)});el('ledMessage').textContent=result.message;return result}catch(e){el('ledMessage').textContent=e.message;throw e}}
@@ -290,7 +306,22 @@ el('saveWakeSettings').addEventListener('click',()=>save(false,'wakeMessage'));
 el('saveVoice').addEventListener('click',()=>save(false,'voiceMessage'));
 el('sampleVoice').addEventListener('click',()=>sampleVoice());
 el('saveButtonSettings').addEventListener('click',()=>save(false,'buttonMessage'));
-el('save').addEventListener('click',()=>save(false));el('delete').addEventListener('click',()=>{if(confirm('Удалить API-ключ?'))save(true)});el('refresh').addEventListener('click',()=>refresh().catch(()=>{}));
+el('save').addEventListener('click',()=>save(false));
+el('addKey').addEventListener('click',async()=>{
+ const key=el('key').value.trim();if(!key){el('keyMessage').textContent='Введите API-ключ';return}
+ keyBusy=true;el('addKey').disabled=true;el('delete').disabled=true;
+ try{await request('/api/keys',{method:'POST',body:JSON.stringify({action:'add',key})});if(el('key').value.trim()===key)el('key').value='';el('keyMessage').textContent='Ключ добавлен'}
+ catch(e){el('keyMessage').textContent=e.message}
+ finally{keyBusy=false;await refresh().catch(()=>{})}
+});
+el('delete').addEventListener('click',async()=>{
+ const id=el('keyList').value;if(!id||!confirm('Удалить выбранный API-ключ?'))return;
+ keyBusy=true;el('addKey').disabled=true;el('delete').disabled=true;
+ try{await request('/api/keys',{method:'POST',body:JSON.stringify({action:'delete',id})});el('keyMessage').textContent='Ключ удалён'}
+ catch(e){el('keyMessage').textContent=e.message}
+ finally{keyBusy=false;await refresh().catch(()=>{})}
+});
+el('refresh').addEventListener('click',()=>refresh().catch(()=>{}));
 refresh().catch(()=>{});
 setInterval(()=>refresh().catch(()=>{}),5000);
 </script>

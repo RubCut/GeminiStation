@@ -14,20 +14,30 @@ for (const [, id] of markup.matchAll(/(?:href|for|aria-describedby|aria-labelled
   assert.ok(ids.includes(id), `missing anchor or label target: ${id}`);
 }
 assert.match(markup, /<input type="range" id="wakeSensitivity" min="0" max="2" step="1"/);
-const saved = {model:'gemini-3.5-flash-lite', voice:'Kore', voices:['Kore','Puck','Aoede'], logs:[], buttonEnabled:false, buttonServiceConnected:false, wakeEnabled:false, wakeStatus:"Выключена", wakeSensitivity:"normal", wakeRms:-1, wakePeak:-1};
+const saved = {model:'gemini-3.5-flash-lite', voice:'Kore', voices:['Kore','Puck','Aoede'], logs:[], buttonEnabled:false, buttonServiceConnected:false, wakeEnabled:false, wakeStatus:"Выключена", wakeSensitivity:"normal", wakeRms:-1, wakePeak:-1, apiKeys:[{id:"11111111-1111-4111-8111-111111111111"}]};
 const writes = [], samples = [];
 let sampleError = false, blockPlayback = false, revoked = [];
 function page() {
   const nodes = new Map();
   function element(id) {
-    if (!nodes.has(id)) nodes.set(id, {value:'',textContent:'',disabled:false,children:[],handlers:{},attributes:{},style:{setProperty(name,value){this[name]=value}},
-      setAttribute(name,value){this.attributes[name]=value}, addEventListener(type, fn){this.handlers[type]=fn}, appendChild(child){this.children.push(child)},
-      removeAttribute() {}, play:async()=>{if(blockPlayback)throw Error('blocked')}});
+    if (!nodes.has(id)) {
+      const node = {value:'',_text:'',disabled:false,children:[],handlers:{},attributes:{},style:{setProperty(name,value){this[name]=value}},
+        setAttribute(name,value){this.attributes[name]=value}, addEventListener(type, fn){this.handlers[type]=fn},
+        appendChild(child){this.children.push(child);if(id==='keyList'&&this.children.length===1)this.value=child.value},
+        removeAttribute() {}, play:async()=>{if(blockPlayback)throw Error('blocked')}};
+      Object.defineProperty(node,'textContent',{get(){return this._text},set(value){this._text=value;this.children=[];if(id==='keyList')this.value=''}});
+      nodes.set(id,node);
+    }
     return nodes.get(id);
   }
   const context = vm.createContext({document:{getElementById:element,createElement:()=>({})},
     fetch:async(path, options)=>{
       if(path==='/api/config') {const body=JSON.parse(options.body); writes.push(body); saved.model=body.model; saved.voice=body.voice; saved.buttonEnabled=body.buttonEnabled; saved.wakeEnabled=body.wakeEnabled; saved.wakeSensitivity=body.wakeSensitivity;}
+      if(path==='/api/keys') {
+        const body=JSON.parse(options.body);
+        if(body.action==='add') saved.apiKeys.push({id:'22222222-2222-4222-8222-222222222222'});
+        else saved.apiKeys=saved.apiKeys.filter(key=>key.id!==body.id);
+      }
       if(path==='/api/voice/sample') {
         samples.push({body:JSON.parse(options.body),headers:options.headers});
         return sampleError ? {ok:false,json:async()=>({message:'Нет ключа'})} : {ok:true,blob:async()=>({audio:true})};
@@ -42,6 +52,22 @@ function page() {
   let p=page(); await vm.runInContext('refresh()',p.context);
   assert.equal(p.element('voice').value,'Kore');
   assert.equal(p.element('voice').disabled,false);
+  assert.equal(p.element('keyCount').textContent,'Сохранено ключей: 1');
+  p.element('key').value='new-secret';
+  await p.element('addKey').handlers.click();
+  assert.equal(p.element('key').value,'');
+  assert.equal(saved.apiKeys.length,2);
+  assert.equal(p.element('keyCount').textContent,'Сохранено ключей: 2');
+  p.element('keyList').value=saved.apiKeys[1].id;
+  await vm.runInContext('refresh()',p.context);
+  assert.equal(p.element('keyList').value,saved.apiKeys[1].id,'poll must preserve selected key');
+  await p.element('delete').handlers.click();
+  assert.equal(saved.apiKeys.length,1);
+  assert.equal(p.element('keyMessage').textContent,'Ключ удалён');
+  p.element('key').value='unsaved-secret';
+  await vm.runInContext('save(false)',p.context);
+  assert.equal(writes.at(-1).key,'','settings save must not silently submit a key');
+  assert.equal(p.element('key').value,'unsaved-secret');
   p.element('voice').value='Puck'; p.element('voice').handlers.change();
   await vm.runInContext('refresh()',p.context);
   assert.equal(p.element('voice').value,'Puck', 'poll must not discard an unsaved choice');

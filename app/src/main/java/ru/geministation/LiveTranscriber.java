@@ -21,7 +21,7 @@ final class LiveTranscriber {
         void onReady();
         void onPartial(String value);
         void onFinal(String value);
-        void onError(String message);
+        void onError(String message, boolean rateLimited, boolean retrySafe);
     }
     private static final int RATE = 16000;
     private static final int CHUNK = 3200; // 100 ms, signed 16-bit mono
@@ -72,7 +72,8 @@ final class LiveTranscriber {
                     if (data.has("error")) {
                         JSONObject error = data.optJSONObject("error");
                         int code = error == null ? 0 : error.optInt("code", 0);
-                        fail("Gemini Live отклонил запрос" + (code == 0 ? "" : " (" + code + ")"), "API error " + code);
+                        boolean limited = error != null && RateLimitSignals.apiError(code, error.optString("status"));
+                        fail("Gemini Live отклонил запрос" + (limited ? " (429)" : (code == 0 ? "" : " (" + code + ")")), "API error " + code, limited);
                         return;
                     }
                     if (data.has("setupComplete") && captureStarted.compareAndSet(false, true)) {
@@ -108,13 +109,13 @@ final class LiveTranscriber {
             @Override public void onFailure(WebSocket webSocket, Throwable error, Response response) {
                 int code = response == null ? 0 : response.code();
                 String detail = error.getClass().getSimpleName() + (code == 0 ? "" : ", HTTP " + code);
-                fail("Ошибка Gemini Live" + (code == 0 ? "" : " (HTTP " + code + ")"), detail);
+                fail("Ошибка Gemini Live" + (code == 0 ? "" : " (HTTP " + code + ")"), detail, code == 429);
             }
             @Override public void onClosing(WebSocket webSocket, int code, String reason) {
-                fail("Gemini Live завершил соединение (" + code + ")", "WebSocket code " + code);
+                fail("Gemini Live завершил соединение (" + code + ")", "WebSocket code " + code, RateLimitSignals.closeReason(reason));
             }
             @Override public void onClosed(WebSocket webSocket, int code, String reason) {
-                fail("Gemini Live закрыл соединение (" + code + ")", "WebSocket code " + code);
+                fail("Gemini Live закрыл соединение (" + code + ")", "WebSocket code " + code, RateLimitSignals.closeReason(reason));
             }
         });
     }
@@ -240,12 +241,14 @@ final class LiveTranscriber {
         if (transcriptTimer != null) main.removeCallbacks(transcriptTimer);
         releaseResources();
     }
-    private void fail(String message, String detail) {
+    private void fail(String message, String detail) { fail(message, detail, false); }
+    private void fail(String message, String detail, boolean rateLimited) {
         if (!stopped.compareAndSet(false, true)) return;
+        boolean retrySafe = !captureStarted.get();
         AppLog.add("Live STT: " + detail);
         if (transcriptTimer != null) main.removeCallbacks(transcriptTimer);
         releaseResources();
-        main.post(() -> listener.onError(message));
+        main.post(() -> listener.onError(message, rateLimited, retrySafe));
     }
     private void stopRecording() {
         synchronized (lock) {

@@ -46,6 +46,7 @@ final class GeminiClient {
                 .header("x-goog-api-key", apiKey)
                 .post(RequestBody.create(data.toString(), MediaType.get("application/json; charset=utf-8"))).build();
         try (Response response = client.newCall(request).execute()) {
+            if (response.code() == 429) throw new KeyRotation.RateLimit("Gemini API");
             if (!response.isSuccessful()) throw new IOException("Gemini API: HTTP " + response.code() +
                     ". Проверьте ключ, модель и доступность сервиса.");
             if (response.body() == null) throw new IOException("Пустой ответ Gemini");
@@ -85,6 +86,7 @@ final class GeminiClient {
                 .header("x-goog-api-key", apiKey)
                 .post(RequestBody.create(data.toString(), MediaType.get("application/json; charset=utf-8"))).build();
         try (Response response = client.newCall(request).execute()) {
+            if (response.code() == 429) throw new KeyRotation.RateLimit("Gemini TTS");
             if (!response.isSuccessful()) throw new IOException("Gemini TTS: HTTP " + response.code());
             if (response.body() == null || response.body().contentLength() > 12 * 1024 * 1024)
                 throw new IOException("Invalid TTS response size");
@@ -128,6 +130,7 @@ final class GeminiClient {
         try (Response response = client.newCall(request).execute()) {
             if (response.code() == 404 || response.code() == 405 || response.code() == 501)
                 throw new StreamingUnavailableException(response.code());
+            if (response.code() == 429) throw new KeyRotation.RateLimit("Gemini TTS");
             if (!response.isSuccessful()) throw new IOException("Gemini TTS: HTTP " + response.code());
             String contentType = response.header("Content-Type", "").toLowerCase(java.util.Locale.ROOT);
             if (!contentType.startsWith("text/event-stream")) throw new StreamingUnavailableException(response.code());
@@ -137,7 +140,13 @@ final class GeminiClient {
                 for (String event; (event = events.next()) != null;) {
                     if ("[DONE]".equals(event)) break;
                     JSONObject json = new JSONObject(event);
-                    if (json.has("error")) throw new IOException("TTS stream error");
+                    if (json.has("error")) {
+                        JSONObject error = json.optJSONObject("error");
+                        boolean limited = error != null && RateLimitSignals.apiError(error.optInt("code"), error.optString("status"));
+                        // Do not replay from the beginning after any audio has reached the speaker.
+                        if (limited) throw new KeyRotation.RateLimit("Gemini TTS", chunks == 0);
+                        throw new IOException("TTS stream error");
+                    }
                     JSONArray candidates = json.optJSONArray("candidates");
                     if (candidates == null || candidates.length() == 0) continue;
                     JSONObject content = candidates.getJSONObject(0).optJSONObject("content");
