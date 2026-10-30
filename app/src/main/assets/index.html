@@ -1,23 +1,178 @@
 <!doctype html>
 <html lang="ru">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Gemini Station</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Настройки · Gemini Station</title>
 <style>
-:root{color-scheme:dark;font:16px system-ui,sans-serif;background:#101725;color:#e7eefc}body{max-width:760px;margin:0 auto;padding:24px}h1{margin-bottom:4px}p{line-height:1.5;color:#b7c8e3}section{background:#1b273b;padding:20px;border-radius:12px;margin:16px 0}label{display:block;margin:12px 0 6px}select,input{box-sizing:border-box;width:100%;padding:12px;border:1px solid #53647d;border-radius:8px;background:#101725;color:white;font:inherit}button{margin:14px 8px 0 0;padding:10px 16px;border:0;border-radius:8px;background:#a8c7fa;color:#10223d;font-weight:bold;cursor:pointer}button.secondary{background:#384963;color:#fff}input[type=checkbox]{width:auto;margin-right:8px}pre{white-space:pre-wrap;overflow:auto;max-height:360px;color:#c3d6fa}#message{min-height:1.5em}small{color:#b7c8e3}
+:root{color-scheme:dark;--bg:#0c0e14;--sidebar:#10121a;--panel:#171a24;--panel-raised:#1c202c;--line:#2a2e3b;--muted:#9399ab;--text:#f0f1f7;--accent:#cbbdff;--accent-strong:#b7a5ff;--green:#a9e7c3;--red:#efa5a7;--radius:18px;--font:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:24px}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5}
+button,input,select{font:inherit}
+button,a,input,select,summary{outline-color:var(--accent)}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+[hidden]{display:none!important}
+a{color:inherit;text-decoration:none}
+.layout{min-height:100vh;display:grid;grid-template-columns:230px minmax(0,1fr)}
+.sidebar{position:sticky;top:0;height:100vh;background:var(--sidebar);border-right:1px solid #242632;padding:30px 17px 20px;display:flex;flex-direction:column;gap:38px}
+.brand{display:flex;align-items:center;gap:11px;padding:0 8px}
+.brand-mark{width:38px;height:38px;border-radius:12px;background:#242137;display:grid;place-items:center;box-shadow:inset 0 0 0 1px #3b3651}
+.brand-mark svg{width:24px;height:24px}
+.brand-name{font-size:15px;font-weight:720;letter-spacing:-.025em;line-height:1.2}
+.brand-sub{font-size:11px;color:var(--muted);margin-top:3px}
+.nav-label{font-size:10px;font-weight:750;letter-spacing:.13em;color:#747a8d;padding:0 12px;margin:0 0 11px;text-transform:uppercase}
+.nav{display:grid;gap:4px}
+.nav a{display:flex;align-items:center;gap:11px;border-radius:10px;color:#a8adbd;padding:11px 12px;font-size:13px;font-weight:600;transition:background .18s,color .18s}
+.nav a:hover{background:#20232f;color:#fff}
+.icon{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round}
+.sidebar-foot{margin-top:auto;border-top:1px solid var(--line);padding:18px 9px 0;color:#868c9f;font-size:11px;line-height:1.6}
+.sidebar-foot strong{display:block;color:#c1c5d1;font-size:12px;font-weight:650;margin-bottom:2px}
+.main{min-width:0;padding:0 42px 54px}
+.topbar{height:72px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #222530;gap:12px}
+.breadcrumb{font-size:12px;color:#8e94a5}.breadcrumb b{color:#d6d9e5;font-weight:600}.crumb-sep{padding:0 10px;color:#575e70}
+.connection{display:inline-flex;align-items:center;gap:8px;color:#bfc4d2;font-size:12px;white-space:nowrap}
+.dot{width:7px;height:7px;border-radius:50%;background:#a4aabc;box-shadow:0 0 0 4px #a4aabc14}
+.dot[data-state="online"]{background:#86d9a8;box-shadow:0 0 0 4px #86d9a817}.dot[data-state="offline"]{background:#ed989d;box-shadow:0 0 0 4px #ed989d17}
+.content{max-width:1100px;margin:0 auto}
+.intro{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;padding:36px 0 26px}
+.eyebrow{color:#aea2d1;font-size:10px;letter-spacing:.16em;font-weight:800;text-transform:uppercase;margin:0 0 8px}
+h1,h2,h3,p{margin:0}h1{font-size:32px;line-height:1.12;letter-spacing:-.045em;font-weight:750}h2{font-size:19px;letter-spacing:-.025em;line-height:1.2}h3{font-size:15px;letter-spacing:-.018em;line-height:1.3}
+.intro-copy{color:var(--muted);font-size:13px;margin-top:10px;max-width:520px}
+.local-badge{display:flex;align-items:center;gap:8px;padding:8px 11px;border:1px solid #313443;border-radius:9px;color:#b6bbc9;font-size:11px;white-space:nowrap}
+.local-badge .icon{width:15px;height:15px;color:#b9a8ee}
+.notice{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border:1px solid #493d35;border-radius:12px;background:#211d20;color:#d3bca9}
+.notice .icon{width:17px;height:17px;color:#e7bc97;margin-top:1px}.notice strong{color:#e7d4c4;font-weight:650}.notice p{font-size:12px;line-height:1.55}
+.overview{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:18px 0 38px}
+.overview-card{background:#151821;border:1px solid #282b37;border-radius:13px;padding:15px 16px;min-width:0}
+.overview-top{display:flex;align-items:center;justify-content:space-between;gap:10px;color:#9ba1b2;font-size:11px;font-weight:650}
+.overview-top .icon{width:16px;height:16px;color:#a99aca}.overview-value{margin-top:8px;font-weight:700;font-size:14px;overflow-wrap:anywhere}
+.group{margin-top:38px;scroll-margin-top:24px}
+.group-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:15px}
+.group-heading p{color:var(--muted);font-size:12px;margin-top:6px}.section-index{font-size:11px;font-weight:700;letter-spacing:.08em;color:#676e80}
+.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:23px;min-width:0}.card.full{grid-column:1/-1}
+.card-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:20px}.card-icon{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;background:#28263a;color:#cbbcff;flex:none}.card-icon.green{background:#20302c;color:#a9ddc1}.card-icon.blue{background:#232c3b;color:#a9c7f4}.card-icon.amber{background:#342a28;color:#e9c4a1}.card-icon .icon{width:18px;height:18px}
+.card-head p{color:var(--muted);font-size:12px;margin-top:4px;line-height:1.5}.tag{display:inline-flex;align-items:center;padding:4px 8px;border:1px solid #3a3b4e;border-radius:6px;color:#b7b0d3;font-size:10px;font-weight:700;white-space:nowrap;margin-left:auto}
+.field{margin-top:17px}.field:first-child{margin-top:0}.field-label,.row-label{display:block;color:#dddfea;font-size:12px;font-weight:650;margin-bottom:8px}.field-hint,.muted{font-size:12px;color:var(--muted);line-height:1.55}.field-hint{margin-top:8px}
+input:not([type="checkbox"]):not([type="range"]),select{width:100%;min-height:43px;border:1px solid #353947;border-radius:9px;background:#11141d;color:#edf0f8;padding:10px 12px;transition:border-color .16s}
+input::placeholder{color:#777d90}input:not([type="checkbox"]):not([type="range"]):focus,select:focus{border-color:#a391e5}select{cursor:pointer}input[type="file"]{font-size:11px;color:#b7bdcc}input[type="file"]::file-selector-button{border:0;border-radius:6px;background:#333444;color:#e9e6f8;padding:6px 9px;margin-right:9px;cursor:pointer}
+button{appearance:none;border:1px solid transparent;border-radius:9px;min-height:39px;padding:9px 14px;background:var(--accent);color:#181424;font-size:12px;font-weight:720;cursor:pointer;transition:background .16s,border-color .16s,transform .16s}
+button:hover:not(:disabled){background:#ded5ff}button:active:not(:disabled){transform:translateY(1px)}button:disabled{opacity:.46;cursor:not-allowed}
+button.secondary{background:#252936;color:#e2e4ee;border-color:#383d4c}button.secondary:hover:not(:disabled){background:#303443;border-color:#4d5160}
+button.danger{background:transparent;color:#e2aeb0;border-color:#4a373e}button.danger:hover:not(:disabled){background:#362329}
+.actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:19px}.actions button{margin:0}
+.status-message{font-size:12px;color:#b8e5c8;min-height:0;margin-top:8px}.status-message:empty{display:none}
+.soft-block{border-radius:11px;border:1px solid #303441;background:#141720;padding:14px 15px}.soft-block p{font-size:12px;color:#a9afbe;line-height:1.6}.soft-block strong{color:#dadce5}
+.privacy{display:flex;gap:9px;color:#9da3b4;font-size:11px;line-height:1.55;margin-top:18px}.privacy .icon{width:15px;height:15px;opacity:.8;margin-top:1px}
+.toggle-line{display:flex;align-items:center;justify-content:space-between;gap:16px}.toggle-copy strong{display:block;font-size:13px;color:#e9eaf2}.toggle-copy span{display:block;font-size:12px;color:var(--muted);margin-top:4px}
+.switch{position:relative;display:inline-flex;flex:none;align-items:center;cursor:pointer}.switch input{position:absolute;opacity:0;width:1px;height:1px}.switch-track{display:block;width:42px;height:24px;background:#3a3e4d;border-radius:20px;transition:background .18s;box-shadow:inset 0 0 0 1px #525665}.switch-track:after{content:"";display:block;width:18px;height:18px;border-radius:50%;background:#dddfe6;transform:translate(3px,3px);transition:transform .18s}.switch input:checked+.switch-track{background:#bba8fb;box-shadow:none}.switch input:checked+.switch-track:after{transform:translate(21px,3px);background:#201835}.switch input:focus-visible+.switch-track{outline:2px solid var(--accent);outline-offset:3px}.switch input:disabled+.switch-track{opacity:.45;cursor:not-allowed}
+.divider{height:1px;background:#303340;margin:20px 0}
+.range-heading{display:flex;align-items:center;justify-content:space-between;gap:10px}.range-heading .row-label{margin:0}.range-value{font-size:11px;color:#d7caff;font-weight:700;background:#2d2940;border:1px solid #45405e;border-radius:7px;padding:4px 9px}
+input[type="range"]{appearance:none;-webkit-appearance:none;width:100%;height:5px;border-radius:9px;margin:19px 0 5px;background:linear-gradient(to right,#bba8fb 0%,#bba8fb var(--progress,50%),#393d4c var(--progress,50%),#393d4c 100%);cursor:pointer}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:#e0d6ff;border:3px solid #a592e5;box-shadow:0 1px 5px #0008}input[type="range"]::-moz-range-thumb{width:11px;height:11px;border-radius:50%;background:#e0d6ff;border:3px solid #a592e5}input[type="range"]:disabled{opacity:.45;cursor:not-allowed}
+.range-labels{display:flex;justify-content:space-between;color:#858b9c;font-size:10px;margin-top:5px}
+.status-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:18px;color:#a7adbb;font-size:11px}.status-dot{width:6px;height:6px;border-radius:50%;background:#8f96a7}.status-dot[data-state="online"]{background:#8bd5aa}.status-dot[data-state="offline"]{background:#df9c9c}
+.level{margin-top:13px;padding:12px 13px;border:1px solid #303441;border-radius:10px;background:#131620}.level-title{display:flex;justify-content:space-between;gap:10px;color:#b3b9c8;font-size:11px}.level-track{height:4px;border-radius:10px;background:#343847;margin-top:9px;overflow:hidden}.level-bar{height:100%;width:0;background:linear-gradient(90deg,#a79af4,#93e0c0);border-radius:10px;transition:width .3s}
+.qr-box{margin-top:16px;padding:15px;background:#11141c;border:1px solid #353a49;border-radius:12px}.qr-box img{display:block;width:min(220px,100%);height:auto;border:8px solid white;border-radius:8px;margin-top:12px}.qr-box p{font-size:12px;color:#b7becd}
+details{margin-top:18px;border-top:1px solid #303441;padding-top:16px}summary{color:#d5d2e4;font-size:12px;font-weight:650;cursor:pointer}details .field-hint{margin-top:12px}
+.log-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.log-head p{font-size:12px;color:var(--muted);margin-top:5px}.log-output{margin:18px 0 0;padding:16px;background:#0f121a;border:1px solid #2a2e3b;border-radius:10px;min-height:140px;max-height:380px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;color:#bbc5cb;font:11px/1.75 ui-monospace,SFMono-Regular,Consolas,monospace}
+.footer{padding-top:30px;color:#777e90;font-size:11px;display:flex;justify-content:space-between;gap:12px}.footer strong{font-weight:600;color:#9ba1b2}
+@media(max-width:1050px){.main{padding-left:28px;padding-right:28px}.layout{grid-template-columns:200px minmax(0,1fr)}.sidebar{padding-left:12px;padding-right:12px}}
+@media(max-width:760px){.layout{display:block}.sidebar{position:relative;height:auto;padding:17px 18px 0;gap:16px;border-right:0;border-bottom:1px solid #282b37}.brand{padding:0}.brand-mark{width:34px;height:34px}.sidebar-foot,.nav-label{display:none}.nav{display:flex;overflow-x:auto;gap:3px;margin:0 -5px;padding:0 0 10px}.nav a{white-space:nowrap;padding:9px 10px;font-size:12px}.nav a .icon{width:16px;height:16px}.main{padding:0 18px 34px}.topbar{height:57px}.intro{padding:28px 0 21px}.intro h1{font-size:27px}.local-badge{display:none}.overview{margin-bottom:30px;gap:8px}.overview-card{padding:12px}.overview-top{font-size:10px}.overview-value{font-size:12px}.cards{grid-template-columns:1fr}.card{padding:19px}.group{margin-top:31px}.card.full{grid-column:auto}}
+@media(max-width:420px){.overview{grid-template-columns:1fr 1fr}.overview-card:last-child{grid-column:1/-1}.breadcrumb{font-size:11px}.connection{font-size:11px}.footer{flex-direction:column}.log-head{align-items:flex-start;flex-direction:column}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{transition:none!important}}
 </style>
 </head>
 <body>
-<h1>Gemini Station</h1><p>Настройки и журнал устройства</p>
-<section><p>Доступ без пароля. Любой в вашей локальной сети может изменить настройки и просматривать журнал. HTTP не шифруется — безопаснее подключаться через ADB.</p></section>
-<div id="panel">
-<section><h2>Gemini API</h2><label for="model">Модель</label><input id="model" autocomplete="off"><label for="voice">Голос ответа Gemini</label><select id="voice" disabled></select><button id="sampleVoice" class="secondary" disabled>Прослушать голос</button><p id="sampleStatus" role="status"></p><audio id="sampleAudio" controls hidden style="max-width:100%"></audio><p><small id="savedVoice">Загружаем сохранённый голос…</small><br><small>Для образца станция запрашивает Gemini TTS с сохранённым API-ключом; звук проигрывается в браузере, запрос расходует квоту. Выбор применяется к следующему ответу после сохранения. Текущий ответ не прерывается.</small></p><p><small>Gemini Live отправляет аудио микрофона в Gemini API и может расходовать квоту. Для работы нужен доступ приложения к микрофону станции.</small></p><label for="key">Новый API-ключ</label><input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="Оставьте пустым, чтобы не менять"><button id="save" disabled>Сохранить</button><button id="delete" class="secondary" disabled>Удалить ключ</button><p id="message" role="status"></p></section>
-<section><h2>Экран станции — экспериментально</h2><p>Свои анимации логотипа Gemini для матрицы 25×16. Подключение использует локальный протокол станции. Работа зависит от прошивки и пока не проверена на этом устройстве.</p><p>Войдите по QR прямо с этой страницы: отсканируйте код телефоном и подтвердите вход в Яндексе. Приложение получит токен аккаунта и сохранит его зашифрованным. Пароль вводится только на стороне Яндекса.</p><p><strong>Внимание:</strong> панель доступна без пароля, а HTTP по локальной сети не шифруется: другие устройства в сети могут получить QR-код и управлять настройками. Используйте только доверенную сеть и не показывайте QR-код посторонним.</p>
-<button id="qrStart">Войти в Яндекс по QR</button><button id="qrCancel" class="secondary" hidden>Отменить вход</button><div id="qrPanel" hidden><p>Отсканируйте QR-код телефоном и подтвердите вход в Яндексе.</p><img id="qrImage" alt="QR-код входа в Яндекс" width="300" height="300" style="max-width:100%;height:auto;background:white"><p id="qrStatus"></p></div><div id="stationPanel" hidden><label for="station">Выберите свою Станцию Макс</label><select id="station"></select><button id="chooseStation">Сохранить станцию</button></div>
-<details><summary>Запасной вариант: импорт настроек Station Max Studio</summary><p><strong>Файл содержит токен аккаунта Яндекса.</strong> Не отправляйте его никому. При импорте по сети токен передаётся по незашифрованному HTTP. Для безопасной передачи можно использовать ADB forward.</p><label for="studio">Файл settings.json из Station Max Studio</label><input id="studio" type="file" accept=".json,application/json"><button id="importLed">Импортировать</button></details><button id="testLed" class="secondary">Проверить экран</button><button id="clearLed" class="secondary">Очистить экран / вернуть часы</button><button id="deleteLed" class="secondary">Выйти из Яндекса</button><p id="ledMessage" role="status"></p></section>
-<section><h2>Голосовая активация</h2><p>Станция локально ищет слова «Гемини», «Джеминай» и «Джемини». Во время ожидания звук не отправляется в Gemini. После срабатывания дождитесь «Слушаю…» и произнесите запрос — для распознавания запроса используется Gemini Live.</p><p><small>Экспериментальная функция: возможны пропуски и ложные срабатывания. Микрофон постоянно используется, пока функция включена, и освобождается на время диалога. Для фоновой работы нужен разрешённый микрофон. После перезагрузки служба попробует запуститься автоматически.</small></p><label for="wakeEnabled"><input type="checkbox" id="wakeEnabled" disabled>Включить голосовую активацию</label><label for="wakeSensitivity">Чувствительность</label><select id="wakeSensitivity" disabled><option value="low">Низкая</option><option value="normal">Средняя</option><option value="high">Высокая</option></select><p><small>Высокая чувствительность может чаще срабатывать на посторонние звуки. Уровень показывает последние 2 секунды записи, не сохраняет и не передаёт звук.</small></p><button id="saveWakeSettings" disabled>Сохранить</button><p id="wakeStatus" role="status">Проверяем состояние…</p><p id="wakeLevel" role="status">Уровень микрофона: нет данных</p></section>
-<section><h2>Кнопка ассистента</h2><p>На этой прошивке Яндекс возвращает Алису как системного ассистента. Можно отдельно включить экспериментальную службу кнопки: в настройках специальных возможностей на станции выберите «Gemini Station — кнопка ассистента». Служба получает события клавиш и обрабатывает только кнопку голосового ассистента (231); содержимое экрана не читается. Включение необязательно, на работу системной Алисы и других её функций это может повлиять. Поддержка зависит от прошивки.</p><label for="buttonEnabled"><input type="checkbox" id="buttonEnabled" disabled>Включить вызов Gemini кнопкой 231</label><button id="saveButtonSettings" disabled>Сохранить настройки</button><p><small>Сохраняются все поля настроек на странице. Чтобы полностью прекратить получение событий клавиш, отключите службу также в системных настройках.</small></p><p id="buttonStatus" role="status">Проверяем состояние службы…</p></section>
-<section><h2>Журнал</h2><small>Последние 500 событий в памяти: этапы, время и ошибки без ключей и текста диалогов.</small><pre id="logs"></pre><button id="refresh" class="secondary">Обновить</button></section>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+ <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 2c1.1 5.8 4.2 8.9 10 10-5.8 1.1-8.9 4.2-10 10-1.1-5.8-4.2-8.9-10-10C7.8 10.9 10.9 7.8 12 2Z"/></symbol>
+ <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+ <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3M9 21h6"/></symbol>
+ <symbol id="i-screen" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 21h8M12 18v3M7 9h.01M11 9h.01M15 9h.01M7 13h.01M11 13h.01M15 13h.01"/></symbol>
+ <symbol id="i-log" viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></symbol>
+ <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></symbol>
+ <symbol id="i-volume" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4ZM16 9a5 5 0 0 1 0 6M18.5 6a9 9 0 0 1 0 12"/></symbol>
+ <symbol id="i-remote" viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="4"/><circle cx="12" cy="8" r="2"/><path d="M10 14h4M12 17.5h.01"/></symbol>
+ <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+ <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4.5 6v5c0 5 3.2 8.2 7.5 10 4.3-1.8 7.5-5 7.5-10V6L12 3ZM9 12l2 2 4-4"/></symbol>
+</svg>
+<div class="layout">
+ <aside class="sidebar" aria-label="Навигация">
+  <div class="brand"><span class="brand-mark"><svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="star-gradient" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#8ac1ff"/><stop offset=".55" stop-color="#c2a8ff"/><stop offset="1" stop-color="#f0b4da"/></linearGradient></defs><path fill="url(#star-gradient)" d="M12 1.5C13.15 7.4 16.6 10.85 22.5 12c-5.9 1.15-9.35 4.6-10.5 10.5C10.85 16.6 7.4 13.15 1.5 12 7.4 10.85 10.85 7.4 12 1.5Z"/></svg></span><div><div class="brand-name">Gemini Station</div><div class="brand-sub">Панель управления</div></div></div>
+  <div><p class="nav-label">Настройки</p><nav class="nav"><a href="#assistant"><svg class="icon"><use href="#i-grid"/></svg>Ассистент</a><a href="#activation"><svg class="icon"><use href="#i-mic"/></svg>Активация</a><a href="#display"><svg class="icon"><use href="#i-screen"/></svg>Экран станции</a><a href="#journal"><svg class="icon"><use href="#i-log"/></svg>Журнал</a></nav></div>
+  <div class="sidebar-foot"><strong>Локальное управление</strong>Настройки вашей станции<br>в одном месте.</div>
+ </aside>
+ <main class="main">
+  <header class="topbar"><div class="breadcrumb">Gemini Station <span class="crumb-sep">/</span> <b>Настройки</b></div><div class="connection"><span class="dot" id="connectionDot" data-state="loading"></span><span id="connectionStatus" role="status">Подключение…</span></div></header>
+  <div class="content">
+   <div class="intro"><div><p class="eyebrow">Панель управления</p><h1>Настройки станции</h1><p class="intro-copy">Настройте ассистента, голосовую активацию и экран вашей станции.</p></div><div class="local-badge"><svg class="icon"><use href="#i-shield"/></svg>Локальная сеть</div></div>
+   <div class="notice"><svg class="icon"><use href="#i-info"/></svg><p><strong>Доступ без пароля.</strong> Любой в локальной сети может изменять настройки и читать журнал. HTTP не шифруется — используйте только доверенную сеть и не открывайте порт в интернет.</p></div>
+   <p class="field-hint">Любая кнопка «Сохранить» применяет все изменённые настройки ассистента и активации на странице.</p>
+   <div class="overview" aria-label="Состояние станции">
+    <div class="overview-card"><div class="overview-top">ГОЛОС АССИСТЕНТА <svg class="icon"><use href="#i-volume"/></svg></div><div class="overview-value" id="overviewVoice">Загрузка…</div></div>
+    <div class="overview-card"><div class="overview-top">ГОЛОСОВАЯ АКТИВАЦИЯ <svg class="icon"><use href="#i-mic"/></svg></div><div class="overview-value" id="overviewWake">Загрузка…</div></div>
+    <div class="overview-card"><div class="overview-top">СЛУЖБА КНОПКИ <svg class="icon"><use href="#i-remote"/></svg></div><div class="overview-value" id="overviewButton">Загрузка…</div></div>
+   </div>
+   <section class="group" id="assistant" aria-labelledby="assistantTitle">
+    <div class="group-heading"><div><h2 id="assistantTitle">Ассистент</h2><p>Подключение к Gemini и голос ответов</p></div><span class="section-index">01 / 04</span></div>
+    <div class="cards">
+     <article class="card"><div class="card-head"><span class="card-icon"><svg class="icon"><use href="#i-sparkle"/></svg></span><div><h3>Gemini API</h3><p>Модель и ключ для работы ассистента.</p></div></div>
+      <div class="field"><label class="field-label" for="model">Модель</label><input id="model" autocomplete="off" spellcheck="false" disabled><p class="field-hint">Используется для ответов ассистента.</p></div>
+      <div class="field"><label class="field-label" for="key">API-ключ</label><input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="Оставьте пустым, чтобы не менять" disabled><p class="field-hint">Ключ хранится на станции в зашифрованном виде и не отображается повторно.</p></div>
+      <div class="actions"><button id="save" disabled>Сохранить изменения</button><button id="delete" class="danger" disabled>Удалить ключ</button></div><p class="status-message" id="message" role="status"></p>
+      <div class="privacy"><svg class="icon"><use href="#i-lock"/></svg><span>Gemini Live отправляет запрос и аудио в Gemini API и может расходовать квоту.</span></div>
+     </article>
+     <article class="card"><div class="card-head"><span class="card-icon blue"><svg class="icon"><use href="#i-volume"/></svg></span><div><h3>Голос ответа</h3><p>Выберите, как будет звучать ассистент.</p></div></div>
+      <div class="field"><label class="field-label" for="voice">Голос Gemini</label><select id="voice" disabled></select><p class="field-hint" id="savedVoice">Загружаем сохранённый голос…</p></div>
+      <div class="actions"><button id="sampleVoice" class="secondary" disabled>▶ &nbsp; Прослушать голос</button><button id="saveVoice" disabled>Сохранить голос</button></div><p class="status-message" id="voiceMessage" role="status"></p><p class="status-message" id="sampleStatus" role="status"></p><audio id="sampleAudio" controls hidden style="width:100%;margin-top:12px"></audio>
+      <div class="privacy"><svg class="icon"><use href="#i-info"/></svg><span>Образец запрашивается через Gemini TTS и может расходовать квоту. Выбор применяется со следующего ответа.</span></div>
+     </article>
+    </div>
+   </section>
+   <section class="group" id="activation" aria-labelledby="activationTitle">
+    <div class="group-heading"><div><h2 id="activationTitle">Активация</h2><p>Способы вызвать вашего ассистента</p></div><span class="section-index">02 / 04</span></div>
+    <div class="cards">
+     <article class="card"><div class="card-head"><span class="card-icon green"><svg class="icon"><use href="#i-mic"/></svg></span><div><h3>Голосовая активация</h3><p>«Гемини», «Джеминай» или «Джемини»</p></div><span class="tag">ЛОКАЛЬНО</span></div>
+      <div class="toggle-line"><div class="toggle-copy"><strong>Слушать фразу активации</strong><span>Обнаружение слова на самой станции</span></div><label class="switch"><input type="checkbox" id="wakeEnabled" aria-label="Включить голосовую активацию" disabled><span class="switch-track"></span></label></div>
+      <div class="divider"></div>
+      <div class="range-heading"><label class="row-label" for="wakeSensitivity">Чувствительность</label><span class="range-value" id="sensitivityValue">Средняя</span></div>
+      <input type="range" id="wakeSensitivity" min="0" max="2" step="1" value="1" aria-valuetext="Средняя" aria-describedby="sensitivityHint" disabled>
+      <div class="range-labels" aria-hidden="true"><span>Низкая</span><span>Средняя</span><span>Высокая</span></div>
+      <p class="field-hint" id="sensitivityHint">Высокая чувствительность лучше улавливает фразу, но может чаще срабатывать случайно.</p>
+      <div class="status-row"><span class="status-dot" id="wakeDot"></span><span id="wakeStatus" role="status">Проверяем состояние…</span></div>
+      <div class="level"><div class="level-title"><span>Уровень микрофона</span><span id="wakeLevel" role="status">Нет данных</span></div><div class="level-track" aria-hidden="true"><div class="level-bar" id="wakeMeter"></div></div></div>
+      <div class="actions"><button id="saveWakeSettings" disabled>Сохранить</button></div><p class="status-message" id="wakeMessage" role="status"></p>
+      <div class="privacy"><svg class="icon"><use href="#i-shield"/></svg><span>В ожидании звук обрабатывается локально и не сохраняется. Во время диалога используется Gemini Live. После перезагрузки служба попробует запуститься снова.</span></div>
+     </article>
+     <article class="card"><div class="card-head"><span class="card-icon amber"><svg class="icon"><use href="#i-remote"/></svg></span><div><h3>Кнопка ассистента</h3><p>Экспериментальная служба специальных возможностей.</p></div><span class="tag">ОПЦИОНАЛЬНО</span></div>
+      <div class="toggle-line"><div class="toggle-copy"><strong>Обрабатывать кнопку 231</strong><span>Требует подключения службы в Android</span></div><label class="switch"><input type="checkbox" id="buttonEnabled" aria-label="Включить вызов Gemini кнопкой 231" disabled><span class="switch-track"></span></label></div>
+      <div class="status-row"><span class="status-dot" id="buttonDot"></span><span id="buttonStatus" role="status">Проверяем состояние службы…</span></div>
+      <div class="actions"><button id="saveButtonSettings" disabled>Сохранить</button></div><p class="status-message" id="buttonMessage" role="status"></p>
+      <div class="divider"></div>
+      <div class="soft-block"><p><strong>Используете ADB-помощник для пульта?</strong> Он работает отдельно от этой службы. Её статус не показывает состояние ADB-помощника, и этот переключатель на него не влияет.</p></div>
+      <details><summary>Подробнее о службе кнопки</summary><p class="field-hint">Службу «Gemini Station — кнопка ассистента» нужно отдельно включить в системных специальных возможностях. Прошивка может блокировать подключение или перехватывать кнопку раньше. Содержимое экрана не читается. Для полного прекращения получения клавиш выключите службу и в системных настройках.</p></details>
+     </article>
+    </div>
+   </section>
+   <section class="group" id="display" aria-labelledby="displayTitle">
+    <div class="group-heading"><div><h2 id="displayTitle">Экран станции</h2><p>Подключение и управление передней LED-матрицей</p></div><span class="section-index">03 / 04</span></div>
+    <div class="cards"><article class="card full"><div class="card-head"><span class="card-icon blue"><svg class="icon"><use href="#i-screen"/></svg></span><div><h3>LED-экран</h3><p>Анимации Gemini на экране 25 × 16.</p></div><span class="tag">ЭКСПЕРИМЕНТАЛЬНО</span></div>
+     <div class="soft-block"><p><strong>Подключение через Яндекс.</strong> Отсканируйте QR-код телефоном и подтвердите вход. Пароль вводится только на стороне Яндекса, токен сохраняется на станции зашифрованным. Не показывайте QR-код посторонним: панель доступна без пароля и HTTP не шифруется.</p></div>
+     <div class="actions"><button id="qrStart">Войти по QR-коду</button><button id="qrCancel" class="secondary" hidden>Отменить вход</button></div>
+     <div class="qr-box" id="qrPanel" hidden><p>Отсканируйте QR-код телефоном и подтвердите вход в Яндексе.</p><img id="qrImage" alt="QR-код входа в Яндекс" width="300" height="300"><p id="qrStatus" role="status"></p></div>
+     <div class="qr-box" id="stationPanel" hidden><label class="field-label" for="station">Выберите свою Станцию Макс</label><select id="station"></select><div class="actions"><button id="chooseStation">Сохранить станцию</button></div></div>
+     <details><summary>Импортировать настройки Station Max Studio</summary><p class="field-hint"><strong>Файл содержит токен аккаунта Яндекса.</strong> Не отправляйте его никому. При импорте по сети токен передаётся по незашифрованному HTTP. Для безопасной передачи можно использовать ADB forward.</p><div class="field"><label class="field-label" for="studio">Файл settings.json</label><input id="studio" type="file" accept=".json,application/json"></div><div class="actions"><button id="importLed" class="secondary">Импортировать</button></div></details>
+     <div class="divider"></div><div class="actions"><button id="testLed" class="secondary">Проверить экран</button><button id="clearLed" class="secondary">Вернуть часы</button><button id="deleteLed" class="danger">Выйти из Яндекса</button></div><p class="status-message" id="ledMessage" role="status"></p>
+    </article></div>
+   </section>
+   <section class="group" id="journal" aria-labelledby="journalTitle">
+    <div class="group-heading"><div><h2 id="journalTitle">Журнал</h2><p>Диагностика и события приложения</p></div><span class="section-index">04 / 04</span></div>
+    <article class="card"><div class="log-head"><div><h3>Последние события</h3><p>До 500 записей в памяти, без API-ключей и текста диалогов.</p></div><button id="refresh" class="secondary">Обновить журнал</button></div><pre class="log-output" id="logs" aria-label="Журнал событий">Загружаем журнал…</pre></article>
+   </section>
+   <footer class="footer"><span><strong>Gemini Station</strong> · Панель управления</span><span>Работает в вашей локальной сети</span></footer>
+  </div>
+ </main>
 </div>
 <script>
 'use strict';
@@ -26,20 +181,49 @@ async function request(path,options={}){
  const response=await fetch(path,{...options,headers:options.body?{'Content-Type':'application/json','X-Gemini-Station':'1'}:{},cache:'no-store'});
  const data=await response.json(); if(!response.ok) throw new Error(data.message||'Ошибка'); return data;
 }
+const sensitivityLevels=['low','normal','high'];
+const sensitivityLabels=['Низкая','Средняя','Высокая'];
 let settingsLoaded=false, voiceDirty=false, buttonDirty=false, wakeDirty=false, wakeSensitivityDirty=false;
+function updateSensitivityVisual(){
+ const slider=el('wakeSensitivity');
+ const parsed=Number(slider.value), index=Number.isInteger(parsed)&&parsed>=0&&parsed<3?parsed:1;
+ el('sensitivityValue').textContent=sensitivityLabels[index];
+ slider.setAttribute('aria-valuetext',sensitivityLabels[index]);
+ slider.style.setProperty('--progress',(index*50)+'%');
+}
+function setSensitivity(value){
+ const index=sensitivityLevels.indexOf(value);
+ el('wakeSensitivity').value=String(index<0?1:index);
+ updateSensitivityVisual();
+}
+function getSensitivity(){
+ const index=Number(el('wakeSensitivity').value);
+ return Number.isInteger(index)&&index>=0&&index<3?sensitivityLevels[index]:'normal';
+}
+function setConnection(online){
+ el('connectionDot').setAttribute('data-state',online?'online':'offline');
+ el('connectionStatus').textContent=online?'Станция на связи':'Нет связи со станцией';
+}
 async function refresh(){try{
- const data=await request('/api/logs');el('logs').textContent=data.logs.join('\n');
+ const data=await request('/api/logs');setConnection(true);el('logs').textContent=data.logs.join('\n')||'Пока нет событий.';
  el('savedVoice').textContent='Сохранённый голос: '+data.voice;
+ el('overviewVoice').textContent=data.voice;
+ el('overviewWake').textContent=data.wakeEnabled?'Включена':'Выключена';
+ el('overviewButton').textContent=data.buttonServiceConnected?'Подключена':'Не подключена';
  el('wakeStatus').textContent=(data.wakeEnabled?'Включена. ':'Выключена. ')+(data.wakeStatus||'');
- el('wakeLevel').textContent=data.wakeRms>=0?'Уровень за 2 сек: RMS '+data.wakeRms+', пик '+data.wakePeak+' (0–32768)':'Уровень микрофона: нет данных';
- el('buttonStatus').textContent=(data.buttonServiceConnected?'Служба кнопки подключена.':'Служба кнопки не подключена.')+' Сохранённый перехват: '+(data.buttonEnabled?'включён':'выключен')+'.';
+ el('wakeDot').setAttribute('data-state',data.wakeEnabled&&String(data.wakeStatus||'').includes('запущен')?'online':'idle');
+ el('buttonStatus').textContent=(data.buttonServiceConnected?'Служба подключена.':'Служба не подключена.')+' Перехват: '+(data.buttonEnabled?'включён':'выключен')+'.';
+ el('buttonDot').setAttribute('data-state',data.buttonServiceConnected?'online':'idle');
+ el('wakeLevel').textContent=data.wakeRms>=0?'RMS '+data.wakeRms+' · пик '+data.wakePeak:'Нет данных';
+ const level=data.wakeRms>=0?Math.min(100,Math.round(Math.log10(data.wakeRms+1)/Math.log10(32769)*100)):0;
+ el('wakeMeter').style.width=level+'%';
  if(!settingsLoaded){
   el('model').value=data.model;const select=el('voice');select.textContent='';
   data.voices.forEach(voice=>{const option=document.createElement('option');option.value=voice;option.textContent=voice;select.appendChild(option)});
-  select.value=data.voice;select.disabled=false;el('buttonEnabled').checked=data.buttonEnabled;el('buttonEnabled').disabled=false;el('wakeEnabled').checked=data.wakeEnabled;el('wakeEnabled').disabled=false;el('wakeSensitivity').value=data.wakeSensitivity;el('wakeSensitivity').disabled=false;el('saveWakeSettings').disabled=false;el('save').disabled=false;el('saveButtonSettings').disabled=false;el('delete').disabled=false;el('sampleVoice').disabled=false;settingsLoaded=true;
- }else{if(!voiceDirty)el('voice').value=data.voice;if(!buttonDirty)el('buttonEnabled').checked=data.buttonEnabled;if(!wakeDirty)el('wakeEnabled').checked=data.wakeEnabled;if(!wakeSensitivityDirty)el('wakeSensitivity').value=data.wakeSensitivity}
+  select.value=data.voice;select.disabled=false;el('model').disabled=false;el('key').disabled=false;el('buttonEnabled').checked=data.buttonEnabled;el('buttonEnabled').disabled=false;el('wakeEnabled').checked=data.wakeEnabled;el('wakeEnabled').disabled=false;setSensitivity(data.wakeSensitivity);el('wakeSensitivity').disabled=false;el('saveWakeSettings').disabled=false;el('saveVoice').disabled=false;el('save').disabled=false;el('saveButtonSettings').disabled=false;el('delete').disabled=false;el('sampleVoice').disabled=false;settingsLoaded=true;
+ }else{if(!voiceDirty)el('voice').value=data.voice;if(!buttonDirty)el('buttonEnabled').checked=data.buttonEnabled;if(!wakeDirty)el('wakeEnabled').checked=data.wakeEnabled;if(!wakeSensitivityDirty)setSensitivity(data.wakeSensitivity)}
  return data;
-}catch(e){el('message').textContent=e.message;throw e}}
+}catch(e){setConnection(false);el('message').textContent=e.message;throw e}}
 let sampleUrl='';
 async function sampleVoice(){
  const voice=el('voice').value, button=el('sampleVoice'), audio=el('sampleAudio');
@@ -55,7 +239,17 @@ async function sampleVoice(){
  }catch(e){el('sampleStatus').textContent=e.message||'Не удалось загрузить образец'}
  finally{button.disabled=false}
 }
-async function save(remove){try{const voice=el('voice').value, buttonEnabled=el('buttonEnabled').checked, wakeEnabled=el('wakeEnabled').checked, wakeSensitivity=el('wakeSensitivity').value;await request('/api/config',{method:'POST',body:JSON.stringify({model:el('model').value,voice,buttonEnabled,wakeEnabled,wakeSensitivity,key:remove?'':el('key').value,deleteKey:remove})});if(el('voice').value===voice)voiceDirty=false;if(el('buttonEnabled').checked===buttonEnabled)buttonDirty=false;if(el('wakeEnabled').checked===wakeEnabled)wakeDirty=false;if(el('wakeSensitivity').value===wakeSensitivity)wakeSensitivityDirty=false;el('key').value='';el('message').textContent=remove?'Ключ удалён':'Настройки сохранены';await refresh()}catch(e){el('message').textContent=e.message}}
+async function save(remove,feedback='message'){
+ try{
+  const voice=el('voice').value, buttonEnabled=el('buttonEnabled').checked, wakeEnabled=el('wakeEnabled').checked, wakeSensitivity=getSensitivity();
+  await request('/api/config',{method:'POST',body:JSON.stringify({model:el('model').value,voice,buttonEnabled,wakeEnabled,wakeSensitivity,key:remove?'':el('key').value,deleteKey:remove})});
+  if(el('voice').value===voice)voiceDirty=false;
+  if(el('buttonEnabled').checked===buttonEnabled)buttonDirty=false;
+  if(el('wakeEnabled').checked===wakeEnabled)wakeDirty=false;
+  if(getSensitivity()===wakeSensitivity)wakeSensitivityDirty=false;
+  el('key').value='';el(feedback).textContent=remove?'Ключ удалён':'Настройки сохранены';await refresh();
+ }catch(e){el(feedback).textContent=e.message}
+}
 async function ledRequest(path,data){try{const result=await request(path,{method:'POST',body:JSON.stringify(data)});el('ledMessage').textContent=result.message;return result}catch(e){el('ledMessage').textContent=e.message;throw e}}
 let authRun=0, authId='';
 function clearAuthView(){el('qrPanel').hidden=true;el('stationPanel').hidden=true;el('qrCancel').hidden=true;el('qrImage').removeAttribute('src');el('qrStart').disabled=false;authId=''}
@@ -90,10 +284,12 @@ el('deleteLed').addEventListener('click',()=>{if(confirm('Удалить авт�
 el('voice').addEventListener('change',()=>{voiceDirty=true});
 el('buttonEnabled').addEventListener('change',()=>{buttonDirty=true});
 el('wakeEnabled').addEventListener('change',()=>{wakeDirty=true});
-el('wakeSensitivity').addEventListener('change',()=>{wakeSensitivityDirty=true});
-el('saveWakeSettings').addEventListener('click',()=>save(false));
+el('wakeSensitivity').addEventListener('input',()=>{wakeSensitivityDirty=true;updateSensitivityVisual()});
+el('wakeSensitivity').addEventListener('change',()=>{wakeSensitivityDirty=true;updateSensitivityVisual()});
+el('saveWakeSettings').addEventListener('click',()=>save(false,'wakeMessage'));
+el('saveVoice').addEventListener('click',()=>save(false,'voiceMessage'));
 el('sampleVoice').addEventListener('click',()=>sampleVoice());
-el('saveButtonSettings').addEventListener('click',()=>save(false));
+el('saveButtonSettings').addEventListener('click',()=>save(false,'buttonMessage'));
 el('save').addEventListener('click',()=>save(false));el('delete').addEventListener('click',()=>{if(confirm('Удалить API-ключ?'))save(true)});el('refresh').addEventListener('click',()=>refresh().catch(()=>{}));
 refresh().catch(()=>{});
 setInterval(()=>refresh().catch(()=>{}),5000);
