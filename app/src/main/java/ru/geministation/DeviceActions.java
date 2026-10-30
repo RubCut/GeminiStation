@@ -80,7 +80,7 @@ final class DeviceActions {
             AppLog.add("Действие: изменена громкость мультимедиа");
         }
         int percent = Math.round(before * 100f / max);
-        return new Outcome("Громкость " + percent + процентов.", null);
+        return new Outcome("Громкость " + percent + " процентов.", null);
     }
     private boolean canOpen(Intent intent) {
         ResolveInfo resolved = activity.getPackageManager().resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY);
