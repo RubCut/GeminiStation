@@ -68,7 +68,7 @@ button.danger{background:transparent;color:#e2aeb0;border-color:#4a373e}button.d
 .toggle-line{display:flex;align-items:center;justify-content:space-between;gap:16px}.toggle-copy strong{display:block;font-size:13px;color:#e9eaf2}.toggle-copy span{display:block;font-size:12px;color:var(--muted);margin-top:4px}
 .switch{position:relative;display:inline-flex;flex:none;align-items:center;cursor:pointer}.switch input{position:absolute;opacity:0;width:1px;height:1px}.switch-track{display:block;width:42px;height:24px;background:#3a3e4d;border-radius:20px;transition:background .18s;box-shadow:inset 0 0 0 1px #525665}.switch-track:after{content:"";display:block;width:18px;height:18px;border-radius:50%;background:#dddfe6;transform:translate(3px,3px);transition:transform .18s}.switch input:checked+.switch-track{background:#bba8fb;box-shadow:none}.switch input:checked+.switch-track:after{transform:translate(21px,3px);background:#201835}.switch input:focus-visible+.switch-track{outline:2px solid var(--accent);outline-offset:3px}.switch input:disabled+.switch-track{opacity:.45;cursor:not-allowed}
 .divider{height:1px;background:#303340;margin:20px 0}
-.range-heading{display:flex;align-items:center;justify-content:space-between;gap:10px}.range-heading .row-label{margin:0}.range-value{font-size:11px;color:#d7caff;font-weight:700;background:#2d2940;border:1px solid #45405e;border-radius:7px;padding:4px 9px}
+.range-heading{display:flex;align-items:center;justify-content:space-between;gap:10px}.range-heading .row-label{margin:0}.range-input{display:flex;align-items:center;gap:6px;color:#d7caff;font-weight:700}.range-input input[type="number"]{width:76px;min-height:36px;padding:6px 8px;text-align:center;font-size:13px}.range-input input[aria-invalid="true"]{border-color:var(--red)}.range-error{color:var(--red);font-size:12px;margin-top:7px}.range-error:empty{display:none}
 input[type="range"]{appearance:none;-webkit-appearance:none;width:100%;height:5px;border-radius:9px;margin:19px 0 5px;background:linear-gradient(to right,#bba8fb 0%,#bba8fb var(--progress,50%),#393d4c var(--progress,50%),#393d4c 100%);cursor:pointer}
 input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:#e0d6ff;border:3px solid #a592e5;box-shadow:0 1px 5px #0008}input[type="range"]::-moz-range-thumb{width:11px;height:11px;border-radius:50%;background:#e0d6ff;border:3px solid #a592e5}input[type="range"]:disabled{opacity:.45;cursor:not-allowed}
 .range-labels{display:flex;justify-content:space-between;color:#858b9c;font-size:10px;margin-top:5px}
@@ -140,10 +140,11 @@ details{margin-top:18px;border-top:1px solid #303441;padding-top:16px}summary{co
      <article class="card"><div class="card-head"><span class="card-icon green"><svg class="icon"><use href="#i-mic"/></svg></span><div><h3>Голосовая активация</h3><p>«Гемини», «Джеминай» или «Джемини»</p></div><span class="tag">ЛОКАЛЬНО</span></div>
       <div class="toggle-line"><div class="toggle-copy"><strong>Слушать фразу активации</strong><span>Обнаружение слова на самой станции</span></div><label class="switch"><input type="checkbox" id="wakeEnabled" aria-label="Включить голосовую активацию" disabled><span class="switch-track"></span></label></div>
       <div class="divider"></div>
-      <div class="range-heading"><label class="row-label" for="wakeSensitivity">Чувствительность</label><span class="range-value" id="sensitivityValue">Средняя</span></div>
-      <input type="range" id="wakeSensitivity" min="0" max="2" step="1" value="1" aria-valuetext="Средняя" aria-describedby="sensitivityHint" disabled>
-      <div class="range-labels" aria-hidden="true"><span>Низкая</span><span>Средняя</span><span>Высокая</span></div>
-      <p class="field-hint" id="sensitivityHint">Высокая чувствительность лучше улавливает фразу, но может чаще срабатывать случайно.</p>
+      <div class="range-heading"><label class="row-label" for="wakeSensitivity">Чувствительность</label><div class="range-input"><input type="number" id="sensitivityNumber" min="1" max="100" step="1" value="50" inputmode="numeric" aria-label="Чувствительность в процентах" aria-describedby="sensitivityHint" disabled><span aria-hidden="true">%</span></div></div>
+      <input type="range" id="wakeSensitivity" min="1" max="100" step="1" value="50" aria-valuetext="50%" aria-describedby="sensitivityHint" disabled>
+      <div class="range-labels" aria-hidden="true"><span>1%</span><span>50%</span><span>100%</span></div>
+      <p class="field-hint" id="sensitivityHint">Выберите ползунком или введите целое число от 1 до 100. Чем выше значение, тем вероятнее случайные срабатывания.</p>
+      <p class="range-error" id="sensitivityError" role="status"></p>
       <div class="status-row"><span class="status-dot" id="wakeDot"></span><span id="wakeStatus" role="status">Проверяем состояние…</span></div>
       <div class="level"><div class="level-title"><span>Уровень микрофона</span><span id="wakeLevel" role="status">Нет данных</span></div><div class="level-track" aria-hidden="true"><div class="level-bar" id="wakeMeter"></div></div></div>
       <div class="actions"><button id="saveWakeSettings" disabled>Сохранить</button></div><p class="status-message" id="wakeMessage" role="status"></p>
@@ -185,24 +186,36 @@ async function request(path,options={}){
  const response=await fetch(path,{...options,headers:options.body?{'Content-Type':'application/json','X-Gemini-Station':'1'}:{},cache:'no-store'});
  const data=await response.json(); if(!response.ok) throw new Error(data.message||'Ошибка'); return data;
 }
-const sensitivityLevels=['low','normal','high'];
-const sensitivityLabels=['Низкая','Средняя','Высокая'];
 let settingsLoaded=false, voiceDirty=false, buttonDirty=false, wakeDirty=false, wakeSensitivityDirty=false, keyBusy=false, keyIds=null;
+function validSensitivity(value){return /^(?:[1-9]|[1-9][0-9]|100)$/.test(value)}
+function sensitivityError(message){
+ el('sensitivityError').textContent=message;
+ el('sensitivityNumber').setAttribute('aria-invalid',message?'true':'false');
+}
 function updateSensitivityVisual(){
- const slider=el('wakeSensitivity');
- const parsed=Number(slider.value), index=Number.isInteger(parsed)&&parsed>=0&&parsed<3?parsed:1;
- el('sensitivityValue').textContent=sensitivityLabels[index];
- slider.setAttribute('aria-valuetext',sensitivityLabels[index]);
- slider.style.setProperty('--progress',(index*50)+'%');
+ const slider=el('wakeSensitivity'), value=Number(slider.value);
+ slider.setAttribute('aria-valuetext',slider.value+'%');
+ slider.style.setProperty('--progress',((value-1)/99*100)+'%');
 }
 function setSensitivity(value){
- const index=sensitivityLevels.indexOf(value);
- el('wakeSensitivity').value=String(index<0?1:index);
- updateSensitivityVisual();
+ const legacy={low:'1',normal:'50',high:'100'};
+ const percent=legacy[value]||String(value);
+ const safe=validSensitivity(percent)?percent:'50';
+ el('wakeSensitivity').value=safe;el('sensitivityNumber').value=safe;
+ sensitivityError('');updateSensitivityVisual();
 }
 function getSensitivity(){
- const index=Number(el('wakeSensitivity').value);
- return Number.isInteger(index)&&index>=0&&index<3?sensitivityLevels[index]:'normal';
+ const value=el('sensitivityNumber').value;
+ return validSensitivity(value)?value:null;
+}
+function sliderChanged(){
+ wakeSensitivityDirty=true;el('sensitivityNumber').value=el('wakeSensitivity').value;
+ sensitivityError('');updateSensitivityVisual();
+}
+function numberChanged(){
+ wakeSensitivityDirty=true;const value=getSensitivity();
+ if(value===null){sensitivityError('Введите целое число от 1 до 100.');return}
+ sensitivityError('');el('wakeSensitivity').value=value;updateSensitivityVisual();
 }
 function setConnection(online){
  el('connectionDot').setAttribute('data-state',online?'online':'offline');
@@ -236,7 +249,7 @@ async function refresh(){try{
  if(!settingsLoaded){
   el('model').value=data.model;const select=el('voice');select.textContent='';
   data.voices.forEach(voice=>{const option=document.createElement('option');option.value=voice;option.textContent=voice;select.appendChild(option)});
-  select.value=data.voice;select.disabled=false;el('model').disabled=false;el('key').disabled=false;el('buttonEnabled').checked=data.buttonEnabled;el('buttonEnabled').disabled=false;el('wakeEnabled').checked=data.wakeEnabled;el('wakeEnabled').disabled=false;setSensitivity(data.wakeSensitivity);el('wakeSensitivity').disabled=false;el('saveWakeSettings').disabled=false;el('saveVoice').disabled=false;el('save').disabled=false;el('saveButtonSettings').disabled=false;el('sampleVoice').disabled=false;settingsLoaded=true;
+  select.value=data.voice;select.disabled=false;el('model').disabled=false;el('key').disabled=false;el('buttonEnabled').checked=data.buttonEnabled;el('buttonEnabled').disabled=false;el('wakeEnabled').checked=data.wakeEnabled;el('wakeEnabled').disabled=false;setSensitivity(data.wakeSensitivity);el('wakeSensitivity').disabled=false;el('sensitivityNumber').disabled=false;el('saveWakeSettings').disabled=false;el('saveVoice').disabled=false;el('save').disabled=false;el('saveButtonSettings').disabled=false;el('sampleVoice').disabled=false;settingsLoaded=true;
  }else{if(!voiceDirty)el('voice').value=data.voice;if(!buttonDirty)el('buttonEnabled').checked=data.buttonEnabled;if(!wakeDirty)el('wakeEnabled').checked=data.wakeEnabled;if(!wakeSensitivityDirty)setSensitivity(data.wakeSensitivity)}
  return data;
 }catch(e){setConnection(false);el('message').textContent=e.message;throw e}}
@@ -258,6 +271,7 @@ async function sampleVoice(){
 async function save(remove,feedback='message'){
  try{
   const voice=el('voice').value, buttonEnabled=el('buttonEnabled').checked, wakeEnabled=el('wakeEnabled').checked, wakeSensitivity=getSensitivity();
+  if(wakeSensitivity===null){sensitivityError('Введите целое число от 1 до 100.');el('sensitivityNumber').focus();return}
   await request('/api/config',{method:'POST',body:JSON.stringify({model:el('model').value,voice,buttonEnabled,wakeEnabled,wakeSensitivity,key:'',deleteKey:remove})});
   if(el('voice').value===voice)voiceDirty=false;
   if(el('buttonEnabled').checked===buttonEnabled)buttonDirty=false;
@@ -300,8 +314,10 @@ el('deleteLed').addEventListener('click',()=>{if(confirm('Удалить авт�
 el('voice').addEventListener('change',()=>{voiceDirty=true});
 el('buttonEnabled').addEventListener('change',()=>{buttonDirty=true});
 el('wakeEnabled').addEventListener('change',()=>{wakeDirty=true});
-el('wakeSensitivity').addEventListener('input',()=>{wakeSensitivityDirty=true;updateSensitivityVisual()});
-el('wakeSensitivity').addEventListener('change',()=>{wakeSensitivityDirty=true;updateSensitivityVisual()});
+el('wakeSensitivity').addEventListener('input',sliderChanged);
+el('wakeSensitivity').addEventListener('change',sliderChanged);
+el('sensitivityNumber').addEventListener('input',numberChanged);
+el('sensitivityNumber').addEventListener('change',numberChanged);
 el('saveWakeSettings').addEventListener('click',()=>save(false,'wakeMessage'));
 el('saveVoice').addEventListener('click',()=>save(false,'voiceMessage'));
 el('sampleVoice').addEventListener('click',()=>sampleVoice());

@@ -13,7 +13,8 @@ for (const [, id] of script.matchAll(/\bel\('([^']+)'\)/g)) {
 for (const [, id] of markup.matchAll(/(?:href|for|aria-describedby|aria-labelledby)="#?([\w-]+)"/g)) {
   assert.ok(ids.includes(id), `missing anchor or label target: ${id}`);
 }
-assert.match(markup, /<input type="range" id="wakeSensitivity" min="0" max="2" step="1"/);
+assert.match(markup, /<input type="range" id="wakeSensitivity" min="1" max="100" step="1"/);
+assert.match(markup, /<input type="number" id="sensitivityNumber" min="1" max="100" step="1"/);
 const saved = {model:'gemini-3.5-flash-lite', voice:'Kore', voices:['Kore','Puck','Aoede'], logs:[], buttonEnabled:false, buttonServiceConnected:false, wakeEnabled:false, wakeStatus:"Выключена", wakeSensitivity:"normal", wakeRms:-1, wakePeak:-1, apiKeys:[{id:"11111111-1111-4111-8111-111111111111"}]};
 const writes = [], samples = [];
 let sampleError = false, blockPlayback = false, revoked = [];
@@ -24,7 +25,7 @@ function page() {
       const node = {value:'',_text:'',disabled:false,children:[],handlers:{},attributes:{},style:{setProperty(name,value){this[name]=value}},
         setAttribute(name,value){this.attributes[name]=value}, addEventListener(type, fn){this.handlers[type]=fn},
         appendChild(child){this.children.push(child);if(id==='keyList'&&this.children.length===1)this.value=child.value},
-        removeAttribute() {}, play:async()=>{if(blockPlayback)throw Error('blocked')}};
+        removeAttribute() {}, focus(){this.focused=true}, play:async()=>{if(blockPlayback)throw Error('blocked')}};
       Object.defineProperty(node,'textContent',{get(){return this._text},set(value){this._text=value;this.children=[];if(id==='keyList')this.value=''}});
       nodes.set(id,node);
     }
@@ -83,28 +84,30 @@ function page() {
   sampleError=true; await vm.runInContext('sampleVoice()',p.context); sampleError=false;
   assert.equal(p.element('sampleStatus').textContent,'Нет ключа');
   assert.equal(p.element('sampleVoice').disabled,false);
-  p.element('wakeSensitivity').value='2'; p.element('wakeSensitivity').handlers.input();
-  assert.equal(p.element('sensitivityValue').textContent,'Высокая');
-  assert.equal(p.element('wakeSensitivity').attributes['aria-valuetext'],'Высокая');
+  assert.equal(p.element('wakeSensitivity').value,'50','old normal setting migrates to 50%');
+  assert.equal(p.element('sensitivityNumber').value,'50');
+  p.element('wakeSensitivity').value='100'; p.element('wakeSensitivity').handlers.input();
+  assert.equal(p.element('sensitivityNumber').value,'100');
+  assert.equal(p.element('wakeSensitivity').attributes['aria-valuetext'],'100%');
   p.element('wakeEnabled').checked=true; p.element('wakeEnabled').handlers.change();
   await vm.runInContext('refresh()',p.context);
   assert.equal(p.element('wakeEnabled').checked,true,'poll must not discard an unsaved wake setting');
-  assert.equal(p.element('wakeSensitivity').value,'2','poll must not discard sensitivity edits');
+  assert.equal(p.element('wakeSensitivity').value,'100','poll must not discard sensitivity edits');
   p.element('buttonEnabled').checked=true; p.element('buttonEnabled').handlers.change();
   await vm.runInContext('refresh()',p.context);
   assert.equal(p.element('buttonEnabled').checked,true,'poll must not discard an unsaved button setting');
   await vm.runInContext('save(false)',p.context);
   assert.equal(writes.at(-1).buttonEnabled,true);
   assert.equal(writes.at(-1).wakeEnabled,true);
-  assert.equal(writes.at(-1).wakeSensitivity,'high');
+  assert.equal(writes.at(-1).wakeSensitivity,'100');
   assert.equal(writes.at(-1).voice,'Puck');
   assert.equal(saved.voice,'Puck');
   p=page(); await vm.runInContext('refresh()',p.context);
   assert.equal(p.element('voice').value,'Puck', 'reload restores the saved voice');
   assert.equal(p.element('buttonEnabled').checked,true, 'reload restores the button setting');
   assert.equal(p.element('wakeEnabled').checked,true, 'reload restores the wake setting');
-  assert.equal(p.element('wakeSensitivity').value,'2', 'reload restores sensitivity');
-  assert.equal(p.element('sensitivityValue').textContent,'Высокая');
+  assert.equal(p.element('wakeSensitivity').value,'100', 'reload restores sensitivity');
+  assert.equal(p.element('sensitivityNumber').value,'100');
   assert.equal(p.element('wakeSensitivity').style['--progress'],'100%');
   saved.wakeRms=123; saved.wakePeak=456; await vm.runInContext('refresh()',p.context);
   assert.match(p.element('wakeLevel').textContent,/RMS 123 · пик 456/);
@@ -112,14 +115,31 @@ function page() {
   assert.equal(p.element('connectionStatus').textContent,'Станция на связи');
   saved.voice='Aoede'; await vm.runInContext('refresh()',p.context);
   assert.equal(p.element('voice').value,'Aoede', 'other saved changes update an unedited selector');
-  p.element('wakeSensitivity').value='0'; p.element('wakeSensitivity').handlers.input();
-  await vm.runInContext('save(false, \"wakeMessage\")',p.context);
-  assert.equal(writes.at(-1).wakeSensitivity,'low');
-  assert.equal(p.element('sensitivityValue').textContent,'Низкая');
+  for (const value of ['', '0', '101', '1.5', '-1']) {
+    p.element('sensitivityNumber').value=value;p.element('sensitivityNumber').handlers.input();
+    const count=writes.length;await vm.runInContext('save(false, "wakeMessage")',p.context);
+    assert.equal(writes.length,count,'invalid manual value must not be saved');
+    assert.match(p.element('sensitivityError').textContent,/от 1 до 100/);
+    assert.equal(p.element('sensitivityNumber').attributes['aria-invalid'],'true');
+    await vm.runInContext('refresh()',p.context);
+    assert.equal(p.element('sensitivityNumber').value,value,'poll must not discard invalid in-progress edits');
+  }
+  p.element('sensitivityNumber').value='73';p.element('sensitivityNumber').handlers.input();
+  assert.equal(p.element('wakeSensitivity').value,'73','manual input moves slider');
+  assert.equal(p.element('sensitivityError').textContent,'');
+  await vm.runInContext('save(false, "wakeMessage")',p.context);
+  assert.equal(writes.at(-1).wakeSensitivity,'73');
   assert.equal(p.element('wakeMessage').textContent,'Настройки сохранены');
-  p.element('wakeSensitivity').value='1'; p.element('wakeSensitivity').handlers.change();
-  await vm.runInContext('save(false)',p.context);
-  assert.equal(writes.at(-1).wakeSensitivity,'normal');
+  for (let percent=1;percent<=100;percent++) {
+    p.element('wakeSensitivity').value=String(percent);p.element('wakeSensitivity').handlers.input();
+    assert.equal(p.element('sensitivityNumber').value,String(percent));
+    await vm.runInContext('save(false)',p.context);
+    assert.equal(writes.at(-1).wakeSensitivity,String(percent));
+  }
+  saved.wakeSensitivity='high';p=page();await vm.runInContext('refresh()',p.context);
+  assert.equal(p.element('sensitivityNumber').value,'100','old high setting migrates to 100%');
+  saved.wakeSensitivity='low';p=page();await vm.runInContext('refresh()',p.context);
+  assert.equal(p.element('sensitivityNumber').value,'1','old low setting migrates to 1%');
   await vm.runInContext('save(true)',p.context);
   assert.equal(writes.at(-1).voice,'Aoede', 'deleting the key preserves the selected voice');
   console.log('Voice settings UI test passed');
