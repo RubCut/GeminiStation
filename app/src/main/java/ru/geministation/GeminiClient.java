@@ -27,7 +27,8 @@ final class GeminiClient {
         TimedDns cachedDns = new TimedDns(dns, System::nanoTime, () -> AppLog.add("DNS WebShift: ответ из кэша (до 60 с)"));
         client = bootstrap.newBuilder().dns(cachedDns).readTimeout(90, TimeUnit.SECONDS)
                 .eventListenerFactory(call -> new NetworkDiagnostics(
-                        "speech".equals(call.request().tag(String.class)) ? "Gemini TTS" : "Gemini текст", cachedDns::clear)).build();
+                        "speech".equals(call.request().tag(String.class)) ? "Gemini TTS" :
+                                "transcribe".equals(call.request().tag(String.class)) ? "Gemini Live" : "Gemini текст", cachedDns::clear)).build();
     }
     String generate(String apiKey, String model, JSONArray history) throws Exception {
         if (!model.matches("[A-Za-z0-9._-]{1,80}")) throw new IOException("Неверное имя модели");
@@ -100,6 +101,12 @@ final class GeminiClient {
             }
             throw new IOException("Gemini TTS returned no audio");
         }
+    }
+    okhttp3.WebSocket openTranscriptionSocket(String apiKey, okhttp3.WebSocketListener listener) {
+        Request request = new Request.Builder()
+                .url("wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent")
+                .tag(String.class, "transcribe").header("x-goog-api-key", apiKey).build();
+        return client.newWebSocket(request, listener);
     }
     void cancelSpeech() {
         for (okhttp3.Call call : client.dispatcher().queuedCalls()) if ("speech".equals(call.request().tag(String.class))) call.cancel();

@@ -48,6 +48,7 @@ public final class MainActivity extends Activity {
     private GeminiClient client;
     private SecretStore secrets;
     private SpeechRecognizer recognizer;
+    private LiveTranscriber liveTranscriber;
     private TextView text;
     private ImageView logo;
     private ObjectAnimator spin;
@@ -81,29 +82,30 @@ public final class MainActivity extends Activity {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.HORIZONTAL);
         root.setGravity(Gravity.BOTTOM | Gravity.START);
-        root.setPadding(dp(32), dp(16), dp(32), dp(32));
+        root.setPadding(dp(24), dp(8), dp(24), dp(24));
         root.setBackgroundColor(Color.TRANSPARENT);
         root.setFocusableInTouchMode(true);
         logo = new ImageView(this);
         logo.setImageResource(ru.geministation.R.drawable.gemini_star);
         logo.setContentDescription("Gemini");
-        LinearLayout.LayoutParams logoParams = new LinearLayout.LayoutParams(dp(60), dp(60));
+        LinearLayout.LayoutParams logoParams = new LinearLayout.LayoutParams(dp(32), dp(32));
         logoParams.gravity = Gravity.BOTTOM;
         root.addView(logo, logoParams);
         text = new TextView(this);
         text.setTextColor(Color.WHITE);
-        text.setTextSize(23);
+        text.setTextSize(16);
         text.setGravity(Gravity.CENTER_VERTICAL);
-        text.setPadding(dp(18), dp(14), dp(18), dp(14));
-        text.setMaxLines(5);
+        text.setPadding(dp(12), dp(8), dp(12), dp(8));
+        text.setMaxWidth(dp(420));
+        text.setMaxLines(4);
         text.setEllipsize(TextUtils.TruncateAt.END);
         GradientDrawable background = new GradientDrawable();
         background.setColor(0xd91b1926);
-        background.setCornerRadius(dp(18));
+        background.setCornerRadius(dp(12));
         text.setBackground(background);
-        LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(0, -2, 1);
+        LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(-2, -2);
         textParams.gravity = Gravity.BOTTOM;
-        textParams.setMarginStart(dp(16));
+        textParams.setMarginStart(dp(10));
         root.addView(text, textParams);
         setContentView(root);
         getWindow().setBackgroundDrawableResource(android.R.color.transparent);
@@ -243,6 +245,7 @@ public final class MainActivity extends Activity {
     private void cancelRecognition() {
         recognitionAttempt++;
         clearRecognitionTimeout();
+        if (liveTranscriber != null) { liveTranscriber.cancel(); liveTranscriber = null; }
         if (recognizer != null && listening) { try { recognizer.cancel(); } catch (RuntimeException ignored) { } }
         listening = false; waitingForFinal = false;
     }
@@ -274,22 +277,28 @@ public final class MainActivity extends Activity {
         handler.postDelayed(recognitionTimeout, FINAL_RESULT_TIMEOUT_MS);
     }
     private void finishVoiceInput() {
-        if (!listening || waitingForFinal || recognizer == null) return;
+        if (!listening || waitingForFinal) return;
+        if (liveTranscriber == null && recognizer == null) return;
         waitingForFinal = true;
         speechEnded = SystemClock.elapsedRealtime();
         AppLog.add("Речь #" + recognitionAttempt + ": ручное завершение через " + recognitionElapsed() + " мс");
         scheduleFinalTimeout(recognitionAttempt);
+        if (liveTranscriber != null) { liveTranscriber.finishInput(); return; }
         try { recognizer.stopListening(); }
         catch (RuntimeException e) { AppLog.add("Речь: ошибка stopListening " + e.getClass().getSimpleName()); showErrorAndClose("Не удалось завершить распознавание."); }
     }
     private void startListening(final boolean followUp) {
         if (destroyed || !resumed || listening) return;
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) { showErrorAndClose("Нет доступа к микрофону."); return; }
-        if (!SpeechRecognizer.isRecognitionAvailable(this)) { showErrorAndClose("Распознаватель речи недоступен."); return; }
         final int attempt = ++recognitionAttempt;
         recognitionStarted = SystemClock.elapsedRealtime(); speechEnded = 0; partialCount = 0; heardSpeech = false;
         // Keep the answer on screen during follow-up silence; replace it as soon as speech begins.
         if (!followUp) showText("Слушаю…");
+        if ("gemini_live".equals(AppSettings.recognition(this))) {
+            startLiveRecognition(attempt, followUp);
+            return;
+        }
+        if (!SpeechRecognizer.isRecognitionAvailable(this)) { showErrorAndClose("Распознаватель речи недоступен."); return; }
         try {
             String component = Settings.Secure.getString(getContentResolver(), "voice_recognition_service");
             ComponentName name = component == null ? null : ComponentName.unflattenFromString(component);
@@ -365,6 +374,54 @@ public final class MainActivity extends Activity {
             AppLog.add("Речь #" + attempt + ": ошибка запуска " + e.getClass().getSimpleName());
             finishRecognition(); showErrorAndClose("Не удалось запустить распознавание речи.");
         }
+    }
+    private void startLiveRecognition(final int attempt, final boolean followUp) {
+        final String key;
+        try { key = secrets.load(); }
+        catch (Exception e) { showErrorAndClose("Не удалось прочитать API-ключ."); return; }
+        if (key.isEmpty()) { showErrorAndClose("Добавьте API-ключ в веб-интерфейсе на порту 6529."); return; }
+        listening = true; waitingForFinal = false;
+        AppLog.add("Речь #" + attempt + ": режим Gemini Live" + (followUp ? "; продолжение" : "; первый запрос"));
+        liveTranscriber = new LiveTranscriber(client, key, new LiveTranscriber.Listener() {
+            private boolean active() { return listening && recognitionAttempt == attempt; }
+            public void onReady() {
+                if (!active()) return;
+                AppLog.add("Речь #" + attempt + ": прямой микрофон готов через " + recognitionElapsed() + " мс");
+                if (!heardSpeech && !waitingForFinal) scheduleNoSpeechTimeout(attempt, followUp ? FOLLOW_UP_SILENCE_MS : INITIAL_SILENCE_MS);
+            }
+            public void onPartial(String value) {
+                if (!active()) return;
+                boolean firstSpeech = !heardSpeech;
+                heardSpeech = true;
+                if (firstSpeech && !waitingForFinal) scheduleSpeechDeadline(attempt);
+                partialCount++;
+                if (partialCount == 1) AppLog.add("Речь #" + attempt + ": первая промежуточная расшифровка через " + recognitionElapsed() + " мс");
+                showText(value);
+            }
+            public void onFinal(String value) {
+                if (!active()) return;
+                AppLog.add("Речь #" + attempt + ": итог Gemini Live через " + recognitionElapsed() + " мс; частичных " + partialCount);
+                finishRecognition();
+                liveTranscriber = null;
+                submit(value);
+            }
+            public void onError(String message) {
+                if (!active()) return;
+                AppLog.add("Речь #" + attempt + ": ошибка Gemini Live");
+                finishRecognition();
+                liveTranscriber = null;
+                showErrorAndClose(message + ". Подробности — в веб-логах.");
+            }
+        });
+        // Connection startup is separate from the no-speech timer; a slow DNS lookup must not end the dialog.
+        clearRecognitionTimeout();
+        recognitionTimeout = () -> {
+            if (!listening || attempt != recognitionAttempt) return;
+            AppLog.add("Речь #" + attempt + ": таймаут подключения Gemini Live (20 с)");
+            showErrorAndClose("Не удалось подключить Gemini Live. Проверьте сеть и логи.");
+        };
+        handler.postDelayed(recognitionTimeout, 20000);
+        liveTranscriber.start();
     }
     private static String recognitionErrorName(int error) {
         switch (error) {

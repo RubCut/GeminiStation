@@ -105,7 +105,7 @@ public final class WebServerService extends Service {
             if (!path.startsWith("/api/")) return json(Response.Status.NOT_FOUND, "Не найдено");
             try {
                 if (session.getMethod() == Method.GET && "/api/logs".equals(path)) {
-                    JSONObject result = new JSONObject().put("logs", AppLog.snapshot()).put("model", AppSettings.model(context));
+                    JSONObject result = new JSONObject().put("logs", AppLog.snapshot()).put("model", AppSettings.model(context)).put("recognition", AppSettings.recognition(context));
                     return reply(Response.Status.OK, "application/json; charset=utf-8", result.toString());
                 }
                 if (session.getMethod() == Method.POST && "/api/config".equals(path)) {
@@ -121,12 +121,13 @@ public final class WebServerService extends Service {
                     JSONObject data = new JSONObject(files.get("postData"));
                     String model = data.optString("model", "").trim();
                     String key = data.optString("key", "").trim();
+                    String recognition = data.optString("recognition", AppSettings.recognition(context));
                     boolean deleteKey = data.optBoolean("deleteKey", false);
-                    if (!AppSettings.validModel(model) || key.length() > 512 || (deleteKey && !key.isEmpty()))
+                    if (!AppSettings.validModel(model) || !AppSettings.validRecognition(recognition) || key.length() > 512 || (deleteKey && !key.isEmpty()))
                         return json(Response.Status.BAD_REQUEST, "Некорректные настройки");
                     SecretStore store = new SecretStore(context);
                     if (deleteKey) store.clear(); else if (!key.isEmpty()) store.save(key);
-                    if (!AppSettings.saveModel(context, model)) return json(Response.Status.INTERNAL_ERROR, "Не удалось сохранить модель");
+                    if (!AppSettings.saveModel(context, model) || !AppSettings.saveRecognition(context, recognition)) return json(Response.Status.INTERNAL_ERROR, "Не удалось сохранить настройки");
                     AppLog.add(deleteKey ? "API-ключ удалён через веб-интерфейс" : "Настройки сохранены через веб-интерфейс");
                     return json(Response.Status.OK, "Настройки сохранены");
                 }
