@@ -61,12 +61,13 @@ public final class MainActivity extends Activity {
         buildUi();
         try { startForegroundService(new Intent(this, WebServerService.class)); }
         catch (RuntimeException e) { AppLog.add("Веб-сервер: ошибка запуска " + e.getClass().getSimpleName()); }
-        AppLog.add("Диалог: ассистент открыт");
+        AppLog.add("Диалог: ассистент открыт" + (AssistantInvocations.isInvocation(getIntent().getAction()) ? " (системный вызов)" : ""));
     }
     @Override protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
-        if (!Intent.ACTION_ASSIST.equals(intent.getAction())) return;
+        if (!AssistantInvocations.isInvocation(intent.getAction())) return;
+        AppLog.add("Диалог: повторный системный вызов ассистента");
         if (listening) finishVoiceInput();
         else if (flow.phase() == ConversationFlow.Phase.SPEAKING) {
             stopSpeaking();
