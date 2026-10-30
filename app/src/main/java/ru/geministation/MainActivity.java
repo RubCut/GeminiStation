@@ -36,6 +36,7 @@ public final class MainActivity extends Activity {
     private final ExecutorService speechExecutor = Executors.newSingleThreadExecutor();
     private final AtomicInteger speechGeneration = new AtomicInteger();
     private final VoicePlayer voicePlayer = new VoicePlayer();
+    private SoundCuePlayer soundCuePlayer;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final JSONArray history = new JSONArray();
     private final ConversationFlow flow = new ConversationFlow();
@@ -49,14 +50,15 @@ public final class MainActivity extends Activity {
     private LedController led;
     private Runnable recognitionTimeout;
     private long recognitionStarted;
-    private int recognitionAttempt, partialCount;
+    private int recognitionAttempt, partialCount, handoffGeneration;
     private boolean waitingForFinal, heardSpeech, listening, destroyed, resumed;
-    private boolean initialStartPending = true, permissionPending;
+    private boolean initialStartPending = true, permissionPending, micHandoffReady;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         WakeWordController.get(this).dialogOpening();
         secrets = new SecretStore(this);
+        soundCuePlayer = new SoundCuePlayer(this);
         client = new GeminiClient();
         led = LedController.get(this);
         buildUi();
@@ -161,7 +163,9 @@ public final class MainActivity extends Activity {
         flow.finish();
         cancelRecognition();
         stopSpeaking();
-        finish();
+        soundCuePlayer.play(R.raw.no_answer, "нет ответа", () -> {
+            if (!destroyed && resumed) finish();
+        });
     }
     private JSONObject turn(String role, String value) throws Exception {
         return new JSONObject().put("role", role).put("parts", new JSONArray().put(new JSONObject().put("text", value)));
@@ -257,21 +261,28 @@ public final class MainActivity extends Activity {
     private void beginFollowUp() {
         if (!flow.followUp()) return;
         AppLog.add("Диалог: ожидание ответа пользователя");
-        startListening(true);
+        soundCuePlayer.play(R.raw.waiting_for_answer, "ожидание ответа", () -> {
+            if (!destroyed && resumed && flow.phase() == ConversationFlow.Phase.FOLLOW_UP) startListening(true);
+        });
     }
     private void startInitial() {
-        if (!resumed || destroyed || permissionPending || flow.phase() != ConversationFlow.Phase.NEW) return;
+        if (!resumed || destroyed || !micHandoffReady || permissionPending || flow.phase() != ConversationFlow.Phase.NEW) return;
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             permissionPending = true;
             AppLog.add("Речь: запрашиваем разрешение микрофона");
             requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, MICROPHONE_REQUEST);
             return;
         }
-        try {
-            if (secrets.load().isEmpty()) { showErrorAndClose("Добавьте API-ключ в веб-интерфейсе на порту 6529."); return; }
-        } catch (Exception e) { showErrorAndClose("Не удалось прочитать API-ключ. Проверьте веб-настройки."); return; }
         initialStartPending = false;
-        if (flow.initialListening()) startListening(false);
+        // Confirmation of activation, not an indication that Gemini Live is ready yet.
+        // Play before opening Live's microphone so the cue isn't sent for transcription.
+        soundCuePlayer.play(R.raw.assistant_start, "активация", () -> {
+            if (!resumed || destroyed || flow.phase() != ConversationFlow.Phase.NEW) return;
+            try {
+                if (secrets.load().isEmpty()) { showErrorAndClose("Добавьте API-ключ в веб-интерфейсе на порту 6529."); return; }
+            } catch (Exception e) { showErrorAndClose("Не удалось прочитать API-ключ. Проверьте веб-настройки."); return; }
+            if (flow.initialListening()) startListening(false);
+        });
     }
     private long recognitionElapsed() { return SystemClock.elapsedRealtime() - recognitionStarted; }
     private void clearRecognitionTimeout() {
@@ -402,18 +413,21 @@ public final class MainActivity extends Activity {
         return super.onKeyDown(keyCode, event);
     }
     @Override protected void onResume() {
-        super.onResume(); resumed = true;
-        // The background detector must release the mic before Gemini Live can acquire it.
+        super.onResume(); resumed = true; micHandoffReady = false;
+        final int handoff = ++handoffGeneration;
+        // The background detector must release the mic before any cue or Gemini Live starts.
         WakeWordController.get(this).pauseForDialog(released -> {
-            if (!resumed || destroyed) return;
+            if (!resumed || destroyed || handoff != handoffGeneration) return;
             if (!released) { showErrorAndClose("Не удалось освободить микрофон для диалога."); return; }
+            micHandoffReady = true;
             if (initialStartPending && !permissionPending) startInitial();
         });
     }
     @Override protected void onStop() {
-        resumed = false;
+        resumed = false; micHandoffReady = false; handoffGeneration++;
         super.onStop();
         if (listening) AppLog.add("Речь #" + recognitionAttempt + ": отмена при уходе с экрана через " + recognitionElapsed() + " мс");
+        soundCuePlayer.cancel();
         cancelRecognition(); stopSpeaking(); stopSpinner(); stopPulse(); led.show(null);
         WakeWordController.get(this).dialogClosed();
         // Don't leave an invisible assistant listening or waiting on a network request.
@@ -423,6 +437,7 @@ public final class MainActivity extends Activity {
         destroyed = true; flow.finish();
         led.show(null);
         handler.removeCallbacksAndMessages(null);
+        soundCuePlayer.cancel();
         cancelRecognition();
         stopSpeaking();
         client.cancel(); executor.shutdownNow(); speechExecutor.shutdownNow();

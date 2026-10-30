@@ -3,6 +3,8 @@ plugins { id 'com.android.application' }
 android {
     namespace 'ru.geministation'
     compileSdk 35
+    // MediaPlayer opens short cue resources by file descriptor.
+    androidResources { noCompress += 'wav' }
     defaultConfig {
         applicationId 'ru.geministation'
         minSdk 28

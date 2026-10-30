@@ -48,6 +48,8 @@ jobs:
         run: ./tools/test_signing_setup.sh
       - name: Test web voice settings
         run: node tools/test_voice_settings.js
+      - name: Check supplied sound cues
+        run: python3 tools/test_sound_assets.py
       - name: Prepare offline wake-word model
         env:
           GH_TOKEN: ${{ github.token }}
@@ -71,6 +73,8 @@ jobs:
             exit 1
           fi
           cat build-output.txt
+      - name: Verify sound cues in APK
+        run: python3 tools/test_sound_assets.py app/build/outputs/apk/debug/app-debug.apk
       - name: Verify APK signatures
         shell: bash
         run: |
