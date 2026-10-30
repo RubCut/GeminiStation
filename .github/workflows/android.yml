@@ -75,16 +75,22 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          apksigner=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)
-          test -n "$apksigner"
+          apk_dir="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          if [[ -z "$apk_dir" || ! -d "$apk_dir/build-tools" ]]; then
+            echo '::error::Android SDK build-tools not found' >&2; exit 1
+          fi
+          apksigner=$(find "$apk_dir/build-tools" -name apksigner -type f | sort -V | tail -n 1)
+          if [[ -z "$apksigner" ]]; then echo '::error::apksigner not found' >&2; exit 1; fi
           expected=''
           for apk in app/build/outputs/apk/debug/app-debug.apk keytester/build/outputs/apk/debug/keytester-debug.apk buttonhelper/build/outputs/apk/debug/buttonhelper-debug.apk; do
-            details=$("$apksigner" verify --verbose --print-certs "$apk")
+            if ! details=$("$apksigner" verify --verbose --print-certs "$apk" 2>&1); then
+              echo "::error::Signature verification failed for $apk: $details" >&2; exit 1
+            fi
             echo "$details"
             hash=$(printf '%s\n' "$details" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
-            test -n "$hash"
+            if [[ -z "$hash" ]]; then echo "::error::No signing certificate hash for $apk" >&2; exit 1; fi
             if [[ -z "$expected" ]]; then expected="$hash"; fi
-            if [[ "$expected" != "$hash" ]]; then echo 'APK signing certificates do not match' >&2; exit 1; fi
+            if [[ "$expected" != "$hash" ]]; then echo "::error::APK signing certificates differ: $apk" >&2; exit 1; fi
           done
       - name: Upload APK
         if: env.HAS_STABLE_SIGNING == 'true'
