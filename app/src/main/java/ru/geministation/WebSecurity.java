@@ -21,10 +21,6 @@ final class WebSecurity {
         } catch (Exception ignored) { }
         return false;
     }
-    static boolean localLedWrite(String remote, String host, String origin, String marker) {
-        return "127.0.0.1".equals(remote) && ("127.0.0.1:6529".equals(host) || "localhost:6529".equals(host))
-                && permittedWrite(host, origin, marker);
-    }
     static boolean permittedWrite(String host, String origin, String marker) {
         return permittedHost(host) && origin != null && origin.equalsIgnoreCase("http://" + host)
                 && "1".equals(marker);

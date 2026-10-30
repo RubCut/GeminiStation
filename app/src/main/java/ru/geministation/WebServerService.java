@@ -124,8 +124,8 @@ public final class WebServerService extends Service {
                     return reply(Response.Status.OK, "application/json; charset=utf-8", result.toString());
                 }
                 if (session.getMethod() == Method.POST && path.startsWith("/api/yandex/")) {
-                    if (!WebSecurity.localLedWrite(session.getRemoteIpAddress(), host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station")))
-                        return json(Response.Status.FORBIDDEN, "Для входа подключитесь через adb forward и http://127.0.0.1:6529");
+                    if (!WebSecurity.permittedWrite(host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station")))
+                        return json(Response.Status.FORBIDDEN, "Запрос отклонён");
                     String lengthHeader = session.getHeaders().get("content-length");
                     long length = lengthHeader == null ? -1 : Long.parseLong(lengthHeader);
                     if (length < 1 || length > 2048 || session.getHeaders().containsKey("transfer-encoding"))
@@ -155,9 +155,9 @@ public final class WebServerService extends Service {
                     }
                 }
                 if (session.getMethod() == Method.POST && ("/api/led".equals(path) || "/api/led/test".equals(path))) {
-                    // The Studio file contains an account credential: never accept it from LAN.
-                    if (!WebSecurity.localLedWrite(session.getRemoteIpAddress(), host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station")))
-                        return json(Response.Status.FORBIDDEN, "Подключитесь через adb forward и http://127.0.0.1:6529");
+                    // LAN access is passwordless by design. Keep the same-origin/Host protections.
+                    if (!WebSecurity.permittedWrite(host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station")))
+                        return json(Response.Status.FORBIDDEN, "Запрос отклонён");
                     String lengthHeader = session.getHeaders().get("content-length");
                     long length = lengthHeader == null ? -1 : Long.parseLong(lengthHeader);
                     if (length < 1 || length > 8192 || session.getHeaders().containsKey("transfer-encoding"))
@@ -166,7 +166,7 @@ public final class WebServerService extends Service {
                     JSONObject data = new JSONObject(files.get("postData"));
                     SecretStore store = new SecretStore(context, "led_secrets");
                     if ("/api/led/test".equals(path)) {
-                        if (store.load().isEmpty()) return json(Response.Status.BAD_REQUEST, "Сначала импортируйте настройки станции");
+                        if (store.load().isEmpty()) return json(Response.Status.BAD_REQUEST, "Сначала войдите в Яндекс и выберите станцию или импортируйте настройки");
                         new Handler(Looper.getMainLooper()).post(() -> LedController.get(context).test());
                         return json(Response.Status.OK, "Команда проверки запущена; смотрите журнал и экран станции");
                     }
@@ -179,7 +179,7 @@ public final class WebServerService extends Service {
                         if (token.isEmpty() || token.length() > 4096 || !device.matches("[A-Za-z0-9._:-]{1,200}") || !platform.matches("[A-Za-z0-9._:-]{1,200}"))
                             return json(Response.Status.BAD_REQUEST, "В файле нет подходящих x_token, device_id и platform");
                         store.save(new JSONObject().put("x_token", token).put("device_id", device).put("platform", platform).toString());
-                        AppLog.add("LED: настройки импортированы через локальное подключение");
+                        AppLog.add("LED: настройки импортированы через веб-интерфейс");
                     }
                     new Handler(Looper.getMainLooper()).post(() -> LedController.get(context).invalidate());
                     return json(Response.Status.OK, "Настройки LED сохранены");
