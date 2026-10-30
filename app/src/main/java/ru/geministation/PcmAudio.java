@@ -52,6 +52,15 @@ final class PcmAudio {
         if (rate < 8000 || rate > 48000) throw new IOException("Unsupported sample rate");
         return new PcmAudio(bytes, rate, 1);
     }
+    /** Wrap decoded PCM as standard WAV for browser playback. */
+    byte[] toWav() {
+        ByteBuffer out = ByteBuffer.allocate(44 + samples.length).order(ByteOrder.LITTLE_ENDIAN);
+        out.put(new byte[]{'R','I','F','F'}).putInt(36 + samples.length).put(new byte[]{'W','A','V','E'});
+        out.put(new byte[]{'f','m','t',' '}).putInt(16).putShort((short) 1).putShort((short) channels);
+        out.putInt(rate).putInt(rate * channels * 2).putShort((short) (channels * 2)).putShort((short) 16);
+        out.put(new byte[]{'d','a','t','a'}).putInt(samples.length).put(samples);
+        return out.array();
+    }
     private static boolean tag(byte[] bytes, int start, String tag) {
         for (int i = 0; i < tag.length(); i++) if (bytes[start + i] != (byte) tag.charAt(i)) return false;
         return true;

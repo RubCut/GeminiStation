@@ -11,12 +11,14 @@ import android.os.IBinder;
 import android.os.Handler;
 import android.os.Looper;
 import java.io.ByteArrayOutputStream;
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.net.Inet4Address;
 import java.net.NetworkInterface;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import fi.iki.elonen.NanoHTTPD;
 import org.json.JSONObject;
 
@@ -76,6 +78,8 @@ public final class WebServerService extends Service {
         private final Context context;
         private final String page;
         private final YandexQrLogin qrLogin;
+        private final GeminiClient sampleClient = new GeminiClient();
+        private final AtomicBoolean sampleInProgress = new AtomicBoolean();
         private String lastLedAsset;
         private long lastLedAssetAt;
         void closeAuth() { qrLogin.closeAsync(); }
@@ -98,7 +102,7 @@ public final class WebServerService extends Service {
             response.addHeader("Cache-Control", "no-store");
             response.addHeader("X-Content-Type-Options", "nosniff");
             response.addHeader("X-Frame-Options", "DENY");
-            response.addHeader("Content-Security-Policy", "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'");
+            response.addHeader("Content-Security-Policy", "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; media-src 'self' blob:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'");
             return response;
         }
         private Response json(Response.Status status, String message) {
@@ -133,6 +137,36 @@ public final class WebServerService extends Service {
                     JSONObject result = new JSONObject().put("logs", AppLog.snapshot()).put("model", AppSettings.model(context))
                             .put("voice", AppSettings.voice(context)).put("voices", new org.json.JSONArray(TtsVoices.ALL));
                     return reply(Response.Status.OK, "application/json; charset=utf-8", result.toString());
+                }
+                if (session.getMethod() == Method.POST && "/api/voice/sample".equals(path)) {
+                    if (!WebSecurity.permittedWrite(host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station")))
+                        return json(Response.Status.FORBIDDEN, "Запрос отклонён");
+                    String lengthHeader = session.getHeaders().get("content-length");
+                    long length = lengthHeader == null ? -1 : Long.parseLong(lengthHeader);
+                    if (length < 1 || length > 512 || session.getHeaders().containsKey("transfer-encoding"))
+                        return json(Response.Status.BAD_REQUEST, "Недопустимый размер запроса");
+                    Map<String, String> files = new HashMap<>(); session.parseBody(files);
+                    String voice = new JSONObject(files.get("postData")).optString("voice", "");
+                    if (!TtsVoices.valid(voice)) return json(Response.Status.BAD_REQUEST, "Неизвестный голос");
+                    if (!sampleInProgress.compareAndSet(false, true))
+                        return json(Response.Status.SERVICE_UNAVAILABLE, "Другой образец уже загружается; попробуйте немного позже");
+                    try {
+                        String key = new SecretStore(context).load();
+                        if (key.isEmpty()) return json(Response.Status.BAD_REQUEST, "Сначала сохраните API-ключ Gemini");
+                        AppLog.add("TTS: запрос образца голоса " + voice);
+                        PcmAudio sample = sampleClient.synthesize(key,
+                                "Привет! Я голосовой помощник Gemini. Так звучит мой голос на русском языке.", voice);
+                        byte[] wav = sample.toWav();
+                        Response response = newFixedLengthResponse(Response.Status.OK, "audio/wav", new ByteArrayInputStream(wav), wav.length);
+                        response.addHeader("Cache-Control", "no-store");
+                        response.addHeader("X-Content-Type-Options", "nosniff");
+                        return response;
+                    } catch (Exception e) {
+                        String detail = e.getMessage();
+                        String safe = detail != null && detail.matches("Gemini TTS: HTTP [0-9]{3}") ? " (" + detail + ")" : "";
+                        AppLog.add("TTS: не удалось получить образец голоса " + voice + safe);
+                        return json(Response.Status.INTERNAL_ERROR, "Не удалось получить образец Gemini" + safe + ". Проверьте ключ, сеть и доступ к TTS.");
+                    } finally { sampleInProgress.set(false); }
                 }
                 if (session.getMethod() == Method.POST && path.startsWith("/api/yandex/")) {
                     if (!WebSecurity.permittedWrite(host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station")))
