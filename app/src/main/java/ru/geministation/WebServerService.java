@@ -64,7 +64,7 @@ public final class WebServerService extends Service {
     }
     @Override public int onStartCommand(Intent intent, int flags, int startId) { return START_STICKY; }
     @Override public void onDestroy() {
-        if (server != null) server.stop();
+        if (server != null) { server.closeAuth(); server.stop(); }
         running = false;
         AppLog.add("Веб-сервер остановлен");
         super.onDestroy();
@@ -74,9 +74,12 @@ public final class WebServerService extends Service {
     private static final class Server extends NanoHTTPD {
         private final Context context;
         private final String page;
+        private final YandexQrLogin qrLogin;
+        void closeAuth() { qrLogin.closeAsync(); }
         Server(Context context) throws Exception {
             super(PORT); // Listen on all interfaces. Use ADB forwarding on untrusted networks.
             this.context = context;
+            this.qrLogin = new YandexQrLogin(context);
             try (InputStream in = context.getAssets().open("index.html"); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
                 byte[] buffer = new byte[4096];
                 int n;
@@ -92,7 +95,7 @@ public final class WebServerService extends Service {
             response.addHeader("Cache-Control", "no-store");
             response.addHeader("X-Content-Type-Options", "nosniff");
             response.addHeader("X-Frame-Options", "DENY");
-            response.addHeader("Content-Security-Policy", "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'");
+            response.addHeader("Content-Security-Policy", "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'");
             return response;
         }
         private Response json(Response.Status status, String message) {
@@ -120,6 +123,37 @@ public final class WebServerService extends Service {
                     JSONObject result = new JSONObject().put("logs", AppLog.snapshot()).put("model", AppSettings.model(context));
                     return reply(Response.Status.OK, "application/json; charset=utf-8", result.toString());
                 }
+                if (session.getMethod() == Method.POST && path.startsWith("/api/yandex/")) {
+                    if (!WebSecurity.localLedWrite(session.getRemoteIpAddress(), host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station")))
+                        return json(Response.Status.FORBIDDEN, "Для входа подключитесь через adb forward и http://127.0.0.1:6529");
+                    String lengthHeader = session.getHeaders().get("content-length");
+                    long length = lengthHeader == null ? -1 : Long.parseLong(lengthHeader);
+                    if (length < 1 || length > 2048 || session.getHeaders().containsKey("transfer-encoding"))
+                        return json(Response.Status.BAD_REQUEST, "Недопустимый размер запроса");
+                    Map<String, String> files = new HashMap<>(); session.parseBody(files);
+                    JSONObject data = new JSONObject(files.get("postData"));
+                    String id = data.optString("id", "");
+                    try {
+                        JSONObject result;
+                        switch (path) {
+                            case "/api/yandex/start": result = qrLogin.start(); break;
+                            case "/api/yandex/poll": result = qrLogin.poll(id); break;
+                            case "/api/yandex/select":
+                                qrLogin.select(id, data.optInt("index", -1));
+                                new Handler(Looper.getMainLooper()).post(() -> LedController.get(context).invalidate());
+                                result = new JSONObject().put("message", "Станция выбрана"); break;
+                            case "/api/yandex/cancel": qrLogin.cancel(id); result = new JSONObject().put("message", "Вход отменён"); break;
+                            default: return json(Response.Status.NOT_FOUND, "Не найдено");
+                        }
+                        return reply(Response.Status.OK, "application/json; charset=utf-8", result.toString());
+                    } catch (Exception e) {
+                        qrLogin.cancel(id);
+                        String detail = e.getMessage();
+                        String safeDetail = detail != null && detail.matches("HTTP [0-9]{3}") ? detail : e.getClass().getSimpleName();
+                        AppLog.add("Яндекс: ошибка QR-входа на этапе " + path.substring(path.lastIndexOf('/') + 1) + " (" + safeDetail + ")");
+                        return json(Response.Status.BAD_REQUEST, "Не удалось выполнить вход. Яндекс мог запросить капчу или изменить API; попробуйте ещё раз либо импортируйте настройки Studio.");
+                    }
+                }
                 if (session.getMethod() == Method.POST && ("/api/led".equals(path) || "/api/led/test".equals(path))) {
                     // The Studio file contains an account credential: never accept it from LAN.
                     if (!WebSecurity.localLedWrite(session.getRemoteIpAddress(), host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station")))
@@ -136,6 +170,7 @@ public final class WebServerService extends Service {
                         new Handler(Looper.getMainLooper()).post(() -> LedController.get(context).test());
                         return json(Response.Status.OK, "Команда проверки запущена; смотрите журнал и экран станции");
                     }
+                    qrLogin.clear();
                     if (data.optBoolean("delete", false)) { store.clear(); AppLog.add("LED: настройки удалены"); }
                     else {
                         String token = data.optString("x_token", "").trim();

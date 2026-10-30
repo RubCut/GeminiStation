@@ -12,7 +12,9 @@
 <section><p>Доступ без пароля. Любой в вашей локальной сети может изменить настройки и просматривать журнал. HTTP не шифруется — безопаснее подключаться через ADB.</p></section>
 <div id="panel">
 <section><h2>Gemini API</h2><label for="model">Модель</label><input id="model" autocomplete="off"><p><small>Gemini Live отправляет аудио микрофона в Gemini API и может расходовать квоту. Для работы нужен доступ приложения к микрофону станции.</small></p><label for="key">Новый API-ключ</label><input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="Оставьте пустым, чтобы не менять"><button id="save">Сохранить</button><button id="delete" class="secondary">Удалить ключ</button><p id="message" role="status"></p></section>
-<section><h2>Экран станции — экспериментально</h2><p>Свои анимации логотипа Gemini для матрицы 25×16. Подключение использует локальный протокол станции. Работа зависит от прошивки и пока не проверена на этом устройстве.</p><p><strong>Файл содержит токен аккаунта Яндекса.</strong> Не отправляйте его никому. Импорт разрешён только через ADB: <code>adb forward tcp:6529 tcp:6529</code>, затем откройте <code>http://127.0.0.1:6529</code>. Токен сохраняется зашифрованным на станции и не показывается в журнале. Приложение отправляет его Яндексу для получения локального токена.</p><label for="studio">Файл settings.json из Station Max Studio</label><input id="studio" type="file" accept=".json,application/json"><button id="importLed">Импортировать</button><button id="testLed" class="secondary">Проверить экран</button><button id="deleteLed" class="secondary">Удалить настройки экрана</button><p id="ledMessage" role="status"></p></section>
+<section><h2>Экран станции — экспериментально</h2><p>Свои анимации логотипа Gemini для матрицы 25×16. Подключение использует локальный протокол станции. Работа зависит от прошивки и пока не проверена на этом устройстве.</p><p>Для входа откройте эту страницу через ADB: <code>adb forward tcp:6529 tcp:6529</code>, затем <code>http://127.0.0.1:6529</code>. Пароль вводится только на стороне Яндекса. Приложение получит токен аккаунта и сохранит его зашифрованным; не показывайте QR-код посторонним.</p>
+<button id="qrStart">Войти в Яндекс по QR</button><button id="qrCancel" class="secondary" hidden>Отменить вход</button><div id="qrPanel" hidden><p>Отсканируйте QR-код телефоном и подтвердите вход в Яндексе.</p><img id="qrImage" alt="QR-код входа в Яндекс" width="300" height="300" style="max-width:100%;height:auto;background:white"><p id="qrStatus"></p></div><div id="stationPanel" hidden><label for="station">Выберите свою Станцию Макс</label><select id="station"></select><button id="chooseStation">Сохранить станцию</button></div>
+<details><summary>Запасной вариант: импорт настроек Station Max Studio</summary><p><strong>Файл содержит токен аккаунта Яндекса.</strong> Не отправляйте его никому. Импорт доступен только через ADB.</p><label for="studio">Файл settings.json из Station Max Studio</label><input id="studio" type="file" accept=".json,application/json"><button id="importLed">Импортировать</button></details><button id="testLed" class="secondary">Проверить экран</button><button id="deleteLed" class="secondary">Удалить настройки экрана</button><p id="ledMessage" role="status"></p></section>
 <section><h2>Журнал</h2><small>Последние 500 событий в памяти: этапы, время и ошибки без ключей и текста диалогов.</small><pre id="logs"></pre><button id="refresh" class="secondary">Обновить</button></section>
 </div>
 <script>
@@ -25,6 +27,32 @@ async function request(path,options={}){
 async function refresh(){try{const data=await request('/api/logs');el('logs').textContent=data.logs.join('\n');return data}catch(e){el('message').textContent=e.message;throw e}}
 async function save(remove){try{await request('/api/config',{method:'POST',body:JSON.stringify({model:el('model').value,key:remove?'':el('key').value,deleteKey:remove})});el('key').value='';el('message').textContent=remove?'Ключ удалён':'Настройки сохранены';await refresh()}catch(e){el('message').textContent=e.message}}
 async function ledRequest(path,data){try{const result=await request(path,{method:'POST',body:JSON.stringify(data)});el('ledMessage').textContent=result.message;return result}catch(e){el('ledMessage').textContent=e.message;throw e}}
+let authRun=0, authId='';
+function clearAuthView(){el('qrPanel').hidden=true;el('stationPanel').hidden=true;el('qrCancel').hidden=true;el('qrImage').removeAttribute('src');el('qrStart').disabled=false;authId=''}
+async function cancelAuth(){const id=authId;authRun++;clearAuthView();if(id)try{await request('/api/yandex/cancel',{method:'POST',body:JSON.stringify({id})})}catch(e){} }
+async function authPoll(run,id){
+ if(run!==authRun)return;
+ try{
+  const data=await request('/api/yandex/poll',{method:'POST',body:JSON.stringify({id})});
+  if(run!==authRun)return;
+  if(data.state==='ready'){
+   el('qrPanel').hidden=true;el('qrImage').removeAttribute('src');el('stationPanel').hidden=false;
+   const select=el('station');select.textContent='';
+   data.stations.forEach((station,index)=>{const option=document.createElement('option');option.value=String(index);option.textContent=station.name+(station.house?' — '+station.house:'');select.appendChild(option)});
+   el('ledMessage').textContent='Вход подтверждён. Выберите станцию.';
+  }else{el('qrStatus').textContent='Ожидание подтверждения…';setTimeout(()=>authPoll(run,id),2200)}
+ }catch(e){if(run===authRun){clearAuthView();el('ledMessage').textContent=e.message}}
+}
+el('qrStart').addEventListener('click',async()=>{
+ const run=++authRun;clearAuthView();el('qrStart').disabled=true;el('qrCancel').hidden=false;el('ledMessage').textContent='Запрашиваем QR-код у Яндекса…';
+ try{
+  const data=await request('/api/yandex/start',{method:'POST',body:'{}'});
+  if(run!==authRun){request('/api/yandex/cancel',{method:'POST',body:JSON.stringify({id:data.id})}).catch(()=>{});return}
+  authId=data.id;el('qrImage').src='data:image/png;base64,'+data.qr;el('qrPanel').hidden=false;el('ledMessage').textContent='';authPoll(run,data.id);
+ }catch(e){if(run===authRun){clearAuthView();el('ledMessage').textContent=e.message}}
+});
+el('qrCancel').addEventListener('click',()=>cancelAuth());
+el('chooseStation').addEventListener('click',async()=>{try{await request('/api/yandex/select',{method:'POST',body:JSON.stringify({id:authId,index:Number(el('station').value)})});authRun++;clearAuthView();el('ledMessage').textContent='Станция сохранена. Вне диалога нажмите «Проверить экран».'}catch(e){el('ledMessage').textContent=e.message}});
 el('importLed').addEventListener('click',async()=>{try{const file=el('studio').files[0];if(!file||file.size>16384)throw Error('Выберите settings.json (до 16 КБ)');const data=JSON.parse(await file.text());await ledRequest('/api/led',{x_token:data.x_token||'',device_id:data.device_id||'',platform:data.platform||''});el('studio').value=''}catch(e){el('ledMessage').textContent=e.message}});
 el('testLed').addEventListener('click',()=>ledRequest('/api/led/test',{}).catch(()=>{}));
 el('deleteLed').addEventListener('click',()=>{if(confirm('Удалить настройки экрана со станции?'))ledRequest('/api/led',{delete:true}).catch(()=>{})});
