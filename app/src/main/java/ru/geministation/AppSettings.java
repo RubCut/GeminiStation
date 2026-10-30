@@ -12,12 +12,5 @@ final class AppSettings {
     static boolean saveModel(Context context, String model) {
         return context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE).edit().putString("model", model).commit();
     }
-    static String recognition(Context context) {
-        return context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE).getString("recognition", "gemini_live");
-    }
-    static boolean validRecognition(String value) { return "gemini_live".equals(value) || "system".equals(value); }
-    static boolean saveRecognition(Context context, String value) {
-        return context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE).edit().putString("recognition", value).commit();
-    }
     private AppSettings() { }
 }

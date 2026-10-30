@@ -8,6 +8,8 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.os.IBinder;
+import android.os.Handler;
+import android.os.Looper;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.net.Inet4Address;
@@ -102,11 +104,50 @@ public final class WebServerService extends Service {
             String host = session.getHeaders().get("host");
             if (!WebSecurity.permittedHost(host)) return json(Response.Status.FORBIDDEN, "Недопустимый адрес");
             if (session.getMethod() == Method.GET && "/".equals(path)) return reply(Response.Status.OK, "text/html; charset=utf-8", page);
+            // Only the station itself may fetch the three fixed images.
+            if (session.getMethod() == Method.GET && path.matches("/led/(listening|thinking|speaking)\\.gif")) {
+                if (!"127.0.0.1".equals(session.getRemoteIpAddress())) return json(Response.Status.FORBIDDEN, "Только локально");
+                try {
+                    InputStream gif = context.getAssets().open(path.substring(1));
+                    Response response = newFixedLengthResponse(Response.Status.OK, "image/gif", gif, gif.available());
+                    response.addHeader("Cache-Control", "no-store");
+                    return response;
+                } catch (Exception e) { return json(Response.Status.NOT_FOUND, "Нет изображения"); }
+            }
             if (!path.startsWith("/api/")) return json(Response.Status.NOT_FOUND, "Не найдено");
             try {
                 if (session.getMethod() == Method.GET && "/api/logs".equals(path)) {
-                    JSONObject result = new JSONObject().put("logs", AppLog.snapshot()).put("model", AppSettings.model(context)).put("recognition", AppSettings.recognition(context));
+                    JSONObject result = new JSONObject().put("logs", AppLog.snapshot()).put("model", AppSettings.model(context));
                     return reply(Response.Status.OK, "application/json; charset=utf-8", result.toString());
+                }
+                if (session.getMethod() == Method.POST && ("/api/led".equals(path) || "/api/led/test".equals(path))) {
+                    // The Studio file contains an account credential: never accept it from LAN.
+                    if (!WebSecurity.localLedWrite(session.getRemoteIpAddress(), host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station")))
+                        return json(Response.Status.FORBIDDEN, "Подключитесь через adb forward и http://127.0.0.1:6529");
+                    String lengthHeader = session.getHeaders().get("content-length");
+                    long length = lengthHeader == null ? -1 : Long.parseLong(lengthHeader);
+                    if (length < 1 || length > 8192 || session.getHeaders().containsKey("transfer-encoding"))
+                        return json(Response.Status.BAD_REQUEST, "Недопустимый размер запроса");
+                    Map<String, String> files = new HashMap<>(); session.parseBody(files);
+                    JSONObject data = new JSONObject(files.get("postData"));
+                    SecretStore store = new SecretStore(context, "led_secrets");
+                    if ("/api/led/test".equals(path)) {
+                        if (store.load().isEmpty()) return json(Response.Status.BAD_REQUEST, "Сначала импортируйте настройки станции");
+                        new Handler(Looper.getMainLooper()).post(() -> LedController.get(context).test());
+                        return json(Response.Status.OK, "Команда проверки запущена; смотрите журнал и экран станции");
+                    }
+                    if (data.optBoolean("delete", false)) { store.clear(); AppLog.add("LED: настройки удалены"); }
+                    else {
+                        String token = data.optString("x_token", "").trim();
+                        String device = data.optString("device_id", "").trim();
+                        String platform = data.optString("platform", "").trim();
+                        if (token.isEmpty() || token.length() > 4096 || !device.matches("[A-Za-z0-9._:-]{1,200}") || !platform.matches("[A-Za-z0-9._:-]{1,200}"))
+                            return json(Response.Status.BAD_REQUEST, "В файле нет подходящих x_token, device_id и platform");
+                        store.save(new JSONObject().put("x_token", token).put("device_id", device).put("platform", platform).toString());
+                        AppLog.add("LED: настройки импортированы через локальное подключение");
+                    }
+                    new Handler(Looper.getMainLooper()).post(() -> LedController.get(context).invalidate());
+                    return json(Response.Status.OK, "Настройки LED сохранены");
                 }
                 if (session.getMethod() == Method.POST && "/api/config".equals(path)) {
                     if (!WebSecurity.permittedWrite(host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station")))
@@ -121,13 +162,12 @@ public final class WebServerService extends Service {
                     JSONObject data = new JSONObject(files.get("postData"));
                     String model = data.optString("model", "").trim();
                     String key = data.optString("key", "").trim();
-                    String recognition = data.optString("recognition", AppSettings.recognition(context));
                     boolean deleteKey = data.optBoolean("deleteKey", false);
-                    if (!AppSettings.validModel(model) || !AppSettings.validRecognition(recognition) || key.length() > 512 || (deleteKey && !key.isEmpty()))
+                    if (!AppSettings.validModel(model) || key.length() > 512 || (deleteKey && !key.isEmpty()))
                         return json(Response.Status.BAD_REQUEST, "Некорректные настройки");
                     SecretStore store = new SecretStore(context);
                     if (deleteKey) store.clear(); else if (!key.isEmpty()) store.save(key);
-                    if (!AppSettings.saveModel(context, model) || !AppSettings.saveRecognition(context, recognition)) return json(Response.Status.INTERNAL_ERROR, "Не удалось сохранить настройки");
+                    if (!AppSettings.saveModel(context, model)) return json(Response.Status.INTERNAL_ERROR, "Не удалось сохранить настройки");
                     AppLog.add(deleteKey ? "API-ключ удалён через веб-интерфейс" : "Настройки сохранены через веб-интерфейс");
                     return json(Response.Status.OK, "Настройки сохранены");
                 }

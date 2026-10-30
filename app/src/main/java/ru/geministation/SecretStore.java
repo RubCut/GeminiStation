@@ -16,7 +16,9 @@ final class SecretStore {
     private static final Object LOCK = new Object();
     private static final String ALIAS = "geministation-api-key";
     private final Context context;
-    SecretStore(Context context) { this.context = context.getApplicationContext(); }
+    private final String preferences;
+    SecretStore(Context context) { this(context, "secrets"); }
+    SecretStore(Context context, String preferences) { this.context = context.getApplicationContext(); this.preferences = preferences; }
 
     private SecretKey key() throws Exception {
         KeyStore store = KeyStore.getInstance("AndroidKeyStore");
@@ -36,18 +38,18 @@ final class SecretStore {
         cipher.init(Cipher.ENCRYPT_MODE, key());
         String encrypted = Base64.encodeToString(cipher.doFinal(value.getBytes(StandardCharsets.UTF_8)), Base64.NO_WRAP);
         String iv = Base64.encodeToString(cipher.getIV(), Base64.NO_WRAP);
-        if (!context.getSharedPreferences("secrets", Context.MODE_PRIVATE).edit()
+        if (!context.getSharedPreferences(preferences, Context.MODE_PRIVATE).edit()
                 .putString("key", encrypted).putString("iv", iv).commit()) {
             throw new IllegalStateException("Could not save key");
         }
     } }
     String load() throws Exception { synchronized (LOCK) {
-        android.content.SharedPreferences prefs = context.getSharedPreferences("secrets", Context.MODE_PRIVATE);
+        android.content.SharedPreferences prefs = context.getSharedPreferences(preferences, Context.MODE_PRIVATE);
         String value = prefs.getString("key", "");
         if (value.isEmpty()) return "";
         Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
         cipher.init(Cipher.DECRYPT_MODE, key(), new GCMParameterSpec(128, Base64.decode(prefs.getString("iv", ""), Base64.NO_WRAP)));
         return new String(cipher.doFinal(Base64.decode(value, Base64.NO_WRAP)), StandardCharsets.UTF_8);
     } }
-    void clear() { synchronized (LOCK) { context.getSharedPreferences("secrets", Context.MODE_PRIVATE).edit().clear().apply(); } }
+    void clear() { synchronized (LOCK) { context.getSharedPreferences(preferences, Context.MODE_PRIVATE).edit().clear().apply(); } }
 }

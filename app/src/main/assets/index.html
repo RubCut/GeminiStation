@@ -11,7 +11,8 @@
 <h1>Gemini Station</h1><p>Настройки и журнал устройства</p>
 <section><p>Доступ без пароля. Любой в вашей локальной сети может изменить настройки и просматривать журнал. HTTP не шифруется — безопаснее подключаться через ADB.</p></section>
 <div id="panel">
-<section><h2>Gemini API</h2><label for="model">Модель</label><input id="model" autocomplete="off"><label for="recognition">Распознавание речи</label><select id="recognition"><option value="gemini_live">Gemini Live — прямой микрофон</option><option value="system">Системный распознаватель станции</option></select><p><small>Gemini Live отправляет аудио микрофона в Gemini API и может расходовать квоту. Для работы нужен доступ приложения к микрофону станции.</small></p><label for="key">Новый API-ключ</label><input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="Оставьте пустым, чтобы не менять"><button id="save">Сохранить</button><button id="delete" class="secondary">Удалить ключ</button><p id="message" role="status"></p></section>
+<section><h2>Gemini API</h2><label for="model">Модель</label><input id="model" autocomplete="off"><p><small>Gemini Live отправляет аудио микрофона в Gemini API и может расходовать квоту. Для работы нужен доступ приложения к микрофону станции.</small></p><label for="key">Новый API-ключ</label><input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="Оставьте пустым, чтобы не менять"><button id="save">Сохранить</button><button id="delete" class="secondary">Удалить ключ</button><p id="message" role="status"></p></section>
+<section><h2>Экран станции — экспериментально</h2><p>Свои анимации логотипа Gemini для матрицы 25×16. Подключение использует локальный протокол станции. Работа зависит от прошивки и пока не проверена на этом устройстве.</p><p><strong>Файл содержит токен аккаунта Яндекса.</strong> Не отправляйте его никому. Импорт разрешён только через ADB: <code>adb forward tcp:6529 tcp:6529</code>, затем откройте <code>http://127.0.0.1:6529</code>. Токен сохраняется зашифрованным на станции и не показывается в журнале. Приложение отправляет его Яндексу для получения локального токена.</p><label for="studio">Файл settings.json из Station Max Studio</label><input id="studio" type="file" accept=".json,application/json"><button id="importLed">Импортировать</button><button id="testLed" class="secondary">Проверить экран</button><button id="deleteLed" class="secondary">Удалить настройки экрана</button><p id="ledMessage" role="status"></p></section>
 <section><h2>Журнал</h2><small>Последние 500 событий в памяти: этапы, время и ошибки без ключей и текста диалогов.</small><pre id="logs"></pre><button id="refresh" class="secondary">Обновить</button></section>
 </div>
 <script>
@@ -22,9 +23,13 @@ async function request(path,options={}){
  const data=await response.json(); if(!response.ok) throw new Error(data.message||'Ошибка'); return data;
 }
 async function refresh(){try{const data=await request('/api/logs');el('logs').textContent=data.logs.join('\n');return data}catch(e){el('message').textContent=e.message;throw e}}
-async function save(remove){try{await request('/api/config',{method:'POST',body:JSON.stringify({model:el('model').value,recognition:el('recognition').value,key:remove?'':el('key').value,deleteKey:remove})});el('key').value='';el('message').textContent=remove?'Ключ удалён':'Настройки сохранены';await refresh()}catch(e){el('message').textContent=e.message}}
+async function save(remove){try{await request('/api/config',{method:'POST',body:JSON.stringify({model:el('model').value,key:remove?'':el('key').value,deleteKey:remove})});el('key').value='';el('message').textContent=remove?'Ключ удалён':'Настройки сохранены';await refresh()}catch(e){el('message').textContent=e.message}}
+async function ledRequest(path,data){try{const result=await request(path,{method:'POST',body:JSON.stringify(data)});el('ledMessage').textContent=result.message;return result}catch(e){el('ledMessage').textContent=e.message;throw e}}
+el('importLed').addEventListener('click',async()=>{try{const file=el('studio').files[0];if(!file||file.size>16384)throw Error('Выберите settings.json (до 16 КБ)');const data=JSON.parse(await file.text());await ledRequest('/api/led',{x_token:data.x_token||'',device_id:data.device_id||'',platform:data.platform||''});el('studio').value=''}catch(e){el('ledMessage').textContent=e.message}});
+el('testLed').addEventListener('click',()=>ledRequest('/api/led/test',{}).catch(()=>{}));
+el('deleteLed').addEventListener('click',()=>{if(confirm('Удалить настройки экрана со станции?'))ledRequest('/api/led',{delete:true}).catch(()=>{})});
 el('save').addEventListener('click',()=>save(false));el('delete').addEventListener('click',()=>{if(confirm('Удалить API-ключ?'))save(true)});el('refresh').addEventListener('click',()=>refresh().catch(()=>{}));
-refresh().then(data=>{el('model').value=data.model;el('recognition').value=data.recognition}).catch(()=>{});
+refresh().then(data=>{el('model').value=data.model}).catch(()=>{});
 setInterval(()=>refresh().catch(()=>{}),5000);
 </script>
 </body></html>

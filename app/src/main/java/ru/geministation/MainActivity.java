@@ -2,8 +2,9 @@ package ru.geministation;
 
 import android.Manifest;
 import android.animation.ObjectAnimator;
+import android.animation.PropertyValuesHolder;
+import android.animation.ValueAnimator;
 import android.app.Activity;
-import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -12,10 +13,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
-import android.provider.Settings;
-import android.speech.RecognitionListener;
-import android.speech.RecognizerIntent;
-import android.speech.SpeechRecognizer;
 import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -27,7 +24,6 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import java.util.ArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -47,13 +43,13 @@ public final class MainActivity extends Activity {
     private final ConversationFlow flow = new ConversationFlow();
     private GeminiClient client;
     private SecretStore secrets;
-    private SpeechRecognizer recognizer;
     private LiveTranscriber liveTranscriber;
     private TextView text;
     private ImageView logo;
-    private ObjectAnimator spin;
+    private ObjectAnimator spin, pulse;
+    private LedController led;
     private Runnable recognitionTimeout;
-    private long recognitionStarted, speechEnded;
+    private long recognitionStarted;
     private int recognitionAttempt, partialCount;
     private boolean waitingForFinal, heardSpeech, listening, destroyed, resumed;
     private boolean initialStartPending = true, permissionPending;
@@ -62,6 +58,7 @@ public final class MainActivity extends Activity {
         super.onCreate(state);
         secrets = new SecretStore(this);
         client = new GeminiClient();
+        led = LedController.get(this);
         buildUi();
         try { startForegroundService(new Intent(this, WebServerService.class)); }
         catch (RuntimeException e) { AppLog.add("Веб-сервер: ошибка запуска " + e.getClass().getSimpleName()); }
@@ -112,11 +109,32 @@ public final class MainActivity extends Activity {
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
         getWindow().setGravity(Gravity.BOTTOM | Gravity.START);
         getWindow().setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.WRAP_CONTENT);
+        root.setAlpha(0f);
+        root.setTranslationY(dp(12));
+        root.animate().alpha(1f).translationY(0f).setDuration(350).start();
         root.requestFocus();
         showText("Слушаю…");
     }
     private void showText(String value) { text.setText(value); }
+    private void animatePulse(boolean speaking) {
+        stopSpinner();
+        if (pulse != null) pulse.cancel();
+        pulse = ObjectAnimator.ofPropertyValuesHolder(logo,
+                PropertyValuesHolder.ofFloat(View.SCALE_X, 1f, speaking ? 1.18f : 1.12f),
+                PropertyValuesHolder.ofFloat(View.SCALE_Y, 1f, speaking ? 1.18f : 1.12f),
+                PropertyValuesHolder.ofFloat(View.ALPHA, .72f, 1f));
+        pulse.setDuration(speaking ? 550 : 1100);
+        pulse.setRepeatCount(ValueAnimator.INFINITE);
+        pulse.setRepeatMode(ValueAnimator.REVERSE);
+        pulse.start();
+    }
+    private void stopPulse() {
+        if (pulse != null) { pulse.cancel(); pulse = null; }
+        logo.setScaleX(1f); logo.setScaleY(1f); logo.setAlpha(1f);
+    }
     private void startSpinner() {
+        stopPulse();
+        led.show("thinking");
         if (spin != null && spin.isStarted()) return;
         spin = ObjectAnimator.ofFloat(logo, View.ROTATION, 0f, 360f);
         spin.setDuration(1200);
@@ -130,7 +148,7 @@ public final class MainActivity extends Activity {
     }
     private void showErrorAndClose(String message) {
         AppLog.add("Диалог: " + message);
-        stopSpinner();
+        stopSpinner(); stopPulse(); led.show(null);
         showText(message);
         flow.finish();
         cancelRecognition();
@@ -170,6 +188,7 @@ public final class MainActivity extends Activity {
                         while (history.length() > 20) { history.remove(0); history.remove(0); }
                     } catch (Exception ignored) { }
                     stopSpinner();
+                    animatePulse(true); led.show("speaking");
                     showText(response);
                     AppLog.add("Диалог: текст ответа получен; начинаем синтез");
                     speak(apiKey, response);
@@ -254,7 +273,6 @@ public final class MainActivity extends Activity {
         recognitionAttempt++;
         clearRecognitionTimeout();
         if (liveTranscriber != null) { liveTranscriber.cancel(); liveTranscriber = null; }
-        if (recognizer != null && listening) { try { recognizer.cancel(); } catch (RuntimeException ignored) { } }
         listening = false; waitingForFinal = false;
     }
     private void scheduleNoSpeechTimeout(final int attempt, long delay) {
@@ -286,109 +304,21 @@ public final class MainActivity extends Activity {
     }
     private void finishVoiceInput() {
         if (!listening || waitingForFinal) return;
-        if (liveTranscriber == null && recognizer == null) return;
+        if (liveTranscriber == null) return;
         waitingForFinal = true;
-        speechEnded = SystemClock.elapsedRealtime();
         AppLog.add("Речь #" + recognitionAttempt + ": ручное завершение через " + recognitionElapsed() + " мс");
         scheduleFinalTimeout(recognitionAttempt);
-        if (liveTranscriber != null) { liveTranscriber.finishInput(); return; }
-        try { recognizer.stopListening(); }
-        catch (RuntimeException e) { AppLog.add("Речь: ошибка stopListening " + e.getClass().getSimpleName()); showErrorAndClose("Не удалось завершить распознавание."); }
+        liveTranscriber.finishInput();
     }
     private void startListening(final boolean followUp) {
         if (destroyed || !resumed || listening) return;
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) { showErrorAndClose("Нет доступа к микрофону."); return; }
         final int attempt = ++recognitionAttempt;
-        recognitionStarted = SystemClock.elapsedRealtime(); speechEnded = 0; partialCount = 0; heardSpeech = false;
+        recognitionStarted = SystemClock.elapsedRealtime(); partialCount = 0; heardSpeech = false;
         // Keep the answer on screen during follow-up silence; replace it as soon as speech begins.
+        animatePulse(false); led.show("listening");
         if (!followUp) showText("Слушаю…");
-        if ("gemini_live".equals(AppSettings.recognition(this))) {
-            startLiveRecognition(attempt, followUp);
-            return;
-        }
-        if (!SpeechRecognizer.isRecognitionAvailable(this)) { showErrorAndClose("Распознаватель речи недоступен."); return; }
-        try {
-            String component = Settings.Secure.getString(getContentResolver(), "voice_recognition_service");
-            ComponentName name = component == null ? null : ComponentName.unflattenFromString(component);
-            if (recognizer == null) recognizer = name == null ? SpeechRecognizer.createSpeechRecognizer(this) : SpeechRecognizer.createSpeechRecognizer(this, name);
-            AppLog.add("Речь #" + attempt + ": запуск; служба " + (name == null ? "системная по умолчанию" : name.flattenToShortString()) + (followUp ? "; продолжение" : "; первый запрос"));
-            recognizer.setRecognitionListener(new RecognitionListener() {
-                private boolean active() { return listening && recognitionAttempt == attempt; }
-                public void onReadyForSpeech(Bundle params) {
-                    if (!active()) return;
-                    AppLog.add("Речь #" + attempt + ": микрофон готов через " + recognitionElapsed() + " мс");
-                    if (!heardSpeech && !waitingForFinal) scheduleNoSpeechTimeout(attempt, followUp ? FOLLOW_UP_SILENCE_MS : INITIAL_SILENCE_MS);
-                }
-                public void onBeginningOfSpeech() {
-                    if (!active()) return;
-                    boolean firstSpeech = !heardSpeech;
-                    heardSpeech = true;
-                    if (!waitingForFinal) scheduleSpeechDeadline(attempt);
-                    AppLog.add("Речь #" + attempt + ": начало речи через " + recognitionElapsed() + " мс");
-                    if (firstSpeech && !waitingForFinal) showText("Слушаю…");
-                }
-                public void onRmsChanged(float rmsdB) { }
-                public void onBufferReceived(byte[] buffer) { }
-                public void onEndOfSpeech() {
-                    if (!active()) return;
-                    if (speechEnded == 0) speechEnded = SystemClock.elapsedRealtime();
-                    waitingForFinal = true;
-                    AppLog.add("Речь #" + attempt + ": конец фразы через " + recognitionElapsed() + " мс");
-                    scheduleFinalTimeout(attempt);
-                }
-                public void onError(int error) {
-                    if (!active()) return;
-                    AppLog.add("Речь #" + attempt + ": ошибка " + error + " (" + recognitionErrorName(error) + ") через " + recognitionElapsed() + " мс");
-                    finishRecognition();
-                    if (error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT || error == SpeechRecognizer.ERROR_NO_MATCH) closeForSilence();
-                    else showErrorAndClose("Ошибка распознавания речи (код " + error + ").");
-                }
-                public void onResults(Bundle results) {
-                    if (!active()) return;
-                    long finalDelay = speechEnded == 0 ? -1 : SystemClock.elapsedRealtime() - speechEnded;
-                    ArrayList<String> texts = results == null ? null : results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-                    String recognized = texts == null || texts.isEmpty() || texts.get(0) == null ? "" : texts.get(0).trim();
-                    AppLog.add("Речь #" + attempt + ": итог через " + recognitionElapsed() + " мс; после конца "
-                            + (finalDelay < 0 ? "неизвестно" : finalDelay + " мс") + "; частичных " + partialCount
-                            + "; вариантов " + (texts == null ? 0 : texts.size()) + "; символов в первом варианте " + recognized.length());
-                    finishRecognition();
-                    if (recognized.isEmpty()) {
-                        AppLog.add("Речь #" + attempt + ": системная служба вернула пустую расшифровку");
-                        if (followUp) closeForSilence();
-                        else showErrorAndClose("Распознаватель станции вернул пустой результат. Попробуйте Gemini Live в веб-настройках.");
-                        return;
-                    }
-                    submit(recognized);
-                }
-                public void onPartialResults(Bundle partialResults) {
-                    if (!active() || partialResults == null) return;
-                    ArrayList<String> texts = partialResults.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-                    if (texts == null || texts.isEmpty() || texts.get(0) == null || texts.get(0).trim().isEmpty()) return;
-                    boolean firstSpeech = !heardSpeech;
-                    heardSpeech = true;
-                    // Don't replace a final-result timeout when partials arrive late.
-                    if (firstSpeech && !waitingForFinal) scheduleSpeechDeadline(attempt);
-                    partialCount++;
-                    if (partialCount == 1) AppLog.add("Речь #" + attempt + ": первый промежуточный результат через " + recognitionElapsed() + " мс");
-                    showText(texts.get(0));
-                }
-                public void onEvent(int eventType, Bundle params) { }
-            });
-            Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ru-RU");
-            intent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
-            intent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 750L);
-            intent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 600L);
-            intent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);
-            listening = true; waitingForFinal = false;
-            // Also bound a recognizer that never emits onReadyForSpeech.
-            scheduleNoSpeechTimeout(attempt, followUp ? FOLLOW_UP_SILENCE_MS + 4000 : INITIAL_SILENCE_MS);
-            recognizer.startListening(intent);
-        } catch (RuntimeException e) {
-            AppLog.add("Речь #" + attempt + ": ошибка запуска " + e.getClass().getSimpleName());
-            finishRecognition(); showErrorAndClose("Не удалось запустить распознавание речи.");
-        }
+        startLiveRecognition(attempt, followUp);
     }
     private void startLiveRecognition(final int attempt, final boolean followUp) {
         final String key;
@@ -438,20 +368,6 @@ public final class MainActivity extends Activity {
         handler.postDelayed(recognitionTimeout, 20000);
         liveTranscriber.start();
     }
-    private static String recognitionErrorName(int error) {
-        switch (error) {
-            case SpeechRecognizer.ERROR_NETWORK_TIMEOUT: return "таймаут сети";
-            case SpeechRecognizer.ERROR_NETWORK: return "сеть";
-            case SpeechRecognizer.ERROR_AUDIO: return "аудио";
-            case SpeechRecognizer.ERROR_SERVER: return "сервер";
-            case SpeechRecognizer.ERROR_CLIENT: return "клиент";
-            case SpeechRecognizer.ERROR_SPEECH_TIMEOUT: return "нет речи";
-            case SpeechRecognizer.ERROR_NO_MATCH: return "не распознано";
-            case SpeechRecognizer.ERROR_RECOGNIZER_BUSY: return "служба занята";
-            case SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS: return "нет прав";
-            default: return "неизвестно";
-        }
-    }
     @Override public void onRequestPermissionsResult(int request, String[] permissions, int[] results) {
         super.onRequestPermissionsResult(request, permissions, results);
         if (request != MICROPHONE_REQUEST) return;
@@ -473,15 +389,15 @@ public final class MainActivity extends Activity {
         resumed = false;
         super.onStop();
         if (listening) AppLog.add("Речь #" + recognitionAttempt + ": отмена при уходе с экрана через " + recognitionElapsed() + " мс");
-        cancelRecognition(); stopSpeaking(); stopSpinner();
+        cancelRecognition(); stopSpeaking(); stopSpinner(); stopPulse(); led.show(null);
         // Don't leave an invisible assistant listening or waiting on a network request.
         if (!permissionPending && !isChangingConfigurations()) finish();
     }
     @Override protected void onDestroy() {
         destroyed = true; flow.finish();
+        led.show(null);
         handler.removeCallbacksAndMessages(null);
         cancelRecognition();
-        if (recognizer != null) recognizer.destroy();
         stopSpeaking();
         client.cancel(); executor.shutdownNow(); speechExecutor.shutdownNow();
         super.onDestroy();
