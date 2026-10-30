@@ -24,6 +24,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: ./tools/prepare_wakeword.sh
+      - name: Check wake-word assets
+        run: python3 tools/test_wakeword_assets.py
       - name: Build debug APK
         shell: bash
         run: |

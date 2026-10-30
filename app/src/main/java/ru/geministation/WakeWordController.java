@@ -6,18 +6,14 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Handler;
 import android.os.Looper;
-import edu.cmu.pocketsphinx.Hypothesis;
-import edu.cmu.pocketsphinx.RecognitionListener;
-import edu.cmu.pocketsphinx.SpeechRecognizer;
-import edu.cmu.pocketsphinx.SpeechRecognizerSetup;
 import java.io.File;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 
-/** Local keyword spotting; all native recognizer operations run serially off the UI thread. */
+/** Local keyword spotting. Lifecycle operations run serially; capture has a separate thread. */
 final class WakeWordController {
-    private static final String SEARCH = "gemini-wake";
     private static WakeWordController instance;
     private final Context context;
     private final Handler main = new Handler(Looper.getMainLooper());
@@ -25,8 +21,8 @@ final class WakeWordController {
     private final AtomicBoolean firing = new AtomicBoolean();
     private volatile boolean serviceRunning, dialogActive;
     private volatile String status = "Ожидание запуска веб-сервера";
-    private SpeechRecognizer recognizer; // worker thread only
-    private volatile SpeechRecognizer activeRecognizer;
+    private volatile int rms = -1, peak = -1;
+    private volatile WakeCapture capture;
 
     static synchronized WakeWordController get(Context context) {
         if (instance == null) instance = new WakeWordController(context.getApplicationContext());
@@ -34,13 +30,20 @@ final class WakeWordController {
     }
     private WakeWordController(Context context) { this.context = context; }
     String status() { return status; }
+    int rms() { return rms; }
+    int peak() { return peak; }
     void serviceStarted() { serviceRunning = true; worker.execute(this::reconcile); }
     void serviceStopped() { serviceRunning = false; worker.execute(this::reconcile); }
     void settingsChanged() { worker.execute(this::reconcile); }
     void dialogOpening() { dialogActive = true; worker.execute(this::reconcile); }
-    void pauseForDialog(Runnable continuation) {
+    void pauseForDialog(Consumer<Boolean> continuation) {
         dialogActive = true;
-        worker.execute(() -> { reconcile(); main.post(continuation); });
+        worker.execute(() -> {
+            boolean released = stopCapture();
+            if (!released) status = "Не удалось освободить микрофон";
+            else status = AppSettings.wakeEnabled(context) ? "Пауза на время диалога" : "Выключена";
+            main.post(() -> continuation.accept(released));
+        });
     }
     void dialogClosed() {
         dialogActive = false;
@@ -53,40 +56,41 @@ final class WakeWordController {
     }
     private void reconcile() {
         if (!wanted()) {
-            destroyRecognizer();
+            if (!stopCapture()) { status = "Не удалось освободить микрофон"; return; }
             if (!AppSettings.wakeEnabled(context)) status = "Выключена";
             else if (!serviceRunning) status = "Веб-сервер остановлен";
             else if (dialogActive) status = "Пауза на время диалога";
             else status = "Нет разрешения на микрофон";
             return;
         }
-        if (recognizer != null) return;
+        String sensitivity = AppSettings.wakeSensitivity(context);
+        WakeCapture current = capture;
+        if (current != null) {
+            if (current.isAlive() && current.sensitivity().equals(sensitivity)) return;
+            if (!stopCapture()) { status = "Не удалось освободить микрофон"; return; }
+        }
         status = "Подготавливаем локальную модель";
         try {
             File model = WakeWordAssets.prepare(context);
             if (!wanted()) { reconcile(); return; }
-            SpeechRecognizer next = SpeechRecognizerSetup.defaultSetup()
-                    .setAcousticModel(model).setDictionary(new File(model, "words.dict"))
-                    .setSampleRate(16000).setKeywordThreshold(1e-15f)
-                    .setString("-fdict", new File(model, "noisedict").getAbsolutePath())
-                    .setString("-lda", new File(model, "feature_transform").getAbsolutePath())
-                    .setBoolean("-backtrace", false).getRecognizer();
-            recognizer = next;
-            next.addKeywordSearch(SEARCH, new File(model, "keywords.list"));
-            next.addListener(new RecognitionListener() {
-                @Override public void onBeginningOfSpeech() { }
-                @Override public void onEndOfSpeech() { }
-                @Override public void onResult(Hypothesis hypothesis) { }
-                @Override public void onTimeout() { }
-                @Override public void onPartialResult(Hypothesis hypothesis) {
-                    if (activeRecognizer != next || !wanted() || hypothesis == null || !WakeWordResult.matches(hypothesis.getHypstr())) return;
-                    if (!firing.compareAndSet(false, true)) return;
+            WakeCapture next = new WakeCapture(new WakeCapture.Listener() {
+                @Override public void onLevel(WakeCapture owner, int level, int max) {
+                    if (capture != owner || !wanted()) return;
+                    rms = level; peak = max;
+                }
+                @Override public void onTrigger(WakeCapture owner) {
+                    if (capture != owner || !wanted() || !firing.compareAndSet(false, true)) return;
                     AppLog.add("Голосовая активация: ключевое слово обнаружено");
                     dialogActive = true;
                     worker.execute(() -> {
-                        destroyRecognizer();
+                        boolean released = stopCapture();
                         main.post(() -> {
                             firing.set(false);
+                            if (!released) {
+                                status = "Не удалось освободить микрофон";
+                                AppLog.add("Голосовая активация: микрофон не освобождён; диалог не запущен");
+                                dialogActive = false; return;
+                            }
                             if (!serviceRunning || !AppSettings.wakeEnabled(context)) { dialogActive = false; settingsChanged(); return; }
                             try {
                                 Intent intent = new Intent(AssistantInvocations.ASSIST).setClass(context, MainActivity.class)
@@ -99,30 +103,41 @@ final class WakeWordController {
                         });
                     });
                 }
-                @Override public void onError(Exception error) {
-                    if (activeRecognizer != next) return;
-                    AppLog.add("Голосовая активация: ошибка микрофона " + error.getClass().getSimpleName());
-                    worker.execute(() -> { if (recognizer == next) { destroyRecognizer(); status = "Ошибка микрофона; проверьте журнал"; } });
+                @Override public void onFinished(WakeCapture owner, String error) {
+                    worker.execute(() -> {
+                        if (capture != owner) return;
+                        capture = null; rms = -1; peak = -1;
+                        if (error != null) {
+                            status = "Ошибка микрофона; проверьте журнал";
+                            AppLog.add("Голосовая активация: ошибка записи " + error);
+                        } else if (!firing.get() && wanted()) {
+                            status = "Обработчик остановился; выключите и снова включите активацию";
+                            AppLog.add("Голосовая активация: обработчик неожиданно остановился");
+                        }
+                    });
                 }
-            });
+            }, sensitivity);
+            capture = next; rms = -1; peak = -1;
+            next.start(model);
             if (!wanted()) { reconcile(); return; }
-            activeRecognizer = next;
-            if (!next.startListening(SEARCH)) throw new IllegalStateException("recognizer already active");
-            status = "Локальный обработчик запущен";
-            AppLog.add("Голосовая активация: локальный обработчик запущен");
+            status = "Микрофон запущен (" + next.sourceName() + ")";
+            AppLog.add("Голосовая активация: микрофон запущен (" + next.sourceName() + "), чувствительность " + sensitivity);
         } catch (Exception | LinkageError e) {
-            destroyRecognizer();
+            stopCapture();
             status = "Ошибка запуска; проверьте журнал";
             AppLog.add("Голосовая активация: ошибка запуска " + e.getClass().getSimpleName());
         }
     }
-    private void destroyRecognizer() {
-        SpeechRecognizer current = recognizer;
-        recognizer = null; activeRecognizer = null;
-        if (current == null) return;
-        try { current.cancel(); } catch (RuntimeException ignored) { }
-        try { current.shutdown(); } catch (RuntimeException ignored) { }
-        try { current.getDecoder().delete(); } catch (RuntimeException ignored) { }
+    private boolean stopCapture() {
+        WakeCapture current = capture;
+        rms = -1; peak = -1;
+        if (current == null) return true;
+        if (!current.stopAndWait()) {
+            AppLog.add("Голосовая активация: таймаут остановки микрофона");
+            return false;
+        }
+        if (capture == current) capture = null;
         AppLog.add("Голосовая активация: микрофон освобождён");
+        return true;
     }
 }

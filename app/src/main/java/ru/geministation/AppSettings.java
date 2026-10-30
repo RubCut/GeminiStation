@@ -19,11 +19,15 @@ final class AppSettings {
     static boolean wakeEnabled(Context context) {
         return context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE).getBoolean("wake_enabled", false);
     }
-    static boolean save(Context context, String model, String voice, boolean buttonEnabled, boolean wakeEnabled) {
-        if (!validModel(model) || !TtsVoices.valid(voice)) return false;
+    static String wakeSensitivity(Context context) {
+        String value = context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE).getString("wake_sensitivity", WakeSensitivity.DEFAULT);
+        return WakeSensitivity.valid(value) ? value : WakeSensitivity.DEFAULT;
+    }
+    static boolean save(Context context, String model, String voice, boolean buttonEnabled, boolean wakeEnabled, String wakeSensitivity) {
+        if (!validModel(model) || !TtsVoices.valid(voice) || !WakeSensitivity.valid(wakeSensitivity)) return false;
         return context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE).edit()
                 .putString("model", model).putString("voice", voice).putBoolean("button_enabled", buttonEnabled)
-                .putBoolean("wake_enabled", wakeEnabled).commit();
+                .putBoolean("wake_enabled", wakeEnabled).putString("wake_sensitivity", wakeSensitivity).commit();
     }
     private AppSettings() { }
 }

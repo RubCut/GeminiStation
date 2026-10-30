@@ -404,8 +404,10 @@ public final class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume(); resumed = true;
         // The background detector must release the mic before Gemini Live can acquire it.
-        WakeWordController.get(this).pauseForDialog(() -> {
-            if (resumed && !destroyed && initialStartPending && !permissionPending) startInitial();
+        WakeWordController.get(this).pauseForDialog(released -> {
+            if (!resumed || destroyed) return;
+            if (!released) { showErrorAndClose("Не удалось освободить микрофон для диалога."); return; }
+            if (initialStartPending && !permissionPending) startInitial();
         });
     }
     @Override protected void onStop() {

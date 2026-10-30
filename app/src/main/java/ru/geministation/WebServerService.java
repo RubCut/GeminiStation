@@ -141,7 +141,10 @@ public final class WebServerService extends Service {
                             .put("buttonServiceConnected", AssistantButtonService.isConnected())
                             .put("buttonEnabled", AppSettings.buttonEnabled(context))
                             .put("wakeEnabled", AppSettings.wakeEnabled(context))
-                            .put("wakeStatus", WakeWordController.get(context).status());
+                            .put("wakeStatus", WakeWordController.get(context).status())
+                            .put("wakeSensitivity", AppSettings.wakeSensitivity(context))
+                            .put("wakeRms", WakeWordController.get(context).rms())
+                            .put("wakePeak", WakeWordController.get(context).peak());
                     return reply(Response.Status.OK, "application/json; charset=utf-8", result.toString());
                 }
                 if (session.getMethod() == Method.POST && "/api/voice/sample".equals(path)) {
@@ -264,13 +267,17 @@ public final class WebServerService extends Service {
                     if (data.has("wakeEnabled") && !(data.opt("wakeEnabled") instanceof Boolean))
                         return json(Response.Status.BAD_REQUEST, "Некорректное состояние голосовой активации");
                     boolean wakeEnabled = data.has("wakeEnabled") ? data.optBoolean("wakeEnabled") : AppSettings.wakeEnabled(context);
+                    if (data.has("wakeSensitivity") && !(data.opt("wakeSensitivity") instanceof String))
+                        return json(Response.Status.BAD_REQUEST, "Некорректная чувствительность");
+                    String wakeSensitivity = data.has("wakeSensitivity") ? data.optString("wakeSensitivity", "") : AppSettings.wakeSensitivity(context);
+                    if (!WakeSensitivity.valid(wakeSensitivity)) return json(Response.Status.BAD_REQUEST, "Некорректная чувствительность");
                     String key = data.optString("key", "").trim();
                     boolean deleteKey = data.optBoolean("deleteKey", false);
                     if (!AppSettings.validModel(model) || !TtsVoices.valid(voice) || key.length() > 512 || (deleteKey && !key.isEmpty()))
                         return json(Response.Status.BAD_REQUEST, "Некорректные настройки");
                     SecretStore store = new SecretStore(context);
                     if (deleteKey) store.clear(); else if (!key.isEmpty()) store.save(key);
-                    if (!AppSettings.save(context, model, voice, buttonEnabled, wakeEnabled)) return json(Response.Status.INTERNAL_ERROR, "Не удалось сохранить настройки");
+                    if (!AppSettings.save(context, model, voice, buttonEnabled, wakeEnabled, wakeSensitivity)) return json(Response.Status.INTERNAL_ERROR, "Не удалось сохранить настройки");
                     WakeWordController.get(context).settingsChanged();
                     AppLog.add(deleteKey ? "API-ключ удалён через веб-интерфейс" : "Настройки сохранены через веб-интерфейс");
                     return json(Response.Status.OK, "Настройки сохранены");
