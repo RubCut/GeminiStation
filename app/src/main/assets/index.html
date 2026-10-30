@@ -9,23 +9,22 @@
 </head>
 <body>
 <h1>Gemini Station</h1><p>Настройки и журнал устройства</p>
-<section id="login"><label for="token">Код доступа с экрана станции</label><input id="token" type="password" autocomplete="off" spellcheck="false"><button id="connect">Подключиться</button><p>Соединение по HTTP не шифруется. Для безопасности используйте ADB-проброс на localhost.</p></section>
-<div id="panel" hidden>
+<section><p>Доступ без пароля. Любой в вашей локальной сети может изменить настройки и просматривать журнал. HTTP не шифруется — безопаснее подключаться через ADB.</p></section>
+<div id="panel">
 <section><h2>Gemini API</h2><label for="model">Модель</label><input id="model" autocomplete="off"><label for="key">Новый API-ключ</label><input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="Оставьте пустым, чтобы не менять"><button id="save">Сохранить</button><button id="delete" class="secondary">Удалить ключ</button><p id="message" role="status"></p></section>
 <section><h2>Журнал</h2><small>Последние 200 событий в памяти; ключи и текст диалогов не записываются.</small><pre id="logs"></pre><button id="refresh" class="secondary">Обновить</button></section>
 </div>
 <script>
 'use strict';
-let token='';
 const el=id=>document.getElementById(id);
 async function request(path,options={}){
- const response=await fetch(path,{...options,headers:{'Authorization':'Bearer '+token,...(options.body?{'Content-Type':'application/json'}:{})},cache:'no-store'});
+ const response=await fetch(path,{...options,headers:options.body?{'Content-Type':'application/json','X-Gemini-Station':'1'}:{},cache:'no-store'});
  const data=await response.json(); if(!response.ok) throw new Error(data.message||'Ошибка'); return data;
 }
 async function refresh(){try{const data=await request('/api/logs');el('logs').textContent=data.logs.join('\n');return data}catch(e){el('message').textContent=e.message;throw e}}
-el('connect').addEventListener('click',async()=>{token=el('token').value.trim();try{const data=await refresh();el('model').value=data.model;el('login').hidden=true;el('panel').hidden=false;el('token').value='';}catch(e){alert(e.message)}});
 async function save(remove){try{await request('/api/config',{method:'POST',body:JSON.stringify({model:el('model').value,key:remove?'':el('key').value,deleteKey:remove})});el('key').value='';el('message').textContent=remove?'Ключ удалён':'Настройки сохранены';await refresh()}catch(e){el('message').textContent=e.message}}
 el('save').addEventListener('click',()=>save(false));el('delete').addEventListener('click',()=>{if(confirm('Удалить API-ключ?'))save(true)});el('refresh').addEventListener('click',()=>refresh().catch(()=>{}));
-setInterval(()=>{if(token && !el('panel').hidden)refresh().catch(()=>{})},5000);
+refresh().then(data=>{el('model').value=data.model}).catch(()=>{});
+setInterval(()=>refresh().catch(()=>{}),5000);
 </script>
 </body></html>

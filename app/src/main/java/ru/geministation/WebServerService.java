@@ -8,14 +8,10 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.os.IBinder;
-import android.util.Base64;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.net.Inet4Address;
 import java.net.NetworkInterface;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.SecureRandom;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -26,16 +22,9 @@ import org.json.JSONObject;
 public final class WebServerService extends Service {
     private static final int PORT = 6529;
     private static final String CHANNEL = "gemini_web";
-    private static final String TOKEN = makeToken();
     private static volatile boolean running;
     private Server server;
 
-    private static String makeToken() {
-        byte[] bytes = new byte[16];
-        new SecureRandom().nextBytes(bytes);
-        return Base64.encodeToString(bytes, Base64.NO_WRAP | Base64.NO_PADDING | Base64.URL_SAFE);
-    }
-    static String token() { return TOKEN; }
     static boolean isRunning() { return running; }
     static String address() {
         try {
@@ -105,22 +94,20 @@ public final class WebServerService extends Service {
             try { return reply(status, "application/json; charset=utf-8", new JSONObject().put("message", message).toString()); }
             catch (Exception e) { return reply(Response.Status.INTERNAL_ERROR, "text/plain", "Error"); }
         }
-        private boolean authorized(IHTTPSession session) {
-            String supplied = session.getHeaders().get("authorization");
-            if (supplied == null) return false;
-            return MessageDigest.isEqual(("Bearer " + TOKEN).getBytes(StandardCharsets.UTF_8), supplied.getBytes(StandardCharsets.UTF_8));
-        }
         @Override public Response serve(IHTTPSession session) {
             String path = session.getUri();
+            String host = session.getHeaders().get("host");
+            if (!WebSecurity.permittedHost(host)) return json(Response.Status.FORBIDDEN, "Недопустимый адрес");
             if (session.getMethod() == Method.GET && "/".equals(path)) return reply(Response.Status.OK, "text/html; charset=utf-8", page);
             if (!path.startsWith("/api/")) return json(Response.Status.NOT_FOUND, "Не найдено");
-            if (!authorized(session)) return json(Response.Status.UNAUTHORIZED, "Неверный код доступа");
             try {
                 if (session.getMethod() == Method.GET && "/api/logs".equals(path)) {
                     JSONObject result = new JSONObject().put("logs", AppLog.snapshot()).put("model", AppSettings.model(context));
                     return reply(Response.Status.OK, "application/json; charset=utf-8", result.toString());
                 }
                 if (session.getMethod() == Method.POST && "/api/config".equals(path)) {
+                    if (!WebSecurity.permittedWrite(host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station")))
+                        return json(Response.Status.FORBIDDEN, "Запрос отклонён");
                     // Require a small, known-length body before NanoHTTPD reads it.
                     String lengthHeader = session.getHeaders().get("content-length");
                     long length = lengthHeader == null ? -1 : Long.parseLong(lengthHeader);

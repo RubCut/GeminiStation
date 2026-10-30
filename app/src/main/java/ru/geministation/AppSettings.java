@@ -3,7 +3,7 @@ package ru.geministation;
 import android.content.Context;
 
 final class AppSettings {
-    private static final String DEFAULT_MODEL = "gemini-2.5-flash";
+    private static final String DEFAULT_MODEL = "gemini-3.5-flash-lite";
     // Same preferences file Activity.getPreferences used in the initial prototype.
     static String model(Context context) {
         return context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE).getString("model", DEFAULT_MODEL);

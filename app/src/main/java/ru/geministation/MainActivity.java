@@ -7,12 +7,14 @@ import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
+import android.view.Gravity;
+import android.view.WindowManager;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
-import android.speech.tts.TextToSpeech;
 import android.text.InputType;
 import android.view.KeyEvent;
 import android.view.View;
@@ -24,23 +26,25 @@ import android.widget.TextView;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import java.util.ArrayList;
-import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public final class MainActivity extends Activity {
     private static final int MICROPHONE_REQUEST = 100;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final ExecutorService speechExecutor = Executors.newSingleThreadExecutor();
+    private final AtomicInteger speechGeneration = new AtomicInteger();
+    private final VoicePlayer voicePlayer = new VoicePlayer();
     private final JSONArray history = new JSONArray();
     private GeminiClient client;
     private SecretStore secrets;
-    private TextToSpeech tts;
     private SpeechRecognizer recognizer;
     private TextView status, conversation;
     private ScrollView scroll;
     private EditText input;
     private Button send, microphone, clear;
-    private boolean busy, listening, destroyed, ttsReady;
+    private boolean busy, listening, destroyed, resumed;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -50,14 +54,6 @@ public final class MainActivity extends Activity {
         try {
             startForegroundService(new Intent(this, WebServerService.class));
         } catch (RuntimeException e) { updateStatus("Не удалось запустить веб-сервер."); }
-        tts = new TextToSpeech(this, result -> {
-            if (destroyed) return;
-            if (result == TextToSpeech.SUCCESS) {
-                int language = tts.setLanguage(new Locale("ru", "RU"));
-                ttsReady = language != TextToSpeech.LANG_MISSING_DATA && language != TextToSpeech.LANG_NOT_SUPPORTED;
-            }
-            if (!ttsReady) updateStatus("Синтез речи недоступен. Ответы будут показаны текстом.");
-        });
         if (Intent.ACTION_ASSIST.equals(getIntent().getAction())) startVoice();
     }
     @Override protected void onNewIntent(Intent intent) {
@@ -69,10 +65,13 @@ public final class MainActivity extends Activity {
     private void buildUi() {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(40), dp(22), dp(40), dp(22));
-        root.setBackgroundColor(Color.rgb(16, 23, 37));
+        root.setPadding(dp(40), dp(18), dp(40), dp(12));
+        GradientDrawable panel = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{0xf22c2345, 0xfa141321});
+        panel.setCornerRadii(new float[]{dp(24), dp(24), dp(24), dp(24), 0, 0, 0, 0});
+        root.setBackground(panel);
         TextView title = new TextView(this);
-        title.setText("Gemini Station"); title.setTextSize(26); title.setTextColor(Color.WHITE);
+        title.setText("✦  Gemini"); title.setTextSize(23); title.setTextColor(Color.WHITE);
         root.addView(title);
         status = new TextView(this); status.setTextColor(0xffb7c8e3); status.setTextSize(16);
         updateStatus("Скажите запрос или введите его текстом. Для начала добавьте API-ключ в настройках.");
@@ -81,7 +80,7 @@ public final class MainActivity extends Activity {
         conversation = new TextView(this); conversation.setTextColor(Color.WHITE); conversation.setTextSize(19);
         conversation.setTextIsSelectable(false); conversation.setPadding(0, dp(12), 0, dp(12));
         scroll.addView(conversation);
-        root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
+        root.addView(scroll, new LinearLayout.LayoutParams(-1, dp(104)));
         input = new EditText(this); input.setSingleLine(true); input.setTextColor(Color.WHITE);
         input.setHintTextColor(0xff9baac0); input.setHint("Ваш вопрос");
         input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
@@ -96,6 +95,10 @@ public final class MainActivity extends Activity {
         actions.addView(microphone); actions.addView(send); actions.addView(clear); actions.addView(settings); actions.addView(web);
         root.addView(actions);
         setContentView(root);
+        getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+        getWindow().setGravity(Gravity.BOTTOM);
+        getWindow().setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.WRAP_CONTENT);
         microphone.requestFocus();
     }
     private Button button(String label, View.OnClickListener listener) {
@@ -109,8 +112,7 @@ public final class MainActivity extends Activity {
     private void showWebInfo() {
         String state = WebServerService.isRunning() ? "Работает" : "Не запущен (перезапустите приложение)";
         new AlertDialog.Builder(this).setTitle("Веб-интерфейс")
-                .setMessage(state + "\n\nАдрес: " + WebServerService.address() + "\n\nКод доступа: " + WebServerService.token()
-                        + "\n\nHTTP не шифруется. Безопаснее открыть через ADB-проброс на localhost.")
+                .setMessage(state + "\n\nАдрес: " + WebServerService.address() + "\n\nБез пароля: любой в локальной сети может менять настройки. HTTP не шифруется. Лучше использовать ADB-проброс.")
                 .setPositiveButton("Закрыть", null).show();
     }
     private void showSettings() {
@@ -138,7 +140,7 @@ public final class MainActivity extends Activity {
         if (busy) return;
         while (history.length() > 0) history.remove(history.length() - 1);
         conversation.setText(""); updateStatus("Новый диалог.");
-        if (tts != null) tts.stop();
+        stopSpeaking();
     }
     private void append(String role, String text) {
         if (conversation.length() > 0) conversation.append("\n\n");
@@ -156,7 +158,7 @@ public final class MainActivity extends Activity {
         try { apiKey = secrets.load(); }
         catch (Exception e) { updateStatus("Не удалось прочитать ключ. Удалите его и сохраните заново."); return; }
         if (apiKey.isEmpty()) { updateStatus("Добавьте API-ключ в настройках."); return; }
-        if (tts != null) tts.stop();
+        stopSpeaking();
         final JSONArray request;
         try {
             request = new JSONArray(history.toString());
@@ -174,8 +176,7 @@ public final class MainActivity extends Activity {
                         while (history.length() > 20) { history.remove(0); history.remove(0); }
                     } catch (Exception ignored) { }
                     append("Gemini", response); setBusy(false);
-                    updateStatus(ttsReady ? "Готово." : "Готово. Синтез речи недоступен.");
-                    if (ttsReady) tts.speak(response, TextToSpeech.QUEUE_FLUSH, null, "answer");
+                    if (resumed) speak(apiKey, response); else updateStatus("Готово.");
                 });
             } catch (Exception e) {
                 runOnUiThread(() -> {
@@ -184,6 +185,32 @@ public final class MainActivity extends Activity {
                     String message = e instanceof java.io.IOException && e.getMessage() != null && e.getMessage().startsWith("Gemini API: HTTP")
                             ? e.getMessage() : "Ошибка запроса. Проверьте интернет, WebShift DNS и доступ к Gemini API.";
                     updateStatus(message);
+                });
+            }
+        });
+    }
+    private void stopSpeaking() {
+        speechGeneration.incrementAndGet();
+        voicePlayer.stop();
+        client.cancelSpeech();
+    }
+    private void speak(String apiKey, String text) {
+        final int generation = speechGeneration.incrementAndGet();
+        updateStatus("Генерирую голос Gemini…");
+        speechExecutor.execute(() -> {
+            try {
+                PcmAudio audio = client.synthesize(apiKey, text);
+                if (speechGeneration.get() != generation) return;
+                runOnUiThread(() -> { if (!destroyed && speechGeneration.get() == generation) updateStatus("Отвечаю…"); });
+                voicePlayer.play(audio, () -> speechGeneration.get() == generation);
+                runOnUiThread(() -> { if (!destroyed && speechGeneration.get() == generation) updateStatus("Готово."); });
+            } catch (Exception e) {
+                runOnUiThread(() -> {
+                    if (!destroyed && speechGeneration.get() == generation) {
+                        String detail = e instanceof java.io.IOException && e.getMessage() != null && e.getMessage().startsWith("Gemini TTS: HTTP")
+                                ? " (" + e.getMessage() + ")" : "";
+                        updateStatus("Не удалось озвучить ответ через Gemini" + detail + ". Текст доступен на экране.");
+                    }
                 });
             }
         });
@@ -197,7 +224,7 @@ public final class MainActivity extends Activity {
             requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, MICROPHONE_REQUEST); return;
         }
         if (!SpeechRecognizer.isRecognitionAvailable(this)) { updateStatus("Системный распознаватель речи недоступен."); return; }
-        if (tts != null) tts.stop();
+        stopSpeaking();
         try {
             if (recognizer == null) {
                 String component = Settings.Secure.getString(getContentResolver(), "voice_recognition_service");
@@ -237,16 +264,18 @@ public final class MainActivity extends Activity {
         if (keyCode == KeyEvent.KEYCODE_VOICE_ASSIST || keyCode == KeyEvent.KEYCODE_SEARCH) { startVoice(); return true; }
         return super.onKeyDown(keyCode, event);
     }
+    @Override protected void onResume() { super.onResume(); resumed = true; }
     @Override protected void onStop() {
+        resumed = false;
         super.onStop();
         if (recognizer != null && listening) { recognizer.cancel(); listening = false; }
-        if (tts != null) tts.stop();
+        stopSpeaking();
     }
     @Override protected void onDestroy() {
         destroyed = true;
         if (recognizer != null) recognizer.destroy();
-        if (tts != null) { tts.stop(); tts.shutdown(); }
-        client.cancel(); executor.shutdownNow();
+        stopSpeaking();
+        client.cancel(); executor.shutdownNow(); speechExecutor.shutdownNow();
         super.onDestroy();
     }
 }

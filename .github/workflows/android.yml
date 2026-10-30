@@ -21,7 +21,7 @@ jobs:
       - name: Build debug APK
         shell: bash
         run: |
-          if ! ./gradlew --no-daemon assembleDebug > build-output.txt 2>&1; then
+          if ! ./gradlew --no-daemon testDebugUnitTest assembleDebug > build-output.txt 2>&1; then
             tail -n 80 build-output.txt
             while IFS= read -r line; do printf '::error::%s\n' "$line"; done < <(tail -n 35 build-output.txt)
             exit 1
