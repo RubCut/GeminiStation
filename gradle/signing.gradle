@@ -1,0 +1,23 @@
+// Stable CI signing is opt-in; never store keys or passwords in the repository.
+def keystorePath = System.getenv('GEMINI_SIGNING_KEYSTORE')
+def password = System.getenv('GEMINI_SIGNING_PASSWORD')
+if ((keystorePath == null || keystorePath.isEmpty()) != (password == null || password.isEmpty())) {
+    throw new GradleException('Both GEMINI_SIGNING_KEYSTORE and GEMINI_SIGNING_PASSWORD are required')
+}
+if (keystorePath && password) {
+    android {
+        signingConfigs {
+            geminiStable {
+                storeFile file(keystorePath)
+                storeType 'PKCS12'
+                storePassword password
+                keyAlias 'geministation'
+                keyPassword password
+            }
+        }
+        buildTypes {
+            debug { signingConfig signingConfigs.geminiStable }
+            release { signingConfig signingConfigs.geminiStable }
+        }
+    }
+}

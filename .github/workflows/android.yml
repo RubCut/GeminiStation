@@ -12,12 +12,40 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    env:
+      HAS_STABLE_SIGNING: ${{ secrets.GEMINI_SIGNING_KEYSTORE_B64 != '' && secrets.GEMINI_SIGNING_PASSWORD != '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
+      - name: Prepare signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.GEMINI_SIGNING_KEYSTORE_B64 }}
+          GEMINI_SIGNING_PASSWORD: ${{ secrets.GEMINI_SIGNING_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          keyfile="$RUNNER_TEMP/gemini-signing.p12"
+          umask 077
+          if [[ "$HAS_STABLE_SIGNING" == 'true' ]]; then
+            printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$keyfile"
+          else
+            # Fork PRs and first-time setup can test signing without accessing secrets.
+            # APKs produced with this throwaway key are NEVER uploaded as artifacts.
+            export GEMINI_SIGNING_PASSWORD='ci-test-key-not-for-distribution'
+            keytool -genkeypair -alias geministation -keyalg RSA -keysize 2048 -validity 30 \
+              -dname 'CN=Temporary CI Test' -storetype PKCS12 -keystore "$keyfile" \
+              -storepass:env GEMINI_SIGNING_PASSWORD -keypass:env GEMINI_SIGNING_PASSWORD >/dev/null 2>&1
+            echo '::warning::Stable signing secrets are unavailable; tests use a temporary key and no APK artifacts will be published.'
+          fi
+          chmod 600 "$keyfile"
+          keytool -list -alias geministation -storetype PKCS12 -keystore "$keyfile" \
+            -storepass:env GEMINI_SIGNING_PASSWORD >/dev/null
+          echo "GEMINI_SIGNING_KEYSTORE=$keyfile" >> "$GITHUB_ENV"
+      - name: Test signing setup safety
+        run: ./tools/test_signing_setup.sh
       - name: Test web voice settings
         run: node tools/test_voice_settings.js
       - name: Prepare offline wake-word model
@@ -26,16 +54,40 @@ jobs:
         run: ./tools/prepare_wakeword.sh
       - name: Check wake-word assets
         run: python3 tools/test_wakeword_assets.py
-      - name: Build debug APK
+      - name: Build and test signed APKs
+        env:
+          SIGNING_PASSWORD_SECRET: ${{ secrets.GEMINI_SIGNING_PASSWORD }}
         shell: bash
         run: |
+          set -euo pipefail
+          if [[ "$HAS_STABLE_SIGNING" == 'true' ]]; then
+            export GEMINI_SIGNING_PASSWORD="$SIGNING_PASSWORD_SECRET"
+          else
+            export GEMINI_SIGNING_PASSWORD='ci-test-key-not-for-distribution'
+          fi
           if ! ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleDebug :keytester:testDebugUnitTest :keytester:assembleDebug :buttonhelper:testDebugUnitTest :buttonhelper:assembleDebug > build-output.txt 2>&1; then
             tail -n 80 build-output.txt
             while IFS= read -r line; do printf '::error::%s\n' "$line"; done < <(tail -n 35 build-output.txt)
             exit 1
           fi
           cat build-output.txt
+      - name: Verify APK signatures
+        shell: bash
+        run: |
+          set -euo pipefail
+          apksigner=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)
+          test -n "$apksigner"
+          expected=''
+          for apk in app/build/outputs/apk/debug/app-debug.apk keytester/build/outputs/apk/debug/keytester-debug.apk buttonhelper/build/outputs/apk/debug/buttonhelper-debug.apk; do
+            details=$("$apksigner" verify --verbose --print-certs "$apk")
+            echo "$details"
+            hash=$(printf '%s\n' "$details" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
+            test -n "$hash"
+            if [[ -z "$expected" ]]; then expected="$hash"; fi
+            if [[ "$expected" != "$hash" ]]; then echo 'APK signing certificates do not match' >&2; exit 1; fi
+          done
       - name: Upload APK
+        if: env.HAS_STABLE_SIGNING == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: GeminiStation-debug
@@ -43,6 +95,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
       - name: Upload button tester APK
+        if: env.HAS_STABLE_SIGNING == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: ButtonTester-debug
@@ -50,6 +103,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
       - name: Upload button helper APK
+        if: env.HAS_STABLE_SIGNING == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: ButtonHelper-debug
