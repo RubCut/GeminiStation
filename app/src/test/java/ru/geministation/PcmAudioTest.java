@@ -45,6 +45,32 @@ public class PcmAudioTest {
         assertEquals(2, decoded.channels); assertEquals(stereo.rate, decoded.rate);
         assertArrayEquals(stereo.samples, decoded.samples);
     }
+    @Test public void activationWarmupPreservesSamplesAndAddsSilentWholeFrames() throws Exception {
+        byte[] original = {1, 2, 3, 4};
+        PcmAudio source = PcmAudio.decode(original, "audio/L16;rate=24000");
+        PcmAudio padded = source.withSilence(350, 150);
+        int before = 24000 * 350 / 1000 * 2;
+        int after = 24000 * 150 / 1000 * 2;
+        assertEquals(24000, padded.rate); assertEquals(1, padded.channels);
+        assertEquals(before + original.length + after, padded.samples.length);
+        assertArrayEquals(original, java.util.Arrays.copyOfRange(padded.samples, before, before + original.length));
+        for (int i = 0; i < before; i++) assertEquals(0, padded.samples[i]);
+        for (int i = before + original.length; i < padded.samples.length; i++) assertEquals(0, padded.samples[i]);
+        assertArrayEquals(original, source.samples);
+    }
+    @Test public void warmupRetainsStereoFrameAlignment() throws Exception {
+        byte[] raw = wav();
+        ByteBuffer b = ByteBuffer.allocate(raw.length + 4).order(ByteOrder.LITTLE_ENDIAN);
+        b.put(raw).putInt(1234); b.putInt(52, 4); b.putShort(22, (short) 2);
+        PcmAudio source = PcmAudio.decode(b.array(), "audio/wav");
+        PcmAudio padded = source.withSilence(1, 1);
+        assertEquals(2, padded.channels);
+        assertEquals(24 * 4 + 4 + 24 * 4, padded.samples.length);
+        assertArrayEquals(source.samples, java.util.Arrays.copyOfRange(padded.samples, 24 * 4, 24 * 4 + 4));
+    }
+    @Test(expected=IllegalArgumentException.class) public void warmupIsBounded() throws Exception {
+        PcmAudio.decode(new byte[]{1,2}, "audio/L16;rate=24000").withSilence(3000, 0);
+    }
     @Test(expected=IOException.class) public void rejectsUnknownFormat() throws Exception {
         PcmAudio.decode(new byte[]{1,2}, "audio/mp3");
     }

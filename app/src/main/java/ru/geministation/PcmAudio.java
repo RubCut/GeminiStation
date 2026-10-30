@@ -52,6 +52,17 @@ final class PcmAudio {
         if (rate < 8000 || rate > 48000) throw new IOException("Unsupported sample rate");
         return new PcmAudio(bytes, rate, 1);
     }
+    /** Preserve the cue exactly, adding whole silent frames before and after it. */
+    PcmAudio withSilence(int beforeMs, int afterMs) {
+        if (beforeMs < 0 || afterMs < 0 || beforeMs > 2000 || afterMs > 2000)
+            throw new IllegalArgumentException("Invalid silence duration");
+        int frameSize = channels * 2;
+        int before = (int) ((long) rate * beforeMs / 1000) * frameSize;
+        int after = (int) ((long) rate * afterMs / 1000) * frameSize;
+        byte[] padded = new byte[before + samples.length + after];
+        System.arraycopy(samples, 0, padded, before, samples.length);
+        return new PcmAudio(padded, rate, channels);
+    }
     /** Wrap decoded PCM as standard WAV for browser playback. */
     byte[] toWav() {
         ByteBuffer out = ByteBuffer.allocate(44 + samples.length).order(ByteOrder.LITTLE_ENDIAN);

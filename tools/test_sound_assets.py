@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check that the supplied WAV cues are packaged intact and suitable for MediaPlayer."""
+"""Check that the supplied WAV cues are packaged intact and suitable for playback."""
 from pathlib import Path
 import sys
 import wave

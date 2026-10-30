@@ -497,7 +497,7 @@ public final class MainActivity extends Activity {
         destroyed = true; flow.finish();
         led.show(null);
         handler.removeCallbacksAndMessages(null);
-        soundCuePlayer.cancel();
+        soundCuePlayer.close();
         pendingNavigation = null;
         cancelRecognition();
         stopSpeaking();
