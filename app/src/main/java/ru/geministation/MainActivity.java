@@ -212,8 +212,15 @@ public final class MainActivity extends Activity {
             try {
                 VisibleApps apps = VisibleApps.load(getApplicationContext());
                 JSONArray appList = apps.promptList();
-                GeminiToolProtocol.Result result = keyVault.run(KeyRotationDomains.Domain.TEXT, () -> !destroyed && resumed, key -> client.generate(key, model, request, appList));
-                DeviceToolSpec.Action action = result.call == null ? null : DeviceToolSpec.parse(result.call, apps.size());
+                SmartHome.Snapshot snapshot = new SmartHome.Snapshot();
+                try {
+                    if (!new SecretStore(getApplicationContext(), SmartHome.PREFS).load().isEmpty())
+                        snapshot = SmartHome.load(getApplicationContext());
+                } catch (Exception e) { AppLog.add("Умный дом: список недоступен (" + YandexCloud.safeError(e) + ")"); }
+                final SmartHome.Snapshot home = snapshot;
+                final JSONArray homeList = home.prompt();
+                GeminiToolProtocol.Result result = keyVault.run(KeyRotationDomains.Domain.TEXT, () -> !destroyed && resumed, key -> client.generate(key, model, request, appList, homeList));
+                DeviceToolSpec.Action action = result.call == null ? null : DeviceToolSpec.parse(result.call, apps.size(), home.devices.size());
                 if (action != null && action.kind == DeviceToolSpec.Kind.OPEN_LINK
                         && !UserLinkAuthorization.presentInUserTurns(action.data, request)) action = null;
                 boolean search = action != null && action.kind == DeviceToolSpec.Kind.SEARCH_YOUTUBE;
@@ -237,18 +244,45 @@ public final class MainActivity extends Activity {
                     }
                     action = new DeviceToolSpec.Action(DeviceToolSpec.Kind.OPEN_LINK, action.number, url);
                 }
+                String networkText = null;
+                YandexCloud.Track music = null;
+                if (action != null && action.kind == DeviceToolSpec.Kind.HOME_CONTROL && !destroyed && resumed) {
+                    SmartHome.Device device = home.devices.get(action.number);
+                    try {
+                        boolean ok = SmartHome.set(getApplicationContext(), home, device, "on".equals(action.data));
+                        networkText = ok ? ("Команда выполнена: " + device.name + ".") : "Яндекс не подтвердил выполнение команды умного дома.";
+                    } catch (Exception e) {
+                        AppLog.add("Умный дом: ошибка команды (" + YandexCloud.safeError(e) + ")");
+                        networkText = "Не удалось выполнить команду умного дома. Проверьте доступ и журнал.";
+                    }
+                } else if (action != null && action.kind == DeviceToolSpec.Kind.YANDEX_MUSIC && !destroyed && resumed) {
+                    try {
+                        music = YandexCloud.search(getApplicationContext(), action.data);
+                        networkText = "Нашёл " + music.title + ". Пробую включить на станции.";
+                    } catch (Exception e) {
+                        AppLog.add("Музыка: поиск недоступен (" + YandexCloud.safeError(e) + ")");
+                        networkText = "Не удалось найти трек в Яндекс Музыке. Проверьте вход в Яндекс и журнал.";
+                    }
+                }
+                final String remoteText = networkText;
+                final YandexCloud.Track foundTrack = music;
                 final DeviceToolSpec.Action chosen = action;
                 final boolean videoSearch = search, videoFound = foundVideo, nativeVideoSearch = nativeSearch;
                 runOnUiThread(() -> {
                     if (destroyed || !resumed || !flow.answered()) return;
                     String response = result.text;
                     if (result.call != null) {
-                        DeviceActions.Outcome outcome = deviceActions.prepare(chosen, apps);
-                        response = outcome.text;
-                        if (videoSearch && outcome.navigation != null)
-                            response = nativeVideoSearch ? "Ищу и открываю видео в SmartTube." :
-                                    (videoFound ? "Открываю найденное видео." : "Открываю результаты поиска YouTube.");
-                        pendingNavigation = outcome.navigation;
+                        if (remoteText != null) {
+                            response = remoteText;
+                            if (foundTrack != null) pendingNavigation = () -> { led.playMusic(foundTrack.id); return true; };
+                        } else {
+                            DeviceActions.Outcome outcome = deviceActions.prepare(chosen, apps);
+                            response = outcome.text;
+                            if (videoSearch && outcome.navigation != null)
+                                response = nativeVideoSearch ? "Ищу и открываю видео в SmartTube." :
+                                        (videoFound ? "Открываю найденное видео." : "Открываю результаты поиска YouTube.");
+                            pendingNavigation = outcome.navigation;
+                        }
                     }
                     try {
                         history.put(turn("user", question)); history.put(turn("model", response));

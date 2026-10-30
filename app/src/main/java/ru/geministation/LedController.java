@@ -224,6 +224,23 @@ final class LedController {
         JSONObject hello = envelope(auth, new JSONObject().put("command", "softwareVersion"), UUID.randomUUID().toString());
         return connection.connect(hello.toString(), 6000);
     }
+    /** Experimental playback on the already selected local station; no playback ACK is available. */
+    void playMusic(String id) {
+        if (id == null || !id.matches("[0-9]{1,20}")) return;
+        executor.execute(() -> {
+            try {
+                SecretStore store = new SecretStore(context, "led_secrets");
+                String cfg = store.load();
+                if (cfg.isEmpty()) return;
+                String auth = token(cfg);
+                if (!cfg.equals(store.load()) || !connect(auth)) throw new Exception("not connected");
+                JSONObject payload = new JSONObject().put("command", "playMusic").put("id", id).put("type", "track");
+                if (!cfg.equals(store.load()) || !connection.send(envelope(auth, payload, UUID.randomUUID().toString()).toString()))
+                    throw new Exception("not sent");
+                AppLog.add("Музыка: команда станции отправлена; воспроизведение не подтверждено");
+            } catch (Exception e) { AppLog.add("Музыка: не удалось отправить команду станции (" + e.getClass().getSimpleName() + ")"); }
+        });
+    }
     private String assetUrl(String frame) throws Exception {
         String url = assetUrls.get(frame);
         if (url == null) {

@@ -5,7 +5,7 @@ import org.json.JSONObject;
 
 /** Strict allowlist for Gemini function calls; model output never becomes an Intent or shell command. */
 final class DeviceToolSpec {
-    enum Kind { OPEN_APP, OPEN_LINK, SEARCH_YOUTUBE, OPEN_SETTINGS, GO_HOME, SET_VOLUME, ADJUST_VOLUME, GET_VOLUME, MEDIA_CONTROL }
+    enum Kind { OPEN_APP, OPEN_LINK, SEARCH_YOUTUBE, OPEN_SETTINGS, GO_HOME, SET_VOLUME, ADJUST_VOLUME, GET_VOLUME, MEDIA_CONTROL, HOME_CONTROL, YANDEX_MUSIC }
     static final class Action {
         final Kind kind;
         final int number;
@@ -37,6 +37,13 @@ final class DeviceToolSpec {
         declarations.put(function("media_control", "Отправить команду текущему Android-медиаплееру. Доступны play (продолжить), pause, stop, next, previous, fast_forward и rewind. Не используй для запуска конкретной песни, узнавания текущего трека или перемотки на точное время. Android выбирает плеер, выполнение не подтверждается.",
                 new JSONObject().put("action", new JSONObject().put("type", "STRING")
                         .put("enum", new JSONArray().put("play").put("pause").put("stop").put("next").put("previous").put("fast_forward").put("rewind"))), "action"));
+        declarations.put(new JSONObject().put("name", "home_control").put("description", "Включить или выключить одно устройство умного дома по числовому id из списка. Если устройство неоднозначно — уточни у пользователя. Не вызывай без явной просьбы.")
+                .put("parameters", new JSONObject().put("type", "OBJECT").put("properties", new JSONObject()
+                        .put("id", new JSONObject().put("type", "INTEGER"))
+                        .put("on", new JSONObject().put("type", "BOOLEAN")))
+                        .put("required", new JSONArray().put("id").put("on"))));
+        declarations.put(function("yandex_music", "Найти и попытаться включить конкретный трек в Яндекс Музыке по названию и исполнителю. Не применяй для паузы и для плейлистов.",
+                new JSONObject().put("query", new JSONObject().put("type", "STRING")), "query"));
         return declarations;
     }
     private static JSONObject function(String name, String description, JSONObject properties, String required) throws Exception {
@@ -52,7 +59,8 @@ final class DeviceToolSpec {
         if (!Double.isFinite(value) || value != Math.rint(value) || value < Integer.MIN_VALUE || value > Integer.MAX_VALUE) return null;
         return (int) value;
     }
-    static Action parse(JSONObject call, int appCount) {
+    static Action parse(JSONObject call, int appCount) { return parse(call, appCount, 0); }
+    static Action parse(JSONObject call, int appCount, int homeCount) {
         if (call == null || !(call.opt("name") instanceof String)) return null;
         JSONObject args = call.optJSONObject("args");
         if (args == null) args = new JSONObject();
@@ -88,6 +96,17 @@ final class DeviceToolSpec {
                 Object requested = args.opt("action");
                 if (!(requested instanceof String) || MediaCommands.parse((String) requested) == null) return null;
                 return new Action(Kind.MEDIA_CONTROL, 0, (String) requested);
+            }
+            case "home_control": {
+                Integer id = integer(args, "id");
+                Object on = args.opt("on");
+                return id != null && id >= 0 && id < homeCount && on instanceof Boolean
+                        ? new Action(Kind.HOME_CONTROL, id, (Boolean) on ? "on" : "off") : null;
+            }
+            case "yandex_music": {
+                Object query = args.opt("query");
+                return query instanceof String && LinkPolicy.searchQuery((String) query)
+                        ? new Action(Kind.YANDEX_MUSIC, 0, (String) query) : null;
             }
             case "get_volume": return new Action(Kind.GET_VOLUME, 0);
             default: return null;

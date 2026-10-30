@@ -1,0 +1,87 @@
+package ru.geministation;
+
+import android.content.Context;
+import java.io.IOException;
+import java.net.Proxy;
+import java.util.concurrent.TimeUnit;
+import okhttp3.FormBody;
+import okhttp3.HttpUrl;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+/** Fixed-host experimental Yandex clients. Never log tokens or response bodies. */
+final class YandexCloud {
+    private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
+    private static final OkHttpClient HTTP = new OkHttpClient.Builder().proxy(Proxy.NO_PROXY)
+            .followRedirects(false).followSslRedirects(false).callTimeout(8, TimeUnit.SECONDS).build();
+    static String safeError(Exception e) {
+        String message = e.getMessage();
+        return message != null && message.matches("HTTP [0-9]{3}") ? message : e.getClass().getSimpleName();
+    }
+    static JSONObject request(Request request) throws Exception {
+        try (Response r = HTTP.newCall(request).execute()) {
+            if (!r.isSuccessful()) throw new IOException("HTTP " + r.code());
+            if (r.body() == null) throw new IOException("empty response");
+            okio.BufferedSource source = r.body().source();
+            source.request(2 * 1024 * 1024L + 1);
+            if (source.buffer().size() > 2 * 1024 * 1024L) throw new IOException("response too large");
+            return new JSONObject(source.readUtf8());
+        }
+    }
+    static String musicToken(Context c) throws Exception {
+        String saved = new SecretStore(c, "led_secrets").load();
+        if (saved.isEmpty()) throw new IOException("Нет входа Яндекс для экрана");
+        String x = new JSONObject(saved).getString("x_token");
+        FormBody form = new FormBody.Builder().add("client_secret", "53bc75238f0c4d08a118e51fe9203300")
+                .add("client_id", "23cabbbdc6cd418abb4b39c32c41195d").add("grant_type", "x-token")
+                .add("access_token", x).build();
+        String token = request(new Request.Builder().url("https://oauth.mobile.yandex.net/1/token").post(form).build()).getString("access_token");
+        if (token.isEmpty()) throw new IOException("empty token");
+        return token;
+    }
+    static final class Track {
+        final String id, title;
+        Track(String id, String title) { this.id = id; this.title = title; }
+    }
+    static Track search(Context c, String query) throws Exception {
+        if (!LinkPolicy.searchQuery(query)) throw new IOException("bad query");
+        String token = musicToken(c);
+        HttpUrl url = HttpUrl.get("https://api.music.yandex.net/search").newBuilder()
+                .addQueryParameter("text", query).addQueryParameter("type", "track").build();
+        JSONObject result = request(new Request.Builder().url(url).header("Authorization", "OAuth " + token).build())
+                .optJSONObject("result");
+        return parseSearch(result);
+    }
+    static Track parseSearch(JSONObject result) throws Exception {
+        JSONObject tracks = result == null ? null : result.optJSONObject("tracks");
+        JSONArray items = tracks == null ? null : tracks.optJSONArray("results");
+        if (items != null) for (int i = 0; i < items.length(); i++) {
+            JSONObject item = items.optJSONObject(i);
+            if (item == null || !item.optBoolean("available", true)) continue;
+            String id = item.optString("id", "");
+            String title = item.optString("title", "").trim();
+            if (!id.matches("[0-9]{1,20}") || title.isEmpty()) continue;
+            JSONArray artists = item.optJSONArray("artists");
+            JSONObject artist = artists == null ? null : artists.optJSONObject(0);
+            String label = (artist == null ? "" : artist.optString("name", "") + " — ") + title;
+            label = label.replaceAll("[\\p{Cntrl}]", " ");
+            return new Track(id, label.substring(0, Math.min(label.length(), 160)));
+        }
+        throw new IOException("Трек не найден");
+    }
+    static JSONObject home(String token, String path, JSONObject body) throws Exception {
+        if (!"/v1.0/user/info".equals(path) && !"/v1.0/devices/actions".equals(path)) throw new IOException("bad path");
+        Request.Builder req = new Request.Builder().url("https://api.iot.yandex.net" + path).header("Authorization", "Bearer " + token);
+        if (body != null) req.post(RequestBody.create(body.toString(), JSON));
+        JSONObject response = request(req.build());
+        String id = response.optString("request_id", "");
+        if (id.matches("[A-Za-z0-9_-]{1,100}")) AppLog.add("Умный дом: request_id " + id);
+        return response;
+    }
+    private YandexCloud() { }
+}

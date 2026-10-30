@@ -64,10 +64,13 @@ final class GeminiClient {
         return client;
     }
     GeminiToolProtocol.Result generate(String apiKey, String model, JSONArray history, JSONArray apps) throws Exception {
+        return generate(apiKey, model, history, apps, new JSONArray());
+    }
+    GeminiToolProtocol.Result generate(String apiKey, String model, JSONArray history, JSONArray apps, JSONArray home) throws Exception {
         if (!model.matches("[A-Za-z0-9._-]{1,80}")) throw new IOException("Неверное имя модели");
         long started = System.nanoTime();
         AppLog.add("Текст: подготовка запроса; реплик в истории " + history.length());
-        JSONObject data = GeminiToolProtocol.request(history, apps, AppSettings.systemPrompt(context));
+        JSONObject data = GeminiToolProtocol.request(history, apps, AppSettings.systemPrompt(context), home);
         Request request = new Request.Builder()
                 .url("https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent")
                 .header("x-goog-api-key", apiKey)

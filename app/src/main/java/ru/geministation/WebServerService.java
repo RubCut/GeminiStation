@@ -186,6 +186,43 @@ public final class WebServerService extends Service {
                         return json(Response.Status.INTERNAL_ERROR, "Не удалось получить образец Gemini" + safe + ". Проверьте ключ, сеть и доступ к TTS.");
                     } finally { sampleInProgress.set(false); }
                 }
+                if (session.getMethod() == Method.POST && "/api/home".equals(path)) {
+                    if (!WebSecurity.permittedWrite(host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station")))
+                        return json(Response.Status.FORBIDDEN, "Запрос отклонён");
+                    String lengthHeader = session.getHeaders().get("content-length");
+                    long length = lengthHeader == null ? -1 : Long.parseLong(lengthHeader);
+                    if (length < 1 || length > 8192 || session.getHeaders().containsKey("transfer-encoding"))
+                        return json(Response.Status.BAD_REQUEST, "Недопустимый размер запроса");
+                    Map<String, String> files = new HashMap<>(); session.parseBody(files);
+                    JSONObject data = new JSONObject(files.get("postData"));
+                    String action = data.optString("action", "");
+                    SecretStore store = new SecretStore(context, SmartHome.PREFS);
+                    if ("delete".equals(action)) {
+                        store.clear(); AppLog.add("Умный дом: доступ удалён на станции");
+                        return json(Response.Status.OK, "Доступ к умному дому удалён на станции");
+                    }
+                    if (!"qr".equals(action) && !"token".equals(action) && !"test".equals(action))
+                        return json(Response.Status.BAD_REQUEST, "Неизвестное действие");
+                    try {
+                        String setting = "qr".equals(action) ? SmartHome.QR :
+                                ("test".equals(action) ? store.load() : data.optString("token", "").trim());
+                        if (setting.isEmpty() || (!SmartHome.QR.equals(setting) && !setting.matches("[A-Za-z0-9._~-]{10,4096}")))
+                            return json(Response.Status.BAD_REQUEST, "Нет подходящего токена или сохранённого подключения");
+                        String token = SmartHome.QR.equals(setting) ? YandexCloud.musicToken(context) : setting;
+                        JSONObject info = YandexCloud.home(token, "/v1.0/user/info", null);
+                        if (!"ok".equals(info.optString("status")) || info.optJSONArray("devices") == null)
+                            throw new java.io.IOException("bad response");
+                        int count = SmartHome.parse(info).devices.size();
+                        if (!"test".equals(action)) store.save(setting);
+                        AppLog.add("Умный дом: проверка чтения успешна, доступных устройств " + count);
+                        return json(Response.Status.OK, "Доступ на чтение подтверждён. Устройств с включением/выключением: " + count + ". Право управления проверяется при команде.");
+                    } catch (Exception e) {
+                        String detail = e.getMessage();
+                        String safe = detail != null && detail.matches("HTTP [0-9]{3}") ? " (" + detail + ")" : "";
+                        AppLog.add("Умный дом: проверка чтения не удалась" + safe);
+                        return json(Response.Status.BAD_REQUEST, "Доступ не подтверждён" + safe + ". Возможно, нужны отдельные права iot:view и iot:control; прежние настройки сохранены.");
+                    }
+                }
                 if (session.getMethod() == Method.POST && path.startsWith("/api/yandex/")) {
                     if (!WebSecurity.permittedWrite(host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station")))
                         return json(Response.Status.FORBIDDEN, "Запрос отклонён");
