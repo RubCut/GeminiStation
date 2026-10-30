@@ -29,7 +29,7 @@ final class DeviceToolSpec {
                         .put("required", new JSONArray().put("id").put("query"))));
         declarations.put(function("open_settings", "Открыть основные настройки устройства.", new JSONObject(), null));
         declarations.put(function("go_home", "Вернуться на рабочий стол устройства.", new JSONObject(), null));
-        declarations.put(function("set_volume", "Установить громкость мультимедиа в процентах от 0 до 100.",
+        declarations.put(function("set_volume", "Установить громкость мультимедиа в процентах от 0 до 100; уровень станции 3 из 10 означает 30 процентов, а 6,5 — 65 процентов.",
                 new JSONObject().put("percent", new JSONObject().put("type", "INTEGER").put("description", "целое число от 0 до 100")), "percent"));
         declarations.put(function("adjust_volume", "Сделать громкость мультимедиа немного выше или ниже.",
                 new JSONObject().put("direction", new JSONObject().put("type", "STRING").put("enum", new JSONArray().put("up").put("down"))), "direction"));

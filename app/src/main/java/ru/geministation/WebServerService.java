@@ -80,7 +80,7 @@ public final class WebServerService extends Service {
         private final Context context;
         private final String page;
         private final YandexQrLogin qrLogin;
-        private final GeminiClient sampleClient = new GeminiClient();
+        private final GeminiClient sampleClient;
         private final AtomicBoolean sampleInProgress = new AtomicBoolean();
         private String lastLedAsset;
         private long lastLedAssetAt;
@@ -88,6 +88,7 @@ public final class WebServerService extends Service {
         Server(Context context) throws Exception {
             super(PORT); // Listen on all interfaces. Use ADB forwarding on untrusted networks.
             this.context = context;
+            this.sampleClient = new GeminiClient(context);
             this.qrLogin = new YandexQrLogin(context);
             try (InputStream in = context.getAssets().open("index.html"); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
                 byte[] buffer = new byte[4096];
@@ -145,7 +146,13 @@ public final class WebServerService extends Service {
                             .put("wakeStatus", WakeWordController.get(context).status())
                             .put("wakeSensitivity", AppSettings.wakeSensitivity(context))
                             .put("wakeRms", WakeWordController.get(context).rms())
-                            .put("wakePeak", WakeWordController.get(context).peak());
+                            .put("wakePeak", WakeWordController.get(context).peak())
+                            .put("dnsEnabled", AppSettings.dnsEnabled(context))
+                            .put("dnsBypassVpn", AppSettings.dnsBypassVpn(context))
+                            .put("dnsServer", AppSettings.dnsServer(context))
+                            .put("vpnActive", VpnStatus.active(context))
+                            .put("systemPrompt", AppSettings.systemPrompt(context))
+                            .put("defaultSystemPrompt", SystemPrompt.DEFAULT);
                     return reply(Response.Status.OK, "application/json; charset=utf-8", result.toString());
                 }
                 if (session.getMethod() == Method.POST && "/api/voice/sample".equals(path)) {
@@ -271,6 +278,38 @@ public final class WebServerService extends Service {
                         AppLog.add("API: ключ удалён через веб-интерфейс");
                     } else return json(Response.Status.BAD_REQUEST, "Неизвестное действие");
                     return json(Response.Status.OK, "Сохранено");
+                }
+                if (session.getMethod() == Method.POST && ("/api/network".equals(path) || "/api/prompt".equals(path))) {
+                    if (!WebSecurity.permittedWrite(host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station")))
+                        return json(Response.Status.FORBIDDEN, "Запрос отклонён");
+                    String lengthHeader = session.getHeaders().get("content-length");
+                    long length = lengthHeader == null ? -1 : Long.parseLong(lengthHeader);
+                    if (length < 1 || length > 50000 || session.getHeaders().containsKey("transfer-encoding"))
+                        return json(Response.Status.BAD_REQUEST, "Недопустимый размер запроса");
+                    Map<String, String> files = new HashMap<>(); session.parseBody(files);
+                    JSONObject data = new JSONObject(files.get("postData"));
+                    if ("/api/network".equals(path)) {
+                        if (!(data.opt("enabled") instanceof Boolean) || !(data.opt("bypassVpn") instanceof Boolean)
+                                || !(data.opt("server") instanceof String))
+                            return json(Response.Status.BAD_REQUEST, "Некорректные настройки DNS");
+                        String server = data.getString("server").trim();
+                        if (!DnsSettings.validServer(server))
+                            return json(Response.Status.BAD_REQUEST, "Введите IP-адрес DNS или HTTPS URL DNS-over-HTTPS");
+                        if (!AppSettings.saveDns(context, data.getBoolean("enabled"), data.getBoolean("bypassVpn"), server))
+                            return json(Response.Status.INTERNAL_ERROR, "Не удалось сохранить DNS");
+                        AppLog.add("DNS: настройки сохранены через веб-интерфейс");
+                    } else {
+                        boolean reset = data.optBoolean("reset", false);
+                        if (data.has("reset") && !(data.opt("reset") instanceof Boolean))
+                            return json(Response.Status.BAD_REQUEST, "Некорректный запрос");
+                        if (!reset && !(data.opt("prompt") instanceof String))
+                            return json(Response.Status.BAD_REQUEST, "Введите текст промпта");
+                        String prompt = reset ? SystemPrompt.DEFAULT : data.getString("prompt");
+                        if (!SystemPrompt.valid(prompt)) return json(Response.Status.BAD_REQUEST, "Промпт слишком длинный (максимум 8000 символов)");
+                        if (!AppSettings.saveSystemPrompt(context, prompt)) return json(Response.Status.INTERNAL_ERROR, "Не удалось сохранить промпт");
+                        AppLog.add(reset ? "Системный промпт восстановлен" : "Системный промпт сохранён");
+                    }
+                    return json(Response.Status.OK, "Настройки сохранены");
                 }
                 if (session.getMethod() == Method.POST && "/api/config".equals(path)) {
                     if (!WebSecurity.permittedWrite(host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station")))

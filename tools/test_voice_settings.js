@@ -15,7 +15,7 @@ for (const [, id] of markup.matchAll(/(?:href|for|aria-describedby|aria-labelled
 }
 assert.match(markup, /<input type="range" id="wakeSensitivity" min="1" max="100" step="1"/);
 assert.match(markup, /<input type="number" id="sensitivityNumber" min="1" max="100" step="1"/);
-const saved = {model:'gemini-3.5-flash-lite', voice:'Kore', voices:['Kore','Puck','Aoede'], logs:[], buttonEnabled:false, buttonServiceConnected:false, wakeEnabled:false, wakeStatus:"Выключена", wakeSensitivity:"normal", wakeRms:-1, wakePeak:-1, apiKeys:[{id:"11111111-1111-4111-8111-111111111111"}]};
+const saved = {model:'gemini-3.5-flash-lite', voice:'Kore', voices:['Kore','Puck','Aoede'], logs:[], buttonEnabled:false, buttonServiceConnected:false, wakeEnabled:false, wakeStatus:"Выключена", wakeSensitivity:"normal", wakeRms:-1, wakePeak:-1, dnsEnabled:true, dnsBypassVpn:true, dnsServer:"https://d.webshiftvpn.ru/dns-query", vpnActive:false, systemPrompt:"Старый промпт", defaultSystemPrompt:"Исходный промпт", apiKeys:[{id:"11111111-1111-4111-8111-111111111111"}]};
 const writes = [], samples = [];
 let sampleError = false, blockPlayback = false, revoked = [];
 function page() {
@@ -34,6 +34,8 @@ function page() {
   const context = vm.createContext({document:{getElementById:element,createElement:()=>({})},
     fetch:async(path, options)=>{
       if(path==='/api/config') {const body=JSON.parse(options.body); writes.push(body); saved.model=body.model; saved.voice=body.voice; saved.buttonEnabled=body.buttonEnabled; saved.wakeEnabled=body.wakeEnabled; saved.wakeSensitivity=body.wakeSensitivity;}
+      if(path==='/api/network') {const body=JSON.parse(options.body); writes.push({network:body}); saved.dnsEnabled=body.enabled; saved.dnsBypassVpn=body.bypassVpn; saved.dnsServer=body.server;}
+      if(path==='/api/prompt') {const body=JSON.parse(options.body); writes.push({prompt:body}); saved.systemPrompt=body.reset?saved.defaultSystemPrompt:body.prompt;}
       if(path==='/api/keys') {
         const body=JSON.parse(options.body);
         if(body.action==='add') saved.apiKeys.push({id:'22222222-2222-4222-8222-222222222222'});
@@ -54,6 +56,30 @@ function page() {
   assert.equal(p.element('voice').value,'Kore');
   assert.equal(p.element('voice').disabled,false);
   assert.equal(p.element('keyCount').textContent,'Сохранено ключей: 1');
+  assert.equal(p.element('dnsEnabled').checked,true);
+  assert.equal(p.element('dnsBypassVpn').checked,true);
+  assert.equal(p.element('dnsServer').value,'https://d.webshiftvpn.ru/dns-query');
+  assert.equal(p.element('systemPrompt').value,'Старый промпт');
+  saved.vpnActive=true;await vm.runInContext('refresh()',p.context);
+  assert.match(p.element('dnsStatus').textContent,/VPN активен.*системный DNS/);
+  p.element('dnsServer').value='1.1.1.1';p.element('dnsServer').handlers.input();
+  p.element('dnsBypassVpn').checked=false;p.element('dnsBypassVpn').handlers.change();
+  p.element('systemPrompt').value='Моя инструкция';p.element('systemPrompt').handlers.input();
+  await vm.runInContext('refresh()',p.context);
+  assert.equal(p.element('dnsServer').value,'1.1.1.1','poll must preserve unsaved DNS');
+  assert.equal(p.element('systemPrompt').value,'Моя инструкция','poll must preserve unsaved prompt');
+  await p.element('saveDns').handlers.click();
+  assert.equal(saved.dnsServer,'1.1.1.1');assert.equal(saved.dnsBypassVpn,false);
+  assert.match(p.element('dnsStatus').textContent,/VPN активен.*свой DNS/);
+  await p.element('savePrompt').handlers.click();
+  assert.equal(saved.systemPrompt,'Моя инструкция');
+  await p.element('resetPrompt').handlers.click();
+  assert.equal(saved.systemPrompt,'Исходный промпт');assert.equal(p.element('systemPrompt').value,'Исходный промпт');
+  p.element('dnsEnabled').checked=false;p.element('dnsEnabled').handlers.change();
+  await p.element('saveDns').handlers.click();assert.equal(saved.dnsEnabled,false);
+  saved.vpnActive=false;await vm.runInContext('refresh()',p.context);
+  assert.match(p.element('dnsStatus').textContent,/системный DNS/);
+
   p.element('key').value='new-secret';
   await p.element('addKey').handlers.click();
   assert.equal(p.element('key').value,'');

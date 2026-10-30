@@ -29,5 +29,27 @@ final class AppSettings {
                 .putString("model", model).putString("voice", voice).putBoolean("button_enabled", buttonEnabled)
                 .putBoolean("wake_enabled", wakeEnabled).putString("wake_sensitivity", WakeSensitivity.normalize(wakeSensitivity)).commit();
     }
+    static String systemPrompt(Context context) {
+        return context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE).getString("system_prompt", SystemPrompt.DEFAULT);
+    }
+    static boolean saveSystemPrompt(Context context, String prompt) {
+        return SystemPrompt.valid(prompt) && context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE).edit()
+                .putString("system_prompt", prompt).commit();
+    }
+    static boolean dnsEnabled(Context context) {
+        return context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE).getBoolean("dns_enabled", true);
+    }
+    static boolean dnsBypassVpn(Context context) {
+        return context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE).getBoolean("dns_bypass_vpn", true);
+    }
+    static String dnsServer(Context context) {
+        return context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE).getString("dns_server", DnsSettings.DEFAULT_SERVER);
+    }
+    static boolean saveDns(Context context, boolean enabled, boolean bypassVpn, String server) {
+        if (!DnsSettings.validServer(server)) return false;
+        return context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE).edit()
+                .putBoolean("dns_enabled", enabled).putBoolean("dns_bypass_vpn", bypassVpn)
+                .putString("dns_server", server).commit();
+    }
     private AppSettings() { }
 }

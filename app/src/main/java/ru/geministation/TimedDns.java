@@ -11,7 +11,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.LongSupplier;
 import okhttp3.Dns;
 
-/** Short-lived cache of successful WebShift lookups; no system-DNS fallback. */
+/** Short-lived cache of successful custom DNS lookups; no system-DNS fallback. */
 final class TimedDns implements Dns {
     private static final long TTL_NANOS = TimeUnit.SECONDS.toNanos(60);
     private final Dns upstream;

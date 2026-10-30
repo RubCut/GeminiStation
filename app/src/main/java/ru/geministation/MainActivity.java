@@ -63,7 +63,7 @@ public final class MainActivity extends Activity {
         keyVault = ApiKeyVault.get(this);
         soundCuePlayer = new SoundCuePlayer(this);
         deviceActions = new DeviceActions(this);
-        client = new GeminiClient();
+        client = new GeminiClient(getApplicationContext());
         led = LedController.get(this);
         buildUi();
         try { startForegroundService(new Intent(this, WebServerService.class)); }
@@ -243,7 +243,7 @@ public final class MainActivity extends Activity {
                 runOnUiThread(() -> {
                     if (destroyed || flow.phase() != ConversationFlow.Phase.THINKING) return;
                     String message = e instanceof java.io.IOException && e.getMessage() != null && e.getMessage().startsWith("Gemini API: HTTP")
-                            ? e.getMessage() : "Ошибка запроса. Проверьте сеть, WebShift и Gemini API.";
+                            ? e.getMessage() : "Ошибка запроса. Проверьте сеть, настройки DNS и Gemini API.";
                     showErrorAndClose(message);
                 });
             }

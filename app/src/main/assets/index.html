@@ -10,9 +10,9 @@
 *{box-sizing:border-box}
 html{scroll-behavior:smooth;scroll-padding-top:24px}
 body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5}
-button,input,select{font:inherit}
-button,a,input,select,summary{outline-color:var(--accent)}
-button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+button,input,select,textarea{font:inherit}
+button,a,input,select,textarea,summary{outline-color:var(--accent)}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 [hidden]{display:none!important}
 a{color:inherit;text-decoration:none}
 .layout{min-height:100vh;display:grid;grid-template-columns:230px minmax(0,1fr)}
@@ -55,8 +55,8 @@ h1,h2,h3,p{margin:0}h1{font-size:32px;line-height:1.12;letter-spacing:-.045em;fo
 .card-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:20px}.card-icon{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;background:#28263a;color:#cbbcff;flex:none}.card-icon.green{background:#20302c;color:#a9ddc1}.card-icon.blue{background:#232c3b;color:#a9c7f4}.card-icon.amber{background:#342a28;color:#e9c4a1}.card-icon .icon{width:18px;height:18px}
 .card-head p{color:var(--muted);font-size:12px;margin-top:4px;line-height:1.5}.tag{display:inline-flex;align-items:center;padding:4px 8px;border:1px solid #3a3b4e;border-radius:6px;color:#b7b0d3;font-size:10px;font-weight:700;white-space:nowrap;margin-left:auto}
 .field{margin-top:17px}.field:first-child{margin-top:0}.field-label,.row-label{display:block;color:#dddfea;font-size:12px;font-weight:650;margin-bottom:8px}.field-hint,.muted{font-size:12px;color:var(--muted);line-height:1.55}.field-hint{margin-top:8px}
-input:not([type="checkbox"]):not([type="range"]),select{width:100%;min-height:43px;border:1px solid #353947;border-radius:9px;background:#11141d;color:#edf0f8;padding:10px 12px;transition:border-color .16s}
-input::placeholder{color:#777d90}input:not([type="checkbox"]):not([type="range"]):focus,select:focus{border-color:#a391e5}select{cursor:pointer}input[type="file"]{font-size:11px;color:#b7bdcc}input[type="file"]::file-selector-button{border:0;border-radius:6px;background:#333444;color:#e9e6f8;padding:6px 9px;margin-right:9px;cursor:pointer}
+input:not([type="checkbox"]):not([type="range"]),select,textarea{width:100%;min-height:43px;border:1px solid #353947;border-radius:9px;background:#11141d;color:#edf0f8;padding:10px 12px;transition:border-color .16s}
+textarea{resize:vertical;min-height:200px;line-height:1.55}input::placeholder{color:#777d90}input:not([type="checkbox"]):not([type="range"]):focus,select:focus{border-color:#a391e5}select{cursor:pointer}input[type="file"]{font-size:11px;color:#b7bdcc}input[type="file"]::file-selector-button{border:0;border-radius:6px;background:#333444;color:#e9e6f8;padding:6px 9px;margin-right:9px;cursor:pointer}
 button{appearance:none;border:1px solid transparent;border-radius:9px;min-height:39px;padding:9px 14px;background:var(--accent);color:#181424;font-size:12px;font-weight:720;cursor:pointer;transition:background .16s,border-color .16s,transform .16s}
 button:hover:not(:disabled){background:#ded5ff}button:active:not(:disabled){transform:translateY(1px)}button:disabled{opacity:.46;cursor:not-allowed}
 button.secondary{background:#252936;color:#e2e4ee;border-color:#383d4c}button.secondary:hover:not(:disabled){background:#303443;border-color:#4d5160}
@@ -132,6 +132,16 @@ details{margin-top:18px;border-top:1px solid #303441;padding-top:16px}summary{co
       <div class="actions"><button id="sampleVoice" class="secondary" disabled>▶ &nbsp; Прослушать голос</button><button id="saveVoice" disabled>Сохранить голос</button></div><p class="status-message" id="voiceMessage" role="status"></p><p class="status-message" id="sampleStatus" role="status"></p><audio id="sampleAudio" controls hidden style="width:100%;margin-top:12px"></audio>
       <div class="privacy"><svg class="icon"><use href="#i-info"/></svg><span>Образец запрашивается через Gemini TTS и может расходовать квоту. Выбор применяется со следующего ответа.</span></div>
      </article>
+     <article class="card"><div class="card-head"><span class="card-icon blue"><svg class="icon"><use href="#i-grid"/></svg></span><div><h3>DNS для Gemini</h3><p>Используется для Gemini Live, ответов, TTS и поиска YouTube.</p></div></div>
+      <div class="toggle-line"><div class="toggle-copy"><strong>Использовать свой DNS</strong><span>Если выключено, используется системный DNS станции.</span></div><label class="switch"><input type="checkbox" id="dnsEnabled" aria-label="Использовать свой DNS" disabled><span class="switch-track"></span></label></div>
+      <div class="field"><label class="field-label" for="dnsServer">IP DNS-сервера или HTTPS URL DNS-over-HTTPS</label><input id="dnsServer" spellcheck="false" autocomplete="off" placeholder="1.1.1.1 или https://d.webshiftvpn.ru/dns-query" disabled><p class="field-hint">По умолчанию WebShift. IP использует обычный незашифрованный DNS; HTTPS — DNS-over-HTTPS. Настройка не меняет DNS других приложений.</p></div>
+      <div class="divider"></div><div class="toggle-line"><div class="toggle-copy"><strong>Автоматически отключать свой DNS при VPN</strong><span>Пока VPN используется этим приложением, брать DNS системы/VPN; после отключения VPN свой DNS вернётся.</span></div><label class="switch"><input type="checkbox" id="dnsBypassVpn" aria-label="Отключать свой DNS при VPN" disabled><span class="switch-track"></span></label></div>
+      <p class="field-hint" id="dnsStatus">Проверяем сеть…</p><div class="actions"><button id="saveDns" disabled>Сохранить DNS</button></div><p class="status-message" id="dnsMessage" role="status"></p>
+     </article>
+     <article class="card"><div class="card-head"><span class="card-icon"><svg class="icon"><use href="#i-sparkle"/></svg></span><div><h3>Системный промпт</h3><p>Инструкции для текстовой модели Gemini.</p></div></div>
+      <div class="field"><label class="field-label" for="systemPrompt">Текст инструкции</label><textarea id="systemPrompt" maxlength="8000" spellcheck="true" disabled></textarea><p class="field-hint">До 8000 символов. Список доступных приложений и проверка команд добавляются автоматически. Изменения применяются к следующему запросу.</p></div>
+      <div class="actions"><button id="savePrompt" disabled>Сохранить промпт</button><button id="resetPrompt" class="secondary" disabled>Восстановить исходный</button></div><p class="status-message" id="promptMessage" role="status"></p>
+     </article>
     </div>
    </section>
    <section class="group" id="activation" aria-labelledby="activationTitle">
@@ -186,6 +196,7 @@ async function request(path,options={}){
  const response=await fetch(path,{...options,headers:options.body?{'Content-Type':'application/json','X-Gemini-Station':'1'}:{},cache:'no-store'});
  const data=await response.json(); if(!response.ok) throw new Error(data.message||'Ошибка'); return data;
 }
+let networkDirty=false, promptDirty=false, networkBusy=false, promptBusy=false;
 let settingsLoaded=false, voiceDirty=false, buttonDirty=false, wakeDirty=false, wakeSensitivityDirty=false, keyBusy=false, keyIds=null;
 function validSensitivity(value){return /^(?:[1-9]|[1-9][0-9]|100)$/.test(value)}
 function sensitivityError(message){
@@ -236,6 +247,12 @@ async function refresh(){try{
  const data=await request('/api/logs');setConnection(true);el('logs').textContent=data.logs.join('\n')||'Пока нет событий.';
  updateKeys(data.apiKeys||[]);
  el('savedVoice').textContent='Сохранённый голос: '+data.voice;
+ const usingCustom=data.dnsEnabled&&!(data.dnsBypassVpn&&data.vpnActive);
+ el('dnsStatus').textContent=(data.vpnActive?'VPN активен. ':'VPN не обнаружен. ')+(usingCustom?'Используется свой DNS.':'Используется системный DNS.');
+ if(!networkDirty&&!networkBusy){el('dnsEnabled').checked=data.dnsEnabled;el('dnsBypassVpn').checked=data.dnsBypassVpn;el('dnsServer').value=data.dnsServer}
+ if(!promptDirty&&!promptBusy)el('systemPrompt').value=data.systemPrompt;
+ if(!settingsLoaded){for(const id of ['dnsEnabled','dnsBypassVpn','dnsServer','saveDns','systemPrompt','savePrompt','resetPrompt'])el(id).disabled=false}
+
  el('overviewVoice').textContent=data.voice;
  el('overviewWake').textContent=data.wakeEnabled?'Включена':'Выключена';
  el('overviewButton').textContent=data.buttonServiceConnected?'Подключена':'Не подключена';
@@ -311,6 +328,28 @@ el('importLed').addEventListener('click',async()=>{try{const file=el('studio').f
 el('testLed').addEventListener('click',()=>ledRequest('/api/led/test',{}).catch(()=>{}));
 el('clearLed').addEventListener('click',()=>ledRequest('/api/led/clear',{}).catch(()=>{}));
 el('deleteLed').addEventListener('click',()=>{if(confirm('Удалить авторизацию Яндекса и настройки экрана?'))ledRequest('/api/led',{delete:true}).catch(()=>{})});
+for(const id of ['dnsEnabled','dnsBypassVpn','dnsServer'])el(id).addEventListener(id==='dnsServer'?'input':'change',()=>{networkDirty=true});
+el('systemPrompt').addEventListener('input',()=>{promptDirty=true});
+el('saveDns').addEventListener('click',async()=>{
+ const body={enabled:el('dnsEnabled').checked,bypassVpn:el('dnsBypassVpn').checked,server:el('dnsServer').value.trim()};
+ networkBusy=true;el('saveDns').disabled=true;
+ try{await request('/api/network',{method:'POST',body:JSON.stringify(body)});
+  if(el('dnsEnabled').checked===body.enabled&&el('dnsBypassVpn').checked===body.bypassVpn&&el('dnsServer').value.trim()===body.server)networkDirty=false;
+  el('dnsMessage').textContent='Настройки DNS сохранены';
+ }catch(e){el('dnsMessage').textContent=e.message}
+ finally{networkBusy=false;el('saveDns').disabled=false;await refresh().catch(()=>{})}
+});
+async function saveSystemPrompt(reset){
+ if(reset&&!confirm('Восстановить исходный системный промпт? Несохранённые изменения будут потеряны.'))return;
+ const value=el('systemPrompt').value;promptBusy=true;el('savePrompt').disabled=true;el('resetPrompt').disabled=true;
+ try{await request('/api/prompt',{method:'POST',body:JSON.stringify(reset?{reset:true}:{prompt:value})});
+  if(el('systemPrompt').value===value)promptDirty=false;
+  el('promptMessage').textContent=reset?'Исходный промпт восстановлен':'Промпт сохранён';
+ }catch(e){el('promptMessage').textContent=e.message}
+ finally{promptBusy=false;el('savePrompt').disabled=false;el('resetPrompt').disabled=false;await refresh().catch(()=>{})}
+}
+el('savePrompt').addEventListener('click',()=>saveSystemPrompt(false));
+el('resetPrompt').addEventListener('click',()=>saveSystemPrompt(true));
 el('voice').addEventListener('change',()=>{voiceDirty=true});
 el('buttonEnabled').addEventListener('change',()=>{buttonDirty=true});
 el('wakeEnabled').addEventListener('change',()=>{wakeDirty=true});

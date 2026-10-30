@@ -49,3 +49,5 @@ SOFTWARE.
 QR encoding uses [ZXing Core](https://github.com/zxing/zxing), Apache License 2.0; the license is included in `licenses/zxing.txt`.
 
 The offline wake-word detector uses [PocketSphinx Android](https://github.com/cmusphinx/pocketsphinx-android) (BSD-style licenses: `licenses/pocketsphinx-android.txt`, `licenses/pocketsphinx.txt`, `licenses/sphinxbase.txt`) and the CMUSphinx Russian acoustic model as distributed in [ru_pocketsphinx-cmu](https://github.com/synesthesiam/ru_pocketsphinx-cmu/tree/27ce4902d92ff64aa9f49aa2ca7aeca598e3e223), which declares GPL-3.0-or-later (`licenses/gpl-3.0.txt`). The model source and build-time downloads are identified in `tools/prepare_wakeword.sh`. Only acoustic model files are bundled; no user recordings are collected.
+
+Custom IP-based DNS uses [dnsjava](https://github.com/dnsjava/dnsjava) 3.6.3 under the BSD 3-Clause license: `licenses/dnsjava.txt` (also bundled as `assets/licenses/dnsjava.txt`).

@@ -46,8 +46,8 @@ final class LiveTranscriber {
     }
     void start() {
         started = SystemClock.elapsedRealtime();
-        AppLog.add("Live STT: подключаем Gemini Live через WebShift DNS");
-        socket = client.openTranscriptionSocket(key, new GeminiSocketListener() {
+        AppLog.add("Live STT: подключаем Gemini Live");
+        try { socket = client.openTranscriptionSocket(key, new GeminiSocketListener() {
             @Override public void onOpen(WebSocket webSocket, Response response) {
                 if (stopped.get()) { webSocket.cancel(); return; }
                 socket = webSocket;
@@ -117,7 +117,7 @@ final class LiveTranscriber {
             @Override public void onClosed(WebSocket webSocket, int code, String reason) {
                 fail("Gemini Live закрыл соединение (" + code + ")", "WebSocket code " + code, RateLimitSignals.closeReason(reason));
             }
-        });
+        }); } catch (IOException e) { fail("Не удалось подключить Gemini Live. Проверьте настройки DNS", e.getClass().getSimpleName()); }
     }
     private AudioRecord createRecorder(int source, int size) {
         try {

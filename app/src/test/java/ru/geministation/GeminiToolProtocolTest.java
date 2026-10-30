@@ -18,6 +18,18 @@ public class GeminiToolProtocolTest {
         assertTrue(prompt.contains("\"id\":0"));
         assertTrue(request.getJSONArray("tools").getJSONObject(0).getJSONArray("functionDeclarations").length() >= 8);
     }
+    @Test public void customPromptReplacesDefaultButKeepsLiveAppList() throws Exception {
+        String prompt = GeminiToolProtocol.request(new JSONArray(), new JSONArray().put("APP"), "Отвечай стихами")
+                .getJSONObject("systemInstruction").getJSONArray("parts").getJSONObject(0).getString("text");
+        assertTrue(prompt.startsWith("Отвечай стихами"));
+        assertTrue(prompt.contains("APP"));
+        assertFalse(prompt.contains("На станции громкость"));
+        assertTrue(SystemPrompt.DEFAULT.contains("3 — это 30"));
+        assertTrue(SystemPrompt.DEFAULT.contains("6 с половиной — 65"));
+        assertTrue(SystemPrompt.DEFAULT.contains("Явно указанные проценты"));
+        assertTrue(SystemPrompt.valid(""));
+        assertFalse(SystemPrompt.valid(new String(new char[8001])));
+    }
     @Test public void parsesTextOrOneFunctionAndRejectsMultipleActions() throws Exception {
         assertEquals("Привет", GeminiToolProtocol.parse(reply(new JSONArray().put(new JSONObject().put("text", "Привет")))).text);
         JSONObject call = new JSONObject().put("name", "go_home").put("args", new JSONObject());

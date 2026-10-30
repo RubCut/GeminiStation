@@ -1,6 +1,7 @@
 package ru.geministation;
 
 import android.util.Base64;
+import android.content.Context;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import java.io.IOException;
@@ -17,33 +18,61 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.dnsoverhttps.DnsOverHttps;
 
-/** Gemini requests use DoH; the OS resolver is used only to bootstrap the DoH host. */
+/** Network settings apply to new requests; running audio streams are not interrupted. */
 final class GeminiClient {
-    private final OkHttpClient client;
-    GeminiClient() {
-        OkHttpClient bootstrap = new OkHttpClient.Builder().proxy(Proxy.NO_PROXY).connectTimeout(15, TimeUnit.SECONDS)
+    private final Context context;
+    private final OkHttpClient bootstrap;
+    private OkHttpClient client;
+    private String clientKey;
+    GeminiClient(Context context) {
+        this.context = context.getApplicationContext();
+        bootstrap = new OkHttpClient.Builder().proxy(Proxy.NO_PROXY).connectTimeout(15, TimeUnit.SECONDS)
                 .readTimeout(20, TimeUnit.SECONDS).followRedirects(false).followSslRedirects(false)
                 .eventListenerFactory(call -> new NetworkDiagnostics("DoH", null)).build();
-        DnsOverHttps dns = new DnsOverHttps.Builder().client(bootstrap)
-                .url(HttpUrl.get("https://d.webshiftvpn.ru/dns-query"))
-                .includeIPv6(false).post(true).build();
-        TimedDns cachedDns = new TimedDns(dns, System::nanoTime, () -> AppLog.add("DNS WebShift: ответ из кэша (до 60 с)"));
-        client = bootstrap.newBuilder().dns(cachedDns).readTimeout(90, TimeUnit.SECONDS)
+    }
+    private synchronized OkHttpClient client() throws IOException {
+        boolean enabled = AppSettings.dnsEnabled(context);
+        boolean bypass = AppSettings.dnsBypassVpn(context);
+        boolean vpn = bypass && VpnStatus.active(context);
+        DnsSettings.Mode mode = DnsSettings.mode(enabled, bypass, vpn);
+        String server = AppSettings.dnsServer(context);
+        String key = mode == DnsSettings.Mode.SYSTEM ? "system" : "custom:" + server;
+        if (client != null && key.equals(clientKey)) return client;
+        okhttp3.Dns resolver = okhttp3.Dns.SYSTEM;
+        TimedDns cached = null;
+        if (mode == DnsSettings.Mode.CUSTOM) {
+            if (!DnsSettings.validServer(server)) throw new IOException("Некорректный DNS-сервер");
+            okhttp3.Dns upstream;
+            if (DnsSettings.isIp(server)) upstream = new PlainDns(server);
+            else upstream = new DnsOverHttps.Builder().client(bootstrap).url(HttpUrl.get(server))
+                    .includeIPv6(false).post(true).build();
+            cached = new TimedDns(upstream, System::nanoTime, () -> AppLog.add("DNS: ответ из кэша (до 60 с)"));
+            resolver = cached;
+        }
+        final TimedDns dnsCache = cached;
+        // Drop idle connections that could otherwise outlive a network/DNS policy change.
+        bootstrap.connectionPool().evictAll();
+        client = bootstrap.newBuilder().dns(resolver).readTimeout(90, TimeUnit.SECONDS)
                 .eventListenerFactory(call -> new NetworkDiagnostics(
                         "speech".equals(call.request().tag(String.class)) ? "Gemini TTS" :
                                 "transcribe".equals(call.request().tag(String.class)) ? "Gemini Live" :
-                                        "youtube".equals(call.request().tag(String.class)) ? "YouTube поиск" : "Gemini текст", cachedDns::clear)).build();
+                                        "youtube".equals(call.request().tag(String.class)) ? "YouTube поиск" : "Gemini текст",
+                        dnsCache == null ? null : dnsCache::clear)).build();
+        clientKey = key;
+        AppLog.add(mode == DnsSettings.Mode.CUSTOM ? "DNS: пользовательский сервер" :
+                (enabled && vpn ? "DNS: системный (VPN активен)" : "DNS: системный"));
+        return client;
     }
     GeminiToolProtocol.Result generate(String apiKey, String model, JSONArray history, JSONArray apps) throws Exception {
         if (!model.matches("[A-Za-z0-9._-]{1,80}")) throw new IOException("Неверное имя модели");
         long started = System.nanoTime();
         AppLog.add("Текст: подготовка запроса; реплик в истории " + history.length());
-        JSONObject data = GeminiToolProtocol.request(history, apps);
+        JSONObject data = GeminiToolProtocol.request(history, apps, AppSettings.systemPrompt(context));
         Request request = new Request.Builder()
                 .url("https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent")
                 .header("x-goog-api-key", apiKey)
                 .post(RequestBody.create(data.toString(), MediaType.get("application/json; charset=utf-8"))).build();
-        try (Response response = client.newCall(request).execute()) {
+        try (Response response = client().newCall(request).execute()) {
             if (response.code() == 429) throw new KeyRotation.RateLimit("Gemini API");
             if (!response.isSuccessful()) throw new IOException("Gemini API: HTTP " + response.code() +
                     ". Проверьте ключ, модель и доступность сервиса.");
@@ -63,7 +92,7 @@ final class GeminiClient {
                 .addQueryParameter("maxResults", "1").addQueryParameter("q", query).build();
         Request request = new Request.Builder().url(url).tag(String.class, "youtube")
                 .header("x-goog-api-key", apiKey).get().build();
-        try (Response response = client.newBuilder().callTimeout(12, TimeUnit.SECONDS).build().newCall(request).execute()) {
+        try (Response response = client().newBuilder().callTimeout(12, TimeUnit.SECONDS).build().newCall(request).execute()) {
             if (response.code() == 429) throw new KeyRotation.RateLimit("YouTube API");
             if (!response.isSuccessful()) throw new IOException("YouTube API: HTTP " + response.code());
             if (response.body() == null) throw new IOException("Пустой ответ поиска YouTube");
@@ -93,7 +122,7 @@ final class GeminiClient {
                 .tag(String.class, "speech")
                 .header("x-goog-api-key", apiKey)
                 .post(RequestBody.create(data.toString(), MediaType.get("application/json; charset=utf-8"))).build();
-        try (Response response = client.newCall(request).execute()) {
+        try (Response response = client().newCall(request).execute()) {
             if (response.code() == 429) throw new KeyRotation.RateLimit("Gemini TTS");
             if (!response.isSuccessful()) throw new IOException("Gemini TTS: HTTP " + response.code());
             if (response.body() == null || response.body().contentLength() > 12 * 1024 * 1024)
@@ -135,7 +164,7 @@ final class GeminiClient {
                 .post(RequestBody.create(data.toString(), MediaType.get("application/json; charset=utf-8"))).build();
         AppLog.add("TTS: потоковый запрос запущен; символов " + text.length());
         long total = 0; int chunks = 0;
-        try (Response response = client.newCall(request).execute()) {
+        try (Response response = client().newCall(request).execute()) {
             if (response.code() == 404 || response.code() == 405 || response.code() == 501)
                 throw new StreamingUnavailableException(response.code());
             if (response.code() == 429) throw new KeyRotation.RateLimit("Gemini TTS");
@@ -178,15 +207,15 @@ final class GeminiClient {
         if (chunks == 0) throw new IOException("TTS stream returned no audio");
         AppLog.add("TTS: поток получен; фрагментов " + chunks + ", байт " + total);
     }
-    okhttp3.WebSocket openTranscriptionSocket(String apiKey, okhttp3.WebSocketListener listener) {
+    okhttp3.WebSocket openTranscriptionSocket(String apiKey, okhttp3.WebSocketListener listener) throws IOException {
         Request request = new Request.Builder()
                 .url("wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent")
                 .tag(String.class, "transcribe").header("x-goog-api-key", apiKey).build();
-        return client.newWebSocket(request, listener);
+        return client().newWebSocket(request, listener);
     }
     void cancelSpeech() {
-        for (okhttp3.Call call : client.dispatcher().queuedCalls()) if ("speech".equals(call.request().tag(String.class))) call.cancel();
-        for (okhttp3.Call call : client.dispatcher().runningCalls()) if ("speech".equals(call.request().tag(String.class))) call.cancel();
+        for (okhttp3.Call call : bootstrap.dispatcher().queuedCalls()) if ("speech".equals(call.request().tag(String.class))) call.cancel();
+        for (okhttp3.Call call : bootstrap.dispatcher().runningCalls()) if ("speech".equals(call.request().tag(String.class))) call.cancel();
     }
-    void cancel() { client.dispatcher().cancelAll(); }
+    void cancel() { bootstrap.dispatcher().cancelAll(); }
 }
