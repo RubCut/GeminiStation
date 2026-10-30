@@ -187,8 +187,7 @@ public final class MainActivity extends Activity {
                         history.put(turn("user", question)); history.put(turn("model", response));
                         while (history.length() > 20) { history.remove(0); history.remove(0); }
                     } catch (Exception ignored) { }
-                    stopSpinner();
-                    animatePulse(true); led.show("speaking");
+                    // Keep the thinking animation until audio actually starts.
                     showText(response);
                     AppLog.add("Диалог: текст ответа получен; начинаем синтез");
                     speak(apiKey, response);
@@ -209,11 +208,17 @@ public final class MainActivity extends Activity {
         voicePlayer.stop();
         if (client != null) client.cancelSpeech();
     }
+    private void onPlaybackStarted(int generation) {
+        runOnUiThread(() -> {
+            if (destroyed || !resumed || speechGeneration.get() != generation || flow.phase() != ConversationFlow.Phase.SPEAKING) return;
+            animatePulse(true); led.show("speaking");
+        });
+    }
     private void speak(String apiKey, String response) {
         final int generation = speechGeneration.incrementAndGet();
         speechExecutor.execute(() -> {
             try {
-                try (VoicePlayer.Stream stream = voicePlayer.openStream(() -> speechGeneration.get() == generation)) {
+                try (VoicePlayer.Stream stream = voicePlayer.openStream(() -> speechGeneration.get() == generation, () -> onPlaybackStarted(generation))) {
                     try {
                         client.synthesizeStreaming(apiKey, response, stream::write);
                         if (speechGeneration.get() != generation) return;
@@ -222,7 +227,7 @@ public final class MainActivity extends Activity {
                         AppLog.add("TTS: потоковый режим недоступен, используем обычный синтез");
                         PcmAudio audio = client.synthesize(apiKey, response);
                         if (speechGeneration.get() != generation) return;
-                        voicePlayer.play(audio, () -> speechGeneration.get() == generation);
+                        voicePlayer.play(audio, () -> speechGeneration.get() == generation, () -> onPlaybackStarted(generation));
                     }
                 }
                 if (speechGeneration.get() != generation) return;
@@ -238,6 +243,7 @@ public final class MainActivity extends Activity {
                     String detail = e instanceof java.io.IOException && e.getMessage() != null && e.getMessage().startsWith("Gemini TTS: HTTP")
                             ? " (" + e.getMessage() + ")" : "";
                     AppLog.add("TTS: синтез не удался" + detail + "; ответ оставлен на экране");
+                    stopSpinner(); stopPulse();
                     // Keep the answer visible briefly, then allow a follow-up even if audio failed.
                     handler.postDelayed(() -> { if (!destroyed && resumed && speechGeneration.get() == generation) beginFollowUp(); }, 2000);
                 });

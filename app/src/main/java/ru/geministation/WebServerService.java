@@ -56,6 +56,7 @@ public final class WebServerService extends Service {
             server.start(5000, false);
             running = true;
             AppLog.add("Веб-сервер запущен на порту " + PORT);
+            LedController.get(this).serverStarted();
         } catch (Exception e) {
             running = false;
             AppLog.add("Веб-сервер: ошибка запуска " + e.getClass().getSimpleName() + "; порт занят или недоступен");
@@ -75,6 +76,8 @@ public final class WebServerService extends Service {
         private final Context context;
         private final String page;
         private final YandexQrLogin qrLogin;
+        private String lastLedAsset;
+        private long lastLedAssetAt;
         void closeAuth() { qrLogin.closeAsync(); }
         Server(Context context) throws Exception {
             super(PORT); // Listen on all interfaces. Use ADB forwarding on untrusted networks.
@@ -107,10 +110,17 @@ public final class WebServerService extends Service {
             String host = session.getHeaders().get("host");
             if (!WebSecurity.permittedHost(host)) return json(Response.Status.FORBIDDEN, "Недопустимый адрес");
             if (session.getMethod() == Method.GET && "/".equals(path)) return reply(Response.Status.OK, "text/html; charset=utf-8", page);
-            // Only the station itself may fetch the three fixed images.
-            if (session.getMethod() == Method.GET && path.matches("/led/(listening|thinking|speaking)\\.gif")) {
+            // Only the station itself may fetch the fixed images.
+            if (session.getMethod() == Method.GET && path.matches("/led/(listening|thinking|speaking|clear)\\.gif")) {
                 if (!"127.0.0.1".equals(session.getRemoteIpAddress())) return json(Response.Status.FORBIDDEN, "Только локально");
                 try {
+                    synchronized (this) {
+                        long now = android.os.SystemClock.elapsedRealtime();
+                        if (!path.equals(lastLedAsset) || now - lastLedAssetAt >= 10000) {
+                            AppLog.add("LED: станция запросила " + path.substring(5));
+                            lastLedAsset = path; lastLedAssetAt = now;
+                        }
+                    }
                     InputStream gif = context.getAssets().open(path.substring(1));
                     Response response = newFixedLengthResponse(Response.Status.OK, "image/gif", gif, gif.available());
                     response.addHeader("Cache-Control", "no-store");
@@ -140,7 +150,9 @@ public final class WebServerService extends Service {
                             case "/api/yandex/poll": result = qrLogin.poll(id); break;
                             case "/api/yandex/select":
                                 qrLogin.select(id, data.optInt("index", -1));
-                                new Handler(Looper.getMainLooper()).post(() -> LedController.get(context).invalidate());
+                                new Handler(Looper.getMainLooper()).post(() -> {
+                                    LedController led = LedController.get(context); led.invalidate(); led.prewarm();
+                                });
                                 result = new JSONObject().put("message", "Станция выбрана"); break;
                             case "/api/yandex/cancel": qrLogin.cancel(id); result = new JSONObject().put("message", "Вход отменён"); break;
                             default: return json(Response.Status.NOT_FOUND, "Не найдено");
@@ -154,7 +166,7 @@ public final class WebServerService extends Service {
                         return json(Response.Status.BAD_REQUEST, "Не удалось выполнить вход. Яндекс мог запросить капчу или изменить API; попробуйте ещё раз либо импортируйте настройки Studio.");
                     }
                 }
-                if (session.getMethod() == Method.POST && ("/api/led".equals(path) || "/api/led/test".equals(path))) {
+                if (session.getMethod() == Method.POST && ("/api/led".equals(path) || "/api/led/test".equals(path) || "/api/led/clear".equals(path))) {
                     // LAN access is passwordless by design. Keep the same-origin/Host protections.
                     if (!WebSecurity.permittedWrite(host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station")))
                         return json(Response.Status.FORBIDDEN, "Запрос отклонён");
@@ -165,13 +177,18 @@ public final class WebServerService extends Service {
                     Map<String, String> files = new HashMap<>(); session.parseBody(files);
                     JSONObject data = new JSONObject(files.get("postData"));
                     SecretStore store = new SecretStore(context, "led_secrets");
-                    if ("/api/led/test".equals(path)) {
+                    if ("/api/led/test".equals(path) || "/api/led/clear".equals(path)) {
                         if (store.load().isEmpty()) return json(Response.Status.BAD_REQUEST, "Сначала войдите в Яндекс и выберите станцию или импортируйте настройки");
-                        new Handler(Looper.getMainLooper()).post(() -> LedController.get(context).test());
-                        return json(Response.Status.OK, "Команда проверки запущена; смотрите журнал и экран станции");
+                        if ("/api/led/test".equals(path)) {
+                            new Handler(Looper.getMainLooper()).post(() -> LedController.get(context).test());
+                            return json(Response.Status.OK, "Команда проверки запущена; смотрите журнал и экран станции");
+                        }
+                        new Handler(Looper.getMainLooper()).post(() -> LedController.get(context).clear());
+                        return json(Response.Status.OK, "Запрошен возврат к часам; аккаунт сохранён");
                     }
                     qrLogin.clear();
-                    if (data.optBoolean("delete", false)) { store.clear(); AppLog.add("LED: настройки удалены"); }
+                    boolean deleted = data.optBoolean("delete", false);
+                    if (deleted) { store.clear(); AppLog.add("LED: настройки удалены"); }
                     else {
                         String token = data.optString("x_token", "").trim();
                         String device = data.optString("device_id", "").trim();
@@ -181,8 +198,10 @@ public final class WebServerService extends Service {
                         store.save(new JSONObject().put("x_token", token).put("device_id", device).put("platform", platform).toString());
                         AppLog.add("LED: настройки импортированы через веб-интерфейс");
                     }
-                    new Handler(Looper.getMainLooper()).post(() -> LedController.get(context).invalidate());
-                    return json(Response.Status.OK, "Настройки LED сохранены");
+                    new Handler(Looper.getMainLooper()).post(() -> {
+                        LedController led = LedController.get(context); led.invalidate(); if (!deleted) led.prewarm();
+                    });
+                    return json(Response.Status.OK, deleted ? "Настройки LED удалены" : "Настройки LED сохранены");
                 }
                 if (session.getMethod() == Method.POST && "/api/config".equals(path)) {
                     if (!WebSecurity.permittedWrite(host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station")))

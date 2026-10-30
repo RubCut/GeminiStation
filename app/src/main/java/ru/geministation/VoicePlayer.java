@@ -18,13 +18,14 @@ final class VoicePlayer {
             }
         }
     }
-    Stream openStream(BooleanSupplier active) { return new Stream(active); }
+    Stream openStream(BooleanSupplier active, Runnable onStarted) { return new Stream(active, onStarted); }
     final class Stream implements AutoCloseable {
         private final BooleanSupplier active;
+        private final Runnable onStarted;
         private AudioTrack track;
         private int rate, channels;
         private long frames;
-        private Stream(BooleanSupplier active) { this.active = active; }
+        private Stream(BooleanSupplier active, Runnable onStarted) { this.active = active; this.onStarted = onStarted; }
         void write(PcmAudio audio) throws IOException {
             if (!active.getAsBoolean()) throw new InterruptedIOException("Playback canceled");
             if (track == null) {
@@ -45,6 +46,7 @@ final class VoicePlayer {
                     current = newTrack;
                     newTrack.play();
                 }
+                onStarted.run();
                 AppLog.add("TTS: начато потоковое воспроизведение");
             }
             if (rate != audio.rate || channels != audio.channels) throw new IOException("Audio format changed mid-stream");
@@ -74,7 +76,7 @@ final class VoicePlayer {
             }
         }
     }
-    void play(PcmAudio audio, BooleanSupplier active) throws Exception {
+    void play(PcmAudio audio, BooleanSupplier active, Runnable onStarted) throws Exception {
         int channel = audio.channels == 1 ? AudioFormat.CHANNEL_OUT_MONO : AudioFormat.CHANNEL_OUT_STEREO;
         int minBuffer = AudioTrack.getMinBufferSize(audio.rate, channel, AudioFormat.ENCODING_PCM_16BIT);
         if (minBuffer <= 0) throw new IOException("Audio output unavailable");
@@ -91,6 +93,7 @@ final class VoicePlayer {
                 current = track;
                 track.play();
             }
+            onStarted.run();
             int written = 0;
             while (written < audio.samples.length && active.getAsBoolean()) {
                 int count = track.write(audio.samples, written, Math.min(4096, audio.samples.length - written));
