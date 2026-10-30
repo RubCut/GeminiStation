@@ -19,14 +19,20 @@ final class GeminiClient {
     private final OkHttpClient client;
     GeminiClient() {
         OkHttpClient bootstrap = new OkHttpClient.Builder().proxy(Proxy.NO_PROXY).connectTimeout(15, TimeUnit.SECONDS)
-                .readTimeout(20, TimeUnit.SECONDS).followRedirects(false).followSslRedirects(false).build();
+                .readTimeout(20, TimeUnit.SECONDS).followRedirects(false).followSslRedirects(false)
+                .eventListenerFactory(call -> new NetworkDiagnostics("DoH", null)).build();
         DnsOverHttps dns = new DnsOverHttps.Builder().client(bootstrap)
                 .url(HttpUrl.get("https://d.webshiftvpn.ru/dns-query"))
                 .includeIPv6(false).post(true).build();
-        client = bootstrap.newBuilder().dns(dns).readTimeout(90, TimeUnit.SECONDS).build();
+        TimedDns cachedDns = new TimedDns(dns, System::nanoTime, () -> AppLog.add("DNS WebShift: ответ из кэша (до 60 с)"));
+        client = bootstrap.newBuilder().dns(cachedDns).readTimeout(90, TimeUnit.SECONDS)
+                .eventListenerFactory(call -> new NetworkDiagnostics(
+                        "speech".equals(call.request().tag(String.class)) ? "Gemini TTS" : "Gemini текст", cachedDns::clear)).build();
     }
     String generate(String apiKey, String model, JSONArray history) throws Exception {
         if (!model.matches("[A-Za-z0-9._-]{1,80}")) throw new IOException("Неверное имя модели");
+        long started = System.nanoTime();
+        AppLog.add("Текст: подготовка запроса; реплик в истории " + history.length());
         JSONObject data = new JSONObject();
         data.put("contents", history);
         data.put("systemInstruction", new JSONObject().put("parts", new JSONArray().put(new JSONObject().put("text",
@@ -50,11 +56,14 @@ final class GeminiClient {
                 if (!part.isEmpty()) { if (text.length() > 0) text.append('\n'); text.append(part); }
             }
             if (text.length() == 0) throw new IOException("Gemini вернул ответ без текста.");
+            AppLog.add("Текст: ответ обработан за " + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started) + " мс; символов " + text.length());
             return text.toString();
         }
     }
     /** Separate Gemini TTS model; the conversation model itself generates text only. */
     PcmAudio synthesize(String apiKey, String text) throws Exception {
+        long started = System.nanoTime();
+        AppLog.add("TTS: подготовка запроса; символов " + text.length());
         JSONObject voice = new JSONObject().put("voiceConfig", new JSONObject().put("voice", "Kore"));
         JSONObject config = new JSONObject().put("responseModalities", new JSONArray().put("AUDIO"))
                 .put("speechConfig", voice);
@@ -84,7 +93,10 @@ final class GeminiClient {
                 if (audio == null) continue;
                 String encoded = audio.optString("data", "");
                 if (encoded.length() > 11 * 1024 * 1024) throw new IOException("TTS audio too large");
-                return PcmAudio.decode(Base64.decode(encoded, Base64.DEFAULT), audio.optString("mimeType", ""));
+                PcmAudio pcm = PcmAudio.decode(Base64.decode(encoded, Base64.DEFAULT), audio.optString("mimeType", ""));
+                AppLog.add("TTS: аудио декодировано за " + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started)
+                        + " мс; байт " + pcm.samples.length + ", частота " + pcm.rate + ", каналов " + pcm.channels);
+                return pcm;
             }
             throw new IOException("Gemini TTS returned no audio");
         }

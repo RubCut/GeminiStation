@@ -56,7 +56,7 @@ public final class WebServerService extends Service {
             AppLog.add("Веб-сервер запущен на порту " + PORT);
         } catch (Exception e) {
             running = false;
-            AppLog.add("Не удалось запустить веб-сервер: порт занят или недоступен");
+            AppLog.add("Веб-сервер: ошибка запуска " + e.getClass().getSimpleName() + "; порт занят или недоступен");
             stopSelf();
         }
     }
@@ -82,6 +82,9 @@ public final class WebServerService extends Service {
                 page = out.toString("UTF-8");
             }
         }
+        // NanoHTTPD 2.3.1 finishes but does not close its GZIPOutputStream.
+        // Disabling gzip avoids leaking its native Deflater for every web UI poll.
+        @Override protected boolean useGzipWhenAccepted(Response response) { return false; }
         private Response reply(Response.Status status, String mime, String body) {
             Response response = newFixedLengthResponse(status, mime, body);
             response.addHeader("Cache-Control", "no-store");
@@ -130,7 +133,7 @@ public final class WebServerService extends Service {
                 return json(Response.Status.NOT_FOUND, "Не найдено");
             } catch (Exception e) {
                 // Do not expose raw exceptions; they may include request contents.
-                AppLog.add("Ошибка обработки веб-запроса");
+                AppLog.add("Веб-сервер: ошибка обработки запроса " + e.getClass().getSimpleName());
                 return json(Response.Status.INTERNAL_ERROR, "Не удалось обработать запрос или сохранить настройки");
             }
         }
