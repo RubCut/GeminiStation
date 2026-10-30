@@ -87,7 +87,7 @@ jobs:
               echo "::error::Signature verification failed for $apk: $details" >&2; exit 1
             fi
             echo "$details"
-            hash=$(printf '%s\n' "$details" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
+            hash=$(printf '%s\n' "$details" | sed -nE 's/^(Signer #1|V[0-9.]+ Signer): certificate SHA-256 digest: ([0-9a-fA-F]+)$/\2/p' | head -n 1)
             if [[ -z "$hash" ]]; then summary=$(printf '%s' "$details" | tr '\n' '|'); echo "::error::No signing certificate hash for $apk; output: $summary" >&2; exit 1; fi
             if [[ -z "$expected" ]]; then expected="$hash"; fi
             if [[ "$expected" != "$hash" ]]; then echo "::error::APK signing certificates differ: $apk" >&2; exit 1; fi
