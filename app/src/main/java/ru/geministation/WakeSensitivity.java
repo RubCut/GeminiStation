@@ -11,7 +11,9 @@ final class WakeSensitivity {
     }
     static String keywords(String value) {
         String t = threshold(value);
-        return "gemini /" + t + "/\njeminai /" + t + "/\njemini /" + t + "/\n";
+        StringBuilder keywords = new StringBuilder();
+        for (String word : WakeWordResult.KEYWORDS) keywords.append(word).append(" /").append(t).append("/\n");
+        return keywords.toString();
     }
     private WakeSensitivity() { }
 }

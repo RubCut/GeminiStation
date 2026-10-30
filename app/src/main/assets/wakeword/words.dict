@@ -1,7 +1,7 @@
-gemini gj e1 mj i0 nj i0
-gemini(2) gj e0 mj i1 nj i0
-gemini(3) gj e0 mj i0 nj i1
-jeminai d zh e1 mj i0 n a0 j
-jeminai(2) d zh e0 mj i1 n a0 j
-jeminai(3) d zh e0 mj i0 n a1 j
-jemini d zh e1 mj i0 nj i0
+gemini1 gj e1 mj i0 nj i0
+gemini2 gj e0 mj i1 nj i0
+gemini3 gj e0 mj i0 nj i1
+jeminai1 d zh e1 mj i0 n a0 j
+jeminai2 d zh e0 mj i1 n a0 j
+jeminai3 d zh e0 mj i0 n a1 j
+jemini1 d zh e1 mj i0 nj i0

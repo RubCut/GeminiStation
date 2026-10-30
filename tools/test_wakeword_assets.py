@@ -22,7 +22,8 @@ for line in (assets / 'keywords.list').read_text(encoding='utf8').splitlines():
     assert threshold.startswith('/') and threshold.endswith('/') and 0 < float(threshold[1:-1]) < 1
     assert word in pronunciations, word
     keywords.append(word)
-assert set(keywords) == {'gemini', 'jeminai', 'jemini'}
+assert set(keywords) == {'gemini1', 'gemini2', 'gemini3', 'jeminai1', 'jeminai2', 'jeminai3', 'jemini1'}
+assert len(keywords) == len(set(keywords)) == len(pronunciations), 'Each pronunciation must have a distinct keyword'
 for filename in ['feat.params', 'feature_transform', 'mdef', 'means', 'mixture_weights', 'noisedict', 'transition_matrices', 'variances']:
     assert (model / filename).stat().st_size > 0, filename
 print('Wake-word assets and phoneme inventory verified (no speech accuracy test).')

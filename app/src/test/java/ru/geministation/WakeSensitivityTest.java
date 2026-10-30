@@ -13,7 +13,7 @@ public class WakeSensitivityTest {
         assertEquals("1e-15", WakeSensitivity.threshold("low"));
         assertEquals("1e-25", WakeSensitivity.threshold("normal"));
         assertEquals("1e-35", WakeSensitivity.threshold("high"));
-        assertEquals("gemini /1e-35/\njeminai /1e-35/\njemini /1e-35/\n", WakeSensitivity.keywords("high"));
+        for (String word : WakeWordResult.KEYWORDS) assertTrue(WakeSensitivity.keywords("high").contains(word + " /1e-35/\n"));
     }
     @Test public void diagnosticsAggregateAndResetWithoutRecording() {
         AudioLevel level = new AudioLevel();
