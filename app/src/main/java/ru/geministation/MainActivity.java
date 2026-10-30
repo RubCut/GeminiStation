@@ -339,11 +339,18 @@ public final class MainActivity extends Activity {
                     if (!active()) return;
                     long finalDelay = speechEnded == 0 ? -1 : SystemClock.elapsedRealtime() - speechEnded;
                     ArrayList<String> texts = results == null ? null : results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+                    String recognized = texts == null || texts.isEmpty() || texts.get(0) == null ? "" : texts.get(0).trim();
                     AppLog.add("Речь #" + attempt + ": итог через " + recognitionElapsed() + " мс; после конца "
-                            + (finalDelay < 0 ? "неизвестно" : finalDelay + " мс") + "; частичных " + partialCount + "; вариантов " + (texts == null ? 0 : texts.size()));
+                            + (finalDelay < 0 ? "неизвестно" : finalDelay + " мс") + "; частичных " + partialCount
+                            + "; вариантов " + (texts == null ? 0 : texts.size()) + "; символов в первом варианте " + recognized.length());
                     finishRecognition();
-                    if (texts == null || texts.isEmpty() || texts.get(0) == null || texts.get(0).trim().isEmpty()) { closeForSilence(); return; }
-                    submit(texts.get(0).trim());
+                    if (recognized.isEmpty()) {
+                        AppLog.add("Речь #" + attempt + ": системная служба вернула пустую расшифровку");
+                        if (followUp) closeForSilence();
+                        else showErrorAndClose("Распознаватель станции вернул пустой результат. Попробуйте Gemini Live в веб-настройках.");
+                        return;
+                    }
+                    submit(recognized);
                 }
                 public void onPartialResults(Bundle partialResults) {
                     if (!active() || partialResults == null) return;

@@ -12,7 +12,6 @@ import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
 import okhttp3.Response;
 import okhttp3.WebSocket;
-import okhttp3.WebSocketListener;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -34,6 +33,7 @@ final class LiveTranscriber {
     private final AtomicBoolean stopped = new AtomicBoolean();
     private final AtomicBoolean ending = new AtomicBoolean();
     private final AtomicBoolean captureStarted = new AtomicBoolean();
+    private final AtomicBoolean binaryFrameLogged = new AtomicBoolean();
     private volatile WebSocket socket;
     private AudioRecord recording;
     private long started;
@@ -44,7 +44,7 @@ final class LiveTranscriber {
     void start() {
         started = SystemClock.elapsedRealtime();
         AppLog.add("Live STT: подключаем Gemini Live через WebShift DNS");
-        socket = client.openTranscriptionSocket(key, new WebSocketListener() {
+        socket = client.openTranscriptionSocket(key, new GeminiSocketListener() {
             @Override public void onOpen(WebSocket webSocket, Response response) {
                 if (stopped.get()) { webSocket.cancel(); return; }
                 socket = webSocket;
@@ -56,7 +56,13 @@ final class LiveTranscriber {
                     AppLog.add("Live STT: WebSocket подключен за " + (SystemClock.elapsedRealtime() - started) + " мс");
                 } catch (Exception e) { fail("Не удалось подготовить Gemini Live", e.getClass().getSimpleName()); }
             }
-            @Override public void onMessage(WebSocket webSocket, String message) {
+            @Override protected void onBinaryFrame() {
+                if (binaryFrameLogged.compareAndSet(false, true)) AppLog.add("Live STT: получен бинарный кадр Gemini");
+            }
+            @Override protected void onInvalidFrame(String reason) {
+                fail("Некорректный ответ Gemini Live", reason);
+            }
+            @Override protected void onJsonFrame(WebSocket webSocket, String message) {
                 if (stopped.get()) return;
                 try {
                     JSONObject data = new JSONObject(message);
