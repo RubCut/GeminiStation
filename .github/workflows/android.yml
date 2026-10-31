@@ -48,6 +48,13 @@ jobs:
         run: ./tools/test_signing_setup.sh
       - name: Test web voice settings
         run: node tools/test_voice_settings.js
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify microWakeWord frontend parity
+        run: |
+          python3 -m pip install 'numpy<2' pymicro-features==2.0.2
+          python3 tools/test_microfrontend.py
       - name: Check supplied sound cues
         run: python3 tools/test_sound_assets.py
       - name: Test Python plugin host
@@ -81,6 +88,8 @@ jobs:
           cat build-output.txt
       - name: Verify sound cues in APK
         run: python3 tools/test_sound_assets.py app/build/outputs/apk/debug/app-debug.apk
+      - name: Verify microWakeWord APK assets
+        run: python3 tools/test_micro_apk.py app/build/outputs/apk/debug/app-debug.apk
       - name: Verify APK signatures
         shell: bash
         run: |

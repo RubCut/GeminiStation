@@ -167,6 +167,7 @@ input:not([type="checkbox"]):not([type="range"]),select,textarea{background:#1a1
     <div class="cards">
      <article class="card"><div class="card-head"><span class="card-icon green"><svg class="icon"><use href="#i-mic"/></svg></span><div><h3>Голосовая активация</h3><p>«Гемини», «Джеминай» или «Джемини»</p></div><span class="tag">ЛОКАЛЬНО</span></div>
       <div class="toggle-line"><div class="toggle-copy"><strong>Слушать фразу активации</strong><span>Обнаружение слова на самой станции</span></div><label class="switch"><input type="checkbox" id="wakeEnabled" aria-label="Включить голосовую активацию" disabled><span class="switch-track"></span></label></div>
+      <div class="field"><label class="field-label" for="wakeEngine">Движок голосовой активации</label><select id="wakeEngine" disabled><option value="pocketsphinx">PocketSphinx (обычный)</option><option value="microwakeword">microWakeWord (экспериментальный)</option></select><p class="field-hint">microWakeWord распознаёт шесть имён и некоторые обрывки («геми», «джеми», «мини», «минай»). Он обучен на синтетической речи и может часто ошибаться, особенно на слове «мини». Проверка на станции ещё нужна. Можно вернуться на PocketSphinx или выключить голосовую активацию.</p></div>
       <div class="divider"></div>
       <div class="range-heading"><label class="row-label" for="wakeSensitivity">Чувствительность</label><div class="range-input"><input type="number" id="sensitivityNumber" min="1" max="100" step="1" value="50" inputmode="numeric" aria-label="Чувствительность в процентах" aria-describedby="sensitivityHint" disabled><span aria-hidden="true">%</span></div></div>
       <input type="range" id="wakeSensitivity" min="1" max="100" step="1" value="50" aria-valuetext="50%" aria-describedby="sensitivityHint" disabled>
@@ -386,7 +387,7 @@ async function saveTuning(reset=false){
 el('saveVoiceTuning').addEventListener('click',()=>saveTuning(false));
 el('resetVoiceTuning').addEventListener('click',()=>saveTuning(true));
 
-let settingsLoaded=false, voiceDirty=false, buttonDirty=false, audioDuckDirty=false, wakeDirty=false, wakeSensitivityDirty=false, wakeFilterDirty=false, wakeAmplifyDirty=false, keyBusy=false, keyIds=null;
+let settingsLoaded=false, voiceDirty=false, buttonDirty=false, audioDuckDirty=false, wakeDirty=false, wakeEngineDirty=false, wakeSensitivityDirty=false, wakeFilterDirty=false, wakeAmplifyDirty=false, keyBusy=false, keyIds=null;
 function validSensitivity(value){return /^(?:[1-9]|[1-9][0-9]|100)$/.test(value)}
 function sensitivityError(message){
  el('sensitivityError').textContent=message;
@@ -458,8 +459,8 @@ async function refresh(){const current=++logRequest;try{
  if(!settingsLoaded){
   el('model').value=data.model;const select=el('voice');select.textContent='';
   data.voices.forEach(voice=>{const option=document.createElement('option');option.value=voice;option.textContent=voice;select.appendChild(option)});
-  select.value=data.voice;select.disabled=false;el('model').disabled=false;el('key').disabled=false;el('buttonEnabled').checked=data.buttonEnabled;el('buttonEnabled').disabled=false;el('audioDuckEnabled').checked=data.audioDuckEnabled;el('audioDuckEnabled').disabled=false;el('saveDuckSettings').disabled=false;el('wakeEnabled').checked=data.wakeEnabled;el('wakeEnabled').disabled=false;setSensitivity(data.wakeSensitivity);el('wakeSensitivity').disabled=false;el('sensitivityNumber').disabled=false;el('wakeFilter').checked=data.wakeFilter!==false;el('wakeAmplify').checked=data.wakeAmplify!==false;el('wakeFilter').disabled=false;el('wakeAmplify').disabled=false;el('saveWakeSettings').disabled=false;el('saveVoice').disabled=false;el('save').disabled=false;el('saveButtonSettings').disabled=false;el('sampleVoice').disabled=false;settingsLoaded=true;
- }else{if(!voiceDirty)el('voice').value=data.voice;if(!buttonDirty)el('buttonEnabled').checked=data.buttonEnabled;if(!audioDuckDirty)el('audioDuckEnabled').checked=data.audioDuckEnabled;if(!wakeDirty)el('wakeEnabled').checked=data.wakeEnabled;if(!wakeSensitivityDirty)setSensitivity(data.wakeSensitivity);if(!wakeFilterDirty)el('wakeFilter').checked=data.wakeFilter!==false;if(!wakeAmplifyDirty)el('wakeAmplify').checked=data.wakeAmplify!==false}
+  select.value=data.voice;select.disabled=false;el('model').disabled=false;el('key').disabled=false;el('buttonEnabled').checked=data.buttonEnabled;el('buttonEnabled').disabled=false;el('audioDuckEnabled').checked=data.audioDuckEnabled;el('audioDuckEnabled').disabled=false;el('saveDuckSettings').disabled=false;el('wakeEnabled').checked=data.wakeEnabled;el('wakeEnabled').disabled=false;el('wakeEngine').value=data.wakeEngine||'pocketsphinx';el('wakeEngine').disabled=false;setSensitivity(data.wakeSensitivity);el('wakeSensitivity').disabled=false;el('sensitivityNumber').disabled=false;el('wakeFilter').checked=data.wakeFilter!==false;el('wakeAmplify').checked=data.wakeAmplify!==false;el('wakeFilter').disabled=false;el('wakeAmplify').disabled=false;el('saveWakeSettings').disabled=false;el('saveVoice').disabled=false;el('save').disabled=false;el('saveButtonSettings').disabled=false;el('sampleVoice').disabled=false;settingsLoaded=true;
+ }else{if(!voiceDirty)el('voice').value=data.voice;if(!buttonDirty)el('buttonEnabled').checked=data.buttonEnabled;if(!audioDuckDirty)el('audioDuckEnabled').checked=data.audioDuckEnabled;if(!wakeDirty)el('wakeEnabled').checked=data.wakeEnabled;if(!wakeEngineDirty)el('wakeEngine').value=data.wakeEngine||'pocketsphinx';if(!wakeSensitivityDirty)setSensitivity(data.wakeSensitivity);if(!wakeFilterDirty)el('wakeFilter').checked=data.wakeFilter!==false;if(!wakeAmplifyDirty)el('wakeAmplify').checked=data.wakeAmplify!==false}
  return data;
 }catch(e){setConnection(false);el('message').textContent=e.message;throw e}}
 let sampleUrl='';
@@ -479,13 +480,14 @@ async function sampleVoice(){
 }
 async function save(remove,feedback='message'){
  try{
-  const voice=el('voice').value, buttonEnabled=el('buttonEnabled').checked, audioDuckEnabled=el('audioDuckEnabled').checked, wakeEnabled=el('wakeEnabled').checked, wakeSensitivity=getSensitivity(), wakeFilter=el('wakeFilter').checked, wakeAmplify=el('wakeAmplify').checked;
+  const voice=el('voice').value, buttonEnabled=el('buttonEnabled').checked, audioDuckEnabled=el('audioDuckEnabled').checked, wakeEnabled=el('wakeEnabled').checked, wakeEngine=el('wakeEngine').value, wakeSensitivity=getSensitivity(), wakeFilter=el('wakeFilter').checked, wakeAmplify=el('wakeAmplify').checked;
   if(wakeSensitivity===null){sensitivityError('Введите целое число от 1 до 100.');el('sensitivityNumber').focus();return}
-  await request('/api/config',{method:'POST',body:JSON.stringify({model:el('model').value,voice,buttonEnabled,audioDuckEnabled,wakeEnabled,wakeSensitivity,wakeFilter,wakeAmplify,key:'',deleteKey:remove})});
+  await request('/api/config',{method:'POST',body:JSON.stringify({model:el('model').value,voice,buttonEnabled,audioDuckEnabled,wakeEnabled,wakeEngine,wakeSensitivity,wakeFilter,wakeAmplify,key:'',deleteKey:remove})});
   if(el('voice').value===voice)voiceDirty=false;
   if(el('buttonEnabled').checked===buttonEnabled)buttonDirty=false;
   if(el('audioDuckEnabled').checked===audioDuckEnabled)audioDuckDirty=false;
   if(el('wakeEnabled').checked===wakeEnabled)wakeDirty=false;
+  if(el('wakeEngine').value===wakeEngine)wakeEngineDirty=false;
   if(getSensitivity()===wakeSensitivity)wakeSensitivityDirty=false;
   if(el('wakeFilter').checked===wakeFilter)wakeFilterDirty=false;
   if(el('wakeAmplify').checked===wakeAmplify)wakeAmplifyDirty=false;
@@ -564,6 +566,7 @@ el('buttonEnabled').addEventListener('change',()=>{buttonDirty=true});
 el('audioDuckEnabled').addEventListener('change',()=>{audioDuckDirty=true});
 el('saveDuckSettings').addEventListener('click',()=>save(false,'duckMessage'));
 el('wakeEnabled').addEventListener('change',()=>{wakeDirty=true});
+el('wakeEngine').addEventListener('change',()=>{wakeEngineDirty=true});
 el('wakeFilter').addEventListener('change',()=>{wakeFilterDirty=true});
 el('wakeAmplify').addEventListener('change',()=>{wakeAmplifyDirty=true});
 el('wakeSensitivity').addEventListener('input',sliderChanged);

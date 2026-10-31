@@ -149,6 +149,7 @@ public final class WebServerService extends Service {
                             .put("wakeEnabled", AppSettings.wakeEnabled(context))
                             .put("wakeStatus", WakeWordController.get(context).status())
                             .put("wakeSensitivity", AppSettings.wakeSensitivity(context))
+                            .put("wakeEngine", AppSettings.wakeEngine(context))
                             .put("wakeFilter", AppSettings.wakeFilter(context))
                             .put("wakeAmplify", AppSettings.wakeAmplify(context))
                             .put("voiceTuning", VoiceTuning.load(context).json())
@@ -502,6 +503,10 @@ public final class WebServerService extends Service {
                         return json(Response.Status.BAD_REQUEST, "Некорректное усиление активации");
                     boolean wakeFilter = data.has("wakeFilter") ? data.optBoolean("wakeFilter") : AppSettings.wakeFilter(context);
                     boolean wakeAmplify = data.has("wakeAmplify") ? data.optBoolean("wakeAmplify") : AppSettings.wakeAmplify(context);
+                    if (data.has("wakeEngine") && !(data.opt("wakeEngine") instanceof String))
+                        return json(Response.Status.BAD_REQUEST, "Некорректный движок активации");
+                    String wakeEngine = data.has("wakeEngine") ? data.optString("wakeEngine", "") : AppSettings.wakeEngine(context);
+                    if (!MicroWakePolicy.validEngine(wakeEngine)) return json(Response.Status.BAD_REQUEST, "Некорректный движок активации");
                     if (!WakeSensitivity.valid(wakeSensitivity)) return json(Response.Status.BAD_REQUEST, "Некорректная чувствительность");
                     String key = data.optString("key", "").trim();
                     boolean deleteKey = data.optBoolean("deleteKey", false);
@@ -513,7 +518,7 @@ public final class WebServerService extends Service {
                         try { vault.add(key); }
                         catch (IllegalArgumentException e) { return json(Response.Status.BAD_REQUEST, e.getMessage()); }
                     }
-                    if (!AppSettings.save(context, model, voice, buttonEnabled, wakeEnabled, wakeSensitivity, audioDuckEnabled, wakeFilter, wakeAmplify)) return json(Response.Status.INTERNAL_ERROR, "Не удалось сохранить настройки");
+                    if (!AppSettings.save(context, model, voice, buttonEnabled, wakeEnabled, wakeSensitivity, audioDuckEnabled, wakeFilter, wakeAmplify, wakeEngine)) return json(Response.Status.INTERNAL_ERROR, "Не удалось сохранить настройки");
                     WakeWordController.get(context).settingsChanged();
                     AppLog.add(deleteKey ? "API-ключ удалён через веб-интерфейс" : "Настройки сохранены через веб-интерфейс");
                     return json(Response.Status.OK, "Настройки сохранены");

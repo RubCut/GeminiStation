@@ -31,6 +31,10 @@ final class AppSettings {
         String value = context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE).getString("wake_sensitivity", WakeSensitivity.DEFAULT);
         return WakeSensitivity.normalize(value);
     }
+    static String wakeEngine(Context context) {
+        String value = context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE).getString("wake_engine", MicroWakePolicy.POCKET);
+        return MicroWakePolicy.normalizeEngine(value);
+    }
     static boolean wakeFilter(Context context) {
         return context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE).getBoolean("wake_filter", true);
     }
@@ -44,12 +48,15 @@ final class AppSettings {
         return save(context, model, voice, buttonEnabled, wakeEnabled, wakeSensitivity, audioDuckEnabled, wakeFilter(context), wakeAmplify(context));
     }
     static boolean save(Context context, String model, String voice, boolean buttonEnabled, boolean wakeEnabled, String wakeSensitivity, boolean audioDuckEnabled, boolean wakeFilter, boolean wakeAmplify) {
-        if (!validModel(model) || !TtsVoices.valid(voice) || !WakeSensitivity.valid(wakeSensitivity)) return false;
+        return save(context, model, voice, buttonEnabled, wakeEnabled, wakeSensitivity, audioDuckEnabled, wakeFilter, wakeAmplify, wakeEngine(context));
+    }
+    static boolean save(Context context, String model, String voice, boolean buttonEnabled, boolean wakeEnabled, String wakeSensitivity, boolean audioDuckEnabled, boolean wakeFilter, boolean wakeAmplify, String wakeEngine) {
+        if (!validModel(model) || !TtsVoices.valid(voice) || !WakeSensitivity.valid(wakeSensitivity) || !MicroWakePolicy.validEngine(wakeEngine)) return false;
         return context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE).edit()
                 .putString("model", model).putString("voice", voice).putBoolean("button_enabled", buttonEnabled)
                 .putBoolean("wake_enabled", wakeEnabled).putString("wake_sensitivity", WakeSensitivity.normalize(wakeSensitivity))
                 .putBoolean("audio_duck", audioDuckEnabled).putBoolean("wake_filter", wakeFilter)
-                .putBoolean("wake_amplify", wakeAmplify).commit();
+                .putBoolean("wake_amplify", wakeAmplify).putString("wake_engine", wakeEngine).commit();
     }
     static String systemPrompt(Context context) {
         return context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE).getString("system_prompt", SystemPrompt.DEFAULT);

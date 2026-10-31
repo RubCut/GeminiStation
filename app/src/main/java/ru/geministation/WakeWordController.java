@@ -63,19 +63,19 @@ final class WakeWordController {
             else status = "Нет разрешения на микрофон";
             return;
         }
-        String sensitivity = AppSettings.wakeSensitivity(context);
+        String sensitivity = AppSettings.wakeSensitivity(context), engine = AppSettings.wakeEngine(context);
         boolean filter = AppSettings.wakeFilter(context), amplify = AppSettings.wakeAmplify(context);
         VoiceTuning tuning = VoiceTuning.load(context);
         WakeCapture current = capture;
         if (current != null) {
-            if (current.isAlive() && current.sameSettings(sensitivity, filter, amplify, tuning)) return;
+            if (current.isAlive() && current.sameSettings(engine, sensitivity, filter, amplify, tuning)) return;
             if (!stopCapture()) { status = "Не удалось освободить микрофон"; return; }
         }
         status = "Подготавливаем локальную модель";
         try {
-            File model = WakeWordAssets.prepare(context);
+            File model = MicroWakePolicy.MICRO.equals(engine) ? null : WakeWordAssets.prepare(context);
             if (!wanted()) { reconcile(); return; }
-            WakeCapture next = new WakeCapture(new WakeCapture.Listener() {
+            WakeCapture next = new WakeCapture(context, new WakeCapture.Listener() {
                 @Override public void onLevel(WakeCapture owner, int level, int max) {
                     if (capture != owner || !wanted()) return;
                     rms = level; peak = max;
@@ -118,16 +118,17 @@ final class WakeWordController {
                         }
                     });
                 }
-            }, sensitivity, filter, amplify, tuning);
+            }, engine, sensitivity, filter, amplify, tuning);
             capture = next; rms = -1; peak = -1;
             next.start(model);
             if (!wanted()) { reconcile(); return; }
-            status = "Микрофон запущен (" + next.sourceName() + ")";
-            AppLog.add("Голосовая активация: микрофон запущен (" + next.sourceName() + "), чувствительность " + sensitivity + ", фильтр " + filter + ", усиление " + amplify);
+            status = "Микрофон запущен (" + next.sourceName() + ", " + engine + ")";
+            AppLog.add("Голосовая активация: микрофон запущен (" + next.sourceName() + "), движок " + engine + ", чувствительность " + sensitivity + ", фильтр " + filter + ", усиление " + amplify);
         } catch (Exception | LinkageError e) {
             stopCapture();
             status = "Ошибка запуска; проверьте журнал";
-            AppLog.add("Голосовая активация: ошибка запуска " + e.getClass().getSimpleName());
+            AppLog.add("Голосовая активация: ошибка запуска " + engine + ": " + e.getClass().getSimpleName()
+                    + (e.getMessage() == null ? "" : " — " + e.getMessage()));
         }
     }
     private boolean stopCapture() {
