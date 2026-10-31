@@ -88,7 +88,7 @@ final class LiveTranscriber {
                         if (!value.trim().isEmpty()) {
                             String display = transcript.partial(value);
                             main.post(() -> {
-                                if (!stopped.get()) { listener.onPartial(display); scheduleTranscriptCompletion(3000); }
+                                if (!stopped.get()) { listener.onPartial(display); scheduleTranscriptCompletion(1800); }
                             });
                         }
                     }
