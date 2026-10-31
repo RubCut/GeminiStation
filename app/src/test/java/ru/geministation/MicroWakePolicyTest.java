@@ -9,6 +9,11 @@ public class MicroWakePolicyTest {
         assertEquals(MicroWakePolicy.POCKET, MicroWakePolicy.normalizeEngine("other"));
         assertTrue(MicroWakePolicy.validEngine(MicroWakePolicy.POCKET));
         assertTrue(MicroWakePolicy.validEngine(MicroWakePolicy.MICRO));
+        assertTrue(MicroWakePolicy.validEngine(MicroWakePolicy.MICRO_STRESS));
+        assertTrue(MicroWakePolicy.isMicro(MicroWakePolicy.MICRO_STRESS));
+        assertFalse(MicroWakePolicy.isMicro(MicroWakePolicy.POCKET));
+        assertEquals("microwakeword/gemini_experimental.tflite", MicroWakePolicy.modelAsset(MicroWakePolicy.MICRO));
+        assertEquals("microwakeword/gemini_all_stress_experimental.tflite", MicroWakePolicy.modelAsset(MicroWakePolicy.MICRO_STRESS));
         assertFalse(MicroWakePolicy.validEngine(""));
     }
     @Test public void sensitivityGoesFromStrictToSensitive() {

@@ -73,7 +73,7 @@ final class WakeWordController {
         }
         status = "Подготавливаем локальную модель";
         try {
-            File model = MicroWakePolicy.MICRO.equals(engine) ? null : WakeWordAssets.prepare(context);
+            File model = MicroWakePolicy.isMicro(engine) ? null : WakeWordAssets.prepare(context);
             if (!wanted()) { reconcile(); return; }
             WakeCapture next = new WakeCapture(context, new WakeCapture.Listener() {
                 @Override public void onLevel(WakeCapture owner, int level, int max) {

@@ -25,10 +25,10 @@ final class MicroWakeDetector implements AutoCloseable {
     private float probabilitySum, lastAverage, intervalPeak;
     private long samplesProcessed, processingNs, maxChunkNs;
 
-    MicroWakeDetector(Context context, String sensitivity) throws IOException {
+    MicroWakeDetector(Context context, String sensitivity, String engine) throws IOException {
         threshold = MicroWakePolicy.threshold(sensitivity);
         try {
-            ByteBuffer model = load(context);
+            ByteBuffer model = load(context, engine);
             frontend = new MicroFrontend();
             interpreter = new Interpreter(model, new Interpreter.Options().setNumThreads(1));
             Tensor in = interpreter.getInputTensor(0), out = interpreter.getOutputTensor(0);
@@ -45,8 +45,8 @@ final class MicroWakeDetector implements AutoCloseable {
             throw new IOException("microWakeWord initialization failed: " + e.getClass().getSimpleName(), e);
         }
     }
-    private static ByteBuffer load(Context context) throws IOException {
-        try (InputStream stream = context.getAssets().open("microwakeword/gemini_experimental.tflite");
+    private static ByteBuffer load(Context context, String engine) throws IOException {
+        try (InputStream stream = context.getAssets().open(MicroWakePolicy.modelAsset(engine));
              ByteArrayOutputStream bytes = new ByteArrayOutputStream()) {
             byte[] buffer = new byte[8192]; int count;
             while ((count = stream.read(buffer)) != -1) {

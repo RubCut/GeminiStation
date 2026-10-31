@@ -12,14 +12,15 @@ from run_noisy_experiment import MODEL
 from evaluate_streaming import clip_score
 
 ROOT = Path(os.environ.get('MWW_EVAL_ROOT', str(WORK / 'training' / 'output' / MODEL)))
-OLD_MODEL = Path(__file__).resolve().parent / 'results' / 'gemini_six_experimental_mww.tflite'
-NEW_MODEL = WORK / (MODEL + '_mww.tflite')
+OLD_MODEL = Path(os.environ.get('MWW_BASELINE_MODEL', str(Path(__file__).resolve().parent / 'results' / 'gemini_six_experimental_mww.tflite')))
+NEW_MODEL = Path(os.environ.get('MWW_CANDIDATE_MODEL', str(WORK / (MODEL + '_mww.tflite'))))
 
 
 def main():
     trainer = load_trainer()
     results = {}
-    for name, model in [('old', OLD_MODEL), ('noisy_fragments', NEW_MODEL)]:
+    for name, model in [(os.environ.get('MWW_BASELINE_LABEL', 'old'), OLD_MODEL),
+                        (os.environ.get('MWW_CANDIDATE_LABEL', 'noisy_fragments'), NEW_MODEL)]:
         if not model.is_file():
             raise FileNotFoundError(model)
         data = defaultdict(list)
@@ -41,10 +42,11 @@ def main():
             by_kind = {}
             for kind, examples in sorted(data.items()):
                 categories = {}
-                for key in ('phrase', 'condition'):
+                for key in ('phrase', 'condition', 'pronunciation_ipa'):
                     buckets = defaultdict(list)
                     for item, score in examples:
-                        buckets[item[key]].append(score)
+                        if key in item:
+                            buckets[item[key]].append(score)
                     categories[key] = {x: {'triggered': sum(v >= cutoff for v in values), 'total': len(values)}
                                        for x, values in sorted(buckets.items())}
                 by_kind[kind] = {'triggered': sum(v >= cutoff for _, v in examples),

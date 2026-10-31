@@ -49,8 +49,8 @@ final class WakeCapture {
     void start(File model) throws IOException {
         Config config = null;
         try {
-            if (MicroWakePolicy.MICRO.equals(engine)) {
-                micro = new MicroWakeDetector(context, sensitivity);
+            if (MicroWakePolicy.isMicro(engine)) {
+                micro = new MicroWakeDetector(context, sensitivity, engine);
             } else {
                 System.loadLibrary("pocketsphinx_jni");
                 config = Decoder.defaultConfig();

@@ -1,6 +1,6 @@
 # Experimental binary classifier; a trigger for ANY of these six words.
 # Small CPU run: no claim of real-world robustness or readiness for Android.
-model_name: gemini_pronunciation_experimental
+model_name: gemini_all_stress_experimental
 wake_word: "Гемини / Геминай / Джемини / Джеминай / Гемма / Джемма"
 trained_languages: [ru]
 version: 2

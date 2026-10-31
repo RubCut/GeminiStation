@@ -55,6 +55,8 @@ jobs:
         run: |
           python3 -m pip install 'numpy<2' pymicro-features==2.0.2
           python3 tools/test_microfrontend.py
+      - name: Check wake-word stress coverage
+        run: python3 experiments/microwakeword/test_pronunciations.py
       - name: Check supplied sound cues
         run: python3 tools/test_sound_assets.py
       - name: Test Python plugin host

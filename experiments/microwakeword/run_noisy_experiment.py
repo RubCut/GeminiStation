@@ -166,6 +166,8 @@ def generate_dir(root, folder_name, train, voices, seed):
                 pcm, mix_info = mix(audio, rng, condition)
                 meta.update(kind='ambiguous' if is_ambiguous else 'negative', phrase=phrase,
                             condition=condition, speaker=speaker_idx, **mix_info)
+            if hasattr(synth, 'last_pronunciation') and meta['kind'] != 'noise':
+                meta['pronunciation_ipa'] = synth.last_pronunciation
             wavfile.write(str(folder / meta['file']), SR, pcm)
             manifest.write(json.dumps(meta, ensure_ascii=False) + '\n')
             if (i + 1) % 100 == 0 or i + 1 == count:
