@@ -52,6 +52,8 @@ jobs:
         run: python3 tools/test_sound_assets.py
       - name: Test Python plugin host
         run: python3 tools/test_plugin_host.py
+      - name: Test meme sound plugin
+        run: python3 tools/test_meme_plugin.py
       - name: Check ADB helper command surface
         run: python3 tools/test_helper_surface.py
       - name: Prepare offline wake-word model
