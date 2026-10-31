@@ -4,6 +4,8 @@ android {
     namespace 'ru.geministation'
     compileSdk 35
     sourceSets.main.java.srcDir '../shared/src/main/java'
+    sourceSets.main.aidl.srcDir '../shared/src/main/aidl'
+    buildFeatures { aidl true }
     // MediaPlayer opens short cue resources by file descriptor.
     androidResources { noCompress += 'wav' }
     defaultConfig {

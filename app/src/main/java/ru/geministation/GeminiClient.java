@@ -67,10 +67,28 @@ final class GeminiClient {
         return generate(apiKey, model, history, apps, new JSONArray());
     }
     GeminiToolProtocol.Result generate(String apiKey, String model, JSONArray history, JSONArray apps, JSONArray home) throws Exception {
+        return generate(apiKey, model, history, apps, home, new JSONArray());
+    }
+    GeminiToolProtocol.Result generate(String apiKey, String model, JSONArray history, JSONArray apps, JSONArray home, JSONArray plugins) throws Exception {
+        JSONObject data = GeminiToolProtocol.request(history, apps, AppSettings.systemPrompt(context), home, plugins);
+        return generateRequest(apiKey, model, data);
+    }
+    GeminiToolProtocol.Result pluginFollowup(String apiKey, String model, JSONArray history, JSONArray apps, JSONArray home,
+                                             JSONArray plugins, JSONObject originalPart, JSONObject result) throws Exception {
+        JSONArray turns = new JSONArray(history.toString());
+        JSONObject call = originalPart.getJSONObject("functionCall");
+        turns.put(new JSONObject().put("role", "model").put("parts", new JSONArray().put(originalPart)));
+        turns.put(new JSONObject().put("role", "user").put("parts", new JSONArray().put(new JSONObject().put("functionResponse",
+                new JSONObject().put("name", call.getString("name")).put("response", result)))));
+        JSONObject data = GeminiToolProtocol.request(turns, apps, AppSettings.systemPrompt(context), home, plugins);
+        data.put("toolConfig", new JSONObject().put("functionCallingConfig", new JSONObject().put("mode", "NONE")));
+        GeminiToolProtocol.Result response = generateRequest(apiKey, model, data);
+        return response.call == null ? response : new GeminiToolProtocol.Result("Плагин выполнен, но не удалось сформировать ответ.", null);
+    }
+    private GeminiToolProtocol.Result generateRequest(String apiKey, String model, JSONObject data) throws Exception {
         if (!model.matches("[A-Za-z0-9._-]{1,80}")) throw new IOException("Неверное имя модели");
         long started = System.nanoTime();
-        AppLog.add("Текст: подготовка запроса; реплик в истории " + history.length());
-        JSONObject data = GeminiToolProtocol.request(history, apps, AppSettings.systemPrompt(context), home);
+        AppLog.add("Текст: подготовка запроса");
         Request request = new Request.Builder()
                 .url("https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent")
                 .header("x-goog-api-key", apiKey)

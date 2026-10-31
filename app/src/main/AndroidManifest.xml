@@ -4,6 +4,7 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="ru.geministation.permission.RUN_PLUGIN" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
     <uses-feature android:name="android.software.leanback" android:required="true" />
@@ -11,6 +12,7 @@
         android:label="Gemini Station" android:theme="@style/AppTheme"
         android:icon="@drawable/icon" android:banner="@drawable/banner">
         <service android:name=".WebServerService" android:exported="false" />
+        <activity android:name=".PluginApprovalActivity" android:exported="false" android:theme="@android:style/Theme.Material.Dialog.Alert" />
         <receiver android:name=".BootReceiver" android:exported="true">
             <intent-filter><action android:name="android.intent.action.BOOT_COMPLETED" /></intent-filter>
         </receiver>

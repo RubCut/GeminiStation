@@ -50,6 +50,8 @@ jobs:
         run: node tools/test_voice_settings.js
       - name: Check supplied sound cues
         run: python3 tools/test_sound_assets.py
+      - name: Test Python plugin host
+        run: python3 tools/test_plugin_host.py
       - name: Check ADB helper command surface
         run: python3 tools/test_helper_surface.py
       - name: Prepare offline wake-word model
@@ -69,7 +71,7 @@ jobs:
           else
             export GEMINI_SIGNING_PASSWORD='ci-test-key-not-for-distribution'
           fi
-          if ! ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleDebug :keytester:testDebugUnitTest :keytester:assembleDebug :buttonhelper:testDebugUnitTest :buttonhelper:assembleDebug > build-output.txt 2>&1; then
+          if ! ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleDebug :keytester:testDebugUnitTest :keytester:assembleDebug :buttonhelper:testDebugUnitTest :buttonhelper:assembleDebug :pluginrunner:testDebugUnitTest :pluginrunner:assembleDebug > build-output.txt 2>&1; then
             tail -n 80 build-output.txt
             while IFS= read -r line; do printf '::error::%s\n' "$line"; done < <(tail -n 35 build-output.txt)
             exit 1
@@ -88,7 +90,7 @@ jobs:
           apksigner=$(find "$apk_dir/build-tools" -name apksigner -type f | sort -V | tail -n 1)
           if [[ -z "$apksigner" ]]; then echo '::error::apksigner not found' >&2; exit 1; fi
           expected=''
-          for apk in app/build/outputs/apk/debug/app-debug.apk keytester/build/outputs/apk/debug/keytester-debug.apk buttonhelper/build/outputs/apk/debug/buttonhelper-debug.apk; do
+          for apk in app/build/outputs/apk/debug/app-debug.apk keytester/build/outputs/apk/debug/keytester-debug.apk buttonhelper/build/outputs/apk/debug/buttonhelper-debug.apk pluginrunner/build/outputs/apk/debug/pluginrunner-debug.apk; do
             if ! details=$("$apksigner" verify --verbose --print-certs "$apk" 2>&1); then
               echo "::error::Signature verification failed for $apk: $details" >&2; exit 1
             fi
@@ -120,5 +122,14 @@ jobs:
         with:
           name: ButtonHelper-debug
           path: buttonhelper/build/outputs/apk/debug/buttonhelper-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Python plugin runner APK
+        if: env.HAS_STABLE_SIGNING == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: PluginRunner-debug
+          path: pluginrunner/build/outputs/apk/debug/pluginrunner-debug.apk
           if-no-files-found: error
           retention-days: 14

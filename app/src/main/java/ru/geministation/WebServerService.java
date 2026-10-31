@@ -187,6 +187,49 @@ public final class WebServerService extends Service {
                     } finally { sampleInProgress.set(false); }
                 }
                 // Fixed, non-parameterized health check only; arbitrary shell text is never accepted here.
+                if (session.getMethod() == Method.GET && "/api/plugins".equals(path)) {
+                    return reply(Response.Status.OK, "application/json; charset=utf-8",
+                            new JSONObject().put("plugins", PluginRegistry.describe(PluginRegistry.list(context))).toString());
+                }
+                if (session.getMethod() == Method.POST && "/api/plugins".equals(path)) {
+                    if (!WebSecurity.permittedWrite(host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station")))
+                        return json(Response.Status.FORBIDDEN, "Запрос отклонён");
+                    String lengthHeader = session.getHeaders().get("content-length");
+                    long length = lengthHeader == null ? -1 : Long.parseLong(lengthHeader);
+                    if (length < 1 || length > 180000 || session.getHeaders().containsKey("transfer-encoding"))
+                        return json(Response.Status.BAD_REQUEST, "Недопустимый размер запроса");
+                    Map<String, String> files = new HashMap<>(); session.parseBody(files);
+                    JSONObject data = new JSONObject(files.get("postData"));
+                    String action = data.optString("action", "");
+                    try {
+                        PluginRegistry.Pending pending = null;
+                        if ("install".equals(action)) {
+                            String encoded = data.optString("zip", "");
+                            if (encoded.length() > 174764 || !encoded.matches("[A-Za-z0-9+/]*={0,2}"))
+                                return json(Response.Status.BAD_REQUEST, "Некорректный ZIP");
+                            pending = PluginRegistry.stage(context, android.util.Base64.decode(encoded, android.util.Base64.NO_WRAP));
+                        } else if ("enable".equals(action)) pending = PluginRegistry.stageEnable(context, data.optString("id", ""));
+                        else if ("disable".equals(action)) PluginRegistry.disable(context, data.optString("id", ""));
+                        else if ("delete".equals(action)) PluginRegistry.delete(context, data.optString("id", ""));
+                        else return json(Response.Status.BAD_REQUEST, "Неизвестное действие");
+                        if (pending != null) {
+                            try {
+                                Intent approval = new Intent(context, PluginApprovalActivity.class)
+                                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).putExtra("token", pending.token);
+                                context.startActivity(approval);
+                            } catch (Exception e) {
+                                PluginRegistry.resolve(context, pending.token, false);
+                                throw e;
+                            }
+                            AppLog.add("Плагины: ожидается подтверждение на станции");
+                            return json(Response.Status.OK, "Подтвердите установку на экране станции.");
+                        }
+                        AppLog.add("Плагины: отключён или удалён через веб");
+                        return json(Response.Status.OK, "Готово");
+                    } catch (IllegalArgumentException | IllegalStateException e) {
+                        return json(Response.Status.BAD_REQUEST, e.getMessage() == null ? "Некорректный плагин" : e.getMessage());
+                    }
+                }
                 if (session.getMethod() == Method.POST && "/api/helper/test".equals(path)) {
                     if (!WebSecurity.permittedWrite(host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station")))
                         return json(Response.Status.FORBIDDEN, "Запрос отклонён");

@@ -100,7 +100,7 @@ details{margin-top:18px;border-top:1px solid #303441;padding-top:16px}summary{co
 <div class="layout">
  <aside class="sidebar" aria-label="Навигация">
   <div class="brand"><span class="brand-mark"><svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="star-gradient" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#8ac1ff"/><stop offset=".55" stop-color="#c2a8ff"/><stop offset="1" stop-color="#f0b4da"/></linearGradient></defs><path fill="url(#star-gradient)" d="M12 1.5C13.15 7.4 16.6 10.85 22.5 12c-5.9 1.15-9.35 4.6-10.5 10.5C10.85 16.6 7.4 13.15 1.5 12 7.4 10.85 10.85 7.4 12 1.5Z"/></svg></span><div><div class="brand-name">Gemini Station</div><div class="brand-sub">Панель управления</div></div></div>
-  <div><p class="nav-label">Настройки</p><nav class="nav"><a href="#assistant"><svg class="icon"><use href="#i-grid"/></svg>Ассистент</a><a href="#activation"><svg class="icon"><use href="#i-mic"/></svg>Активация</a><a href="#display"><svg class="icon"><use href="#i-screen"/></svg>Экран станции</a><a href="#smartHome"><svg class="icon"><use href="#i-grid"/></svg>Умный дом и музыка</a><a href="#journal"><svg class="icon"><use href="#i-log"/></svg>Журнал</a></nav></div>
+  <div><p class="nav-label">Настройки</p><nav class="nav"><a href="#assistant"><svg class="icon"><use href="#i-grid"/></svg>Ассистент</a><a href="#activation"><svg class="icon"><use href="#i-mic"/></svg>Активация</a><a href="#display"><svg class="icon"><use href="#i-screen"/></svg>Экран станции</a><a href="#smartHome"><svg class="icon"><use href="#i-grid"/></svg>Умный дом и музыка</a><a href="#plugins"><svg class="icon"><use href="#i-grid"/></svg>Плагины</a><a href="#journal"><svg class="icon"><use href="#i-log"/></svg>Журнал</a></nav></div>
   <div class="sidebar-foot"><strong>Локальное управление</strong>Настройки вашей станции<br>в одном месте.</div>
  </aside>
  <main class="main">
@@ -197,6 +197,14 @@ details{margin-top:18px;border-top:1px solid #303441;padding-top:16px}summary{co
      <div class="divider"></div><h3>Яндекс Музыка</h3><p class="field-hint">Используется QR-вход и выбранная выше станция. Попросите включить конкретный трек. Запуск по неофициальному протоколу и работа при отключённой Алисе не подтверждены; может потребоваться Яндекс Плюс.</p>
     </article></div>
    </section>
+   <section class="group" id="plugins" aria-labelledby="pluginsTitle">
+    <div class="group-heading"><div><h2 id="pluginsTitle">Python-плагины</h2><p>Инструменты ассистента · экспериментально</p></div></div>
+    <article class="card"><div class="soft-block"><p>Устанавливайте только доверенный код. Плагин имеет доступ к сети и может взаимодействовать с локальными сервисами, включая эту панель без пароля. Если разрешить ADB shell, он сможет выполнять команды с правами shell без дополнительных подтверждений. Подтверждение установки и повторного включения требуется на экране станции.</p></div>
+     <div class="field"><label class="field-label" for="pluginFile">ZIP с plugin.json и plugin.py</label><input type="file" id="pluginFile" accept=".zip,application/zip"></div>
+     <div class="actions"><button id="pluginInstall">Загрузить и подтвердить на станции</button><button id="pluginRefresh" class="secondary">Обновить список</button></div>
+     <p id="pluginMessage" class="status-message" role="status"></p><div id="pluginList"></div>
+    </article>
+   </section>
    <section class="group" id="journal" aria-labelledby="journalTitle">
     <div class="group-heading"><div><h2 id="journalTitle">Журнал</h2><p>Диагностика и события приложения</p></div><span class="section-index">04 / 04</span></div>
     <article class="card"><div class="log-head"><div><h3>Последние события</h3><p>До 1500 записей в памяти, без API-ключей и текста диалогов. Выделение текста временно приостанавливает обновление журнала.</p></div><div class="actions"><button id="copyLogs" class="secondary">Копировать журнал</button><button id="pauseLogs" class="secondary" aria-pressed="false">Пауза</button><button id="refresh" class="secondary">Обновить журнал</button></div></div><p id="logMessage" class="status-message" role="status"></p><pre class="log-output" id="logs" aria-label="Журнал событий">Загружаем журнал…</pre><textarea id="logCopyFallback" class="log-output" aria-label="Журнал для ручного копирования" readonly hidden></textarea></article>
@@ -212,6 +220,24 @@ async function request(path,options={}){
  const response=await fetch(path,{...options,headers:options.body?{'Content-Type':'application/json','X-Gemini-Station':'1'}:{},cache:'no-store'});
  const data=await response.json(); if(!response.ok) throw new Error(data.message||'Ошибка'); return data;
 }
+async function refreshPlugins(){
+ try { const data=await request('/api/plugins'); const list=el('pluginList'); list.textContent='';
+  if(!data.plugins.length){list.textContent='Нет установленных плагинов';return}
+  data.plugins.forEach(plugin=>{const row=document.createElement('div');row.className='soft-block';
+   const title=document.createElement('p');title.textContent=plugin.name+' ('+plugin.id+') · '+plugin.version+' · '+(plugin.enabled?'включён':'выключен')+(plugin.shell?' · ADB shell':'');row.appendChild(title);
+   const hash=document.createElement('p');hash.textContent='SHA-256: '+plugin.sha256;row.appendChild(hash);
+   const actions=document.createElement('div');actions.className='actions';
+   const toggle=document.createElement('button');toggle.className='secondary';toggle.textContent=plugin.enabled?'Отключить':'Включить';toggle.onclick=()=>pluginAction(plugin.enabled?'disable':'enable',plugin.id);actions.appendChild(toggle);
+   const remove=document.createElement('button');remove.className='danger';remove.textContent='Удалить';remove.onclick=()=>{if(confirm('Удалить плагин '+plugin.name+'?'))pluginAction('delete',plugin.id)};actions.appendChild(remove);row.appendChild(actions);list.appendChild(row)});
+ }catch(e){el('pluginMessage').textContent=e.message}
+}
+async function pluginAction(action,id){try{const result=await request('/api/plugins',{method:'POST',body:JSON.stringify({action,id})});el('pluginMessage').textContent=result.message;await refreshPlugins()}catch(e){el('pluginMessage').textContent=e.message}}
+el('pluginRefresh').onclick=refreshPlugins;
+el('pluginInstall').onclick=async()=>{try{const file=el('pluginFile').files[0];if(!file||file.size>131072)throw new Error('Выберите ZIP размером до 128 КБ');
+ const bytes=new Uint8Array(await file.arrayBuffer());let binary='';for(const byte of bytes)binary+=String.fromCharCode(byte);
+ const result=await request('/api/plugins',{method:'POST',body:JSON.stringify({action:'install',zip:btoa(binary)})});el('pluginMessage').textContent=result.message;
+ }catch(e){el('pluginMessage').textContent=e.message}};
+refreshPlugins();
 let latestLogs='', displayedLogs=null, logsLoaded=false, logsPaused=false, logPointerDown=false, logRequest=0, latestLogRequest=0;
 function selectionInLogs(){
  const selection=typeof window.getSelection==='function'?window.getSelection():null, logs=el('logs');

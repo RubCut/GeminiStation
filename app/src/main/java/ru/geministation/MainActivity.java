@@ -219,7 +219,20 @@ public final class MainActivity extends Activity {
                 } catch (Exception e) { AppLog.add("Умный дом: список недоступен (" + YandexCloud.safeError(e) + ")"); }
                 final SmartHome.Snapshot home = snapshot;
                 final JSONArray homeList = home.prompt();
-                GeminiToolProtocol.Result result = keyVault.run(KeyRotationDomains.Domain.TEXT, () -> !destroyed && resumed, key -> client.generate(key, model, request, appList, homeList));
+                final java.util.List<PluginExecution.Tool> pluginTools = PluginExecution.snapshot(getApplicationContext());
+                final JSONArray pluginDeclarations = PluginExecution.declarations(pluginTools);
+                GeminiToolProtocol.Result first = keyVault.run(KeyRotationDomains.Domain.TEXT, () -> !destroyed && resumed,
+                        key -> client.generate(key, model, request, appList, homeList, pluginDeclarations));
+                PluginExecution.Tool pluginTool = PluginExecution.find(pluginTools, first.call);
+                GeminiToolProtocol.Result completed = first;
+                if (pluginTool != null && first.callPart != null && !destroyed && resumed) {
+                    AppLog.add("Плагины: выполнение подтверждённого инструмента");
+                    final JSONObject pluginResult = PluginExecution.execute(getApplicationContext(), pluginTool, first.call);
+                    // Retries rotate only the follow-up request, never repeat plugin side effects.
+                    completed = keyVault.run(KeyRotationDomains.Domain.TEXT, () -> !destroyed && resumed,
+                            key -> client.pluginFollowup(key, model, request, appList, homeList, pluginDeclarations, first.callPart, pluginResult));
+                }
+                final GeminiToolProtocol.Result result = completed;
                 DeviceToolSpec.Action action = result.call == null ? null : DeviceToolSpec.parse(result.call, apps.size(), home.devices.size());
                 if (result.call != null) AppLog.add("Диалог: выбранная функция " + (action == null ? "отклонена" : action.kind.name()));
                 if (action != null && action.kind == DeviceToolSpec.Kind.OPEN_LINK

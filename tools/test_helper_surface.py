@@ -13,6 +13,10 @@ assert server.count('AdbHelper.probe(context)') == 1
 assert 'if (!"{}".equals(files.get("postData")))' in server
 assert 'run(context, "id -u", 3)' in client
 for path in app.glob('*.java'):
-    if path.name != 'AdbHelper.java':
+    if path.name not in ('AdbHelper.java', 'PluginExecution.java'):
         assert 'AdbHelper.run(' not in path.read_text(), path
-print('Helper command surface: internal-only; fixed probe')
+broker = (app / 'PluginExecution.java').read_text()
+assert broker.count('AdbHelper.run(') == 1
+for guard in ('Binder.getCallingUid() != runnerUid', 'PluginRegistry.permitted(c, id, digest, true)', '!active.get()', 'SystemClock.elapsedRealtime() >= deadline'):
+    assert guard in broker
+print('Helper command surface: fixed probe and consent-gated plugin capability')
