@@ -45,4 +45,53 @@ public class WakeAudioFilterTest {
         filter.process(loud, loud.length, true);
         for (short value : loud) assertTrue(value >= Short.MIN_VALUE && value <= Short.MAX_VALUE);
     }
+    @Test public void priorVoiceDoesNotAuthoriseAnEventInSilenceEvenWithoutExtraFilter() {
+        WakeAudioFilter filter = new WakeAudioFilter();
+        for (int i = 0; i < 15; i++) filter.process(new short[1600], 1600, false);
+        for (int i = 0; i < 4; i++) filter.process(sine(300), 1600, false);
+        assertTrue(filter.candidateAllowed(false));
+        assertTrue(filter.candidateAllowed(true));
+        for (int i = 0; i < 4; i++) filter.process(new short[1600], 1600, false);
+        assertFalse(filter.candidateAllowed(false));
+        assertFalse(filter.candidateAllowed(true));
+        for (int i = 0; i < 4; i++) filter.process(new short[1600], 1600, false);
+        assertTrue(filter.resetForSilence());
+        filter.clearSpeech();
+        assertFalse(filter.resetForSilence());
+        assertFalse(filter.candidateAllowed(false));
+    }
+    @Test public void extraFilterIsStricterButCannotDisableBasicGuard() {
+        WakeAudioFilter filter = new WakeAudioFilter();
+        for (int i = 0; i < 10; i++) filter.process(new short[1600], 1600, false);
+        filter.process(sine(300), 1600, false);
+        assertFalse(filter.candidateAllowed(false));
+        filter.process(sine(300), 1600, false);
+        assertTrue(filter.candidateAllowed(false));
+        assertFalse(filter.candidateAllowed(true));
+        filter.process(sine(300), 1600, false);
+        assertTrue(filter.candidateAllowed(true));
+    }
+    @Test public void steadyBackgroundAtStartupAndBroadbandNoiseDoNotPass() {
+        WakeAudioFilter filter = new WakeAudioFilter();
+        for (int i = 0; i < 30; i++) filter.process(sine(400), 1600, false);
+        assertFalse(filter.candidateAllowed(false));
+        filter = new WakeAudioFilter();
+        for (int i = 0; i < 10; i++) filter.process(new short[1600], 1600, false);
+        java.util.Random random = new java.util.Random(123);
+        for (int i = 0; i < 5; i++) {
+            short[] noise = new short[1600];
+            for (int j = 0; j < noise.length; j++) noise[j] = (short) (random.nextInt(1000) - 500);
+            filter.process(noise, noise.length, false);
+        }
+        assertFalse(filter.candidateAllowed(false));
+    }
+    @Test public void partialReadsCountDurationInSamples() {
+        WakeAudioFilter filter = new WakeAudioFilter();
+        for (int i = 0; i < 10; i++) filter.process(new short[1600], 1600, false);
+        short[] sound = sine(300);
+        for (int i = 0; i < 4; i++) filter.process(sound.clone(), 800, false);
+        assertTrue(filter.candidateAllowed(false));
+        for (int i = 0; i < 7; i++) filter.process(new short[800], 800, false);
+        assertFalse(filter.candidateAllowed(false));
+    }
 }

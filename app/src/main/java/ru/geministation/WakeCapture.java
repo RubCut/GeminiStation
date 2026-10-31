@@ -98,11 +98,15 @@ final class WakeCapture {
             WakeAudioFilter conditioning = new WakeAudioFilter();
             long lastRejectedLog = 0;
             long lastLevel = SystemClock.elapsedRealtime();
+            int buffered = 0;
             while (!stopping.get()) {
-                int count = recorder.read(samples, 0, samples.length);
+                int count = recorder.read(samples, buffered, samples.length - buffered);
                 if (stopping.get()) break;
                 if (count < 0) throw new IOException("AudioRecord.read=" + count);
                 if (count == 0) { Thread.sleep(20); continue; }
+                buffered += count;
+                if (buffered < samples.length) continue;
+                count = buffered; buffered = 0;
                 level.add(samples, count);
                 conditioning.process(samples, count, amplify);
                 decoder.processRaw(samples, count, false, false);
@@ -113,16 +117,24 @@ final class WakeCapture {
                 }
                 Hypothesis result = decoder.hyp();
                 if (result != null && WakeWordResult.matches(result.getHypstr())) {
-                    if (!filter || conditioning.speechLike()) {
+                    if (conditioning.candidateAllowed(filter)) {
+                        AppLog.add("Голосовая активация: кандидат принят; сигнал " + conditioning.activeMillis()
+                                + " мс, пауза " + conditioning.quietMillis() + " мс, RMS " + conditioning.rms()
+                                + ", фон " + conditioning.floor() + ", фильтр " + filter);
                         listener.onTrigger(this);
                         break;
                     }
                     if (now - lastRejectedLog >= 10000) {
-                        AppLog.add("Голосовая активация: отфильтрован короткий/неречевой сигнал; RMS " + conditioning.rms()
-                                + ", фон " + conditioning.floor() + ", усиление " + conditioning.gainPercent() + "%");
+                        AppLog.add("Голосовая активация: кандидат отклонён; сигнал " + conditioning.activeMillis()
+                                + " мс, пауза " + conditioning.quietMillis() + " мс, RMS " + conditioning.rms()
+                                + ", фон " + conditioning.floor() + ", фильтр " + filter
+                                + ", усиление " + conditioning.gainPercent() + "%");
                         lastRejectedLog = now;
                     }
                     // KWS hypotheses can persist for the whole utterance; discard the rejected event.
+                    decoder.endUtt(); decoder.startUtt(); conditioning.clearSpeech();
+                } else if (conditioning.resetForSilence()) {
+                    // KWS searches are continuous and can otherwise retain old detections.
                     decoder.endUtt(); decoder.startUtt(); conditioning.clearSpeech();
                 }
             }
