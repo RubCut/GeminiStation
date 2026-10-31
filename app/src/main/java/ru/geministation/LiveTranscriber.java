@@ -151,6 +151,7 @@ final class LiveTranscriber {
             byte[] buffer = new byte[CHUNK];
             long lastLevel = SystemClock.elapsedRealtime(), samples = 0, sumSquares = 0;
             int peak = 0;
+            AdaptiveSignal signal = new AdaptiveSignal();
             while (!stopped.get() && !ending.get()) {
                 int count = recorder.read(buffer, 0, buffer.length);
                 if (count < 0) {
@@ -172,7 +173,8 @@ final class LiveTranscriber {
                     frameSquares += square; sumSquares += square; samples++;
                 }
                 long now = SystemClock.elapsedRealtime();
-                if (frameSquares / (count / 2) >= 400L * 400L) lastSignalAt = now;
+                int frameRms = (int) Math.sqrt((double) frameSquares / (count / 2));
+                if (signal.accept(frameRms)) lastSignalAt = now;
                 if (now - lastLevel >= 2000 && samples > 0) {
                     int rms = (int) Math.sqrt((double) sumSquares / samples);
                     AppLog.add("Live STT: уровень микрофона RMS=" + rms + " пик=" + peak + " (0–32768)");
@@ -216,6 +218,8 @@ final class LiveTranscriber {
         String value = transcript.best();
         if (value.isEmpty() || !stopped.compareAndSet(false, true)) return;
         if (transcriptTimer != null) main.removeCallbacks(transcriptTimer);
+        long last = lastSignalAt;
+        AppLog.add("Live STT: последний уровень выше фонового порога " + (last == 0 ? "не обнаружен" : (SystemClock.elapsedRealtime() - last) + " мс назад"));
         AppLog.add("Live STT: итог через " + (SystemClock.elapsedRealtime() - started) + " мс; символов " + value.length()
                 + (interimOnly ? "; использован промежуточный результат" : ""));
         releaseResources();

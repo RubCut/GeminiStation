@@ -26,7 +26,11 @@ final class AndroidTtsPlayer {
     }
     private void release() {
         if (timeout != null) { main.removeCallbacks(timeout); timeout = null; }
-        if (tts != null) { try { tts.stop(); tts.shutdown(); } catch (RuntimeException ignored) { } tts = null; }
+        if (tts != null) {
+            try { tts.stop(); } catch (RuntimeException ignored) { }
+            try { tts.shutdown(); } catch (RuntimeException ignored) { }
+            tts = null;
+        }
     }
     void speak(String engine, String text, Listener listener) {
         int id = generation.incrementAndGet();
@@ -80,8 +84,13 @@ final class AndroidTtsPlayer {
                     if (generation.compareAndSet(id, id + 1)) { release(); listener.done(); }
                 });
             }
-            @Override public void onError(String utteranceId) { main.post(() -> fail(id, listener, "Ошибка выбранного Android TTS")); }
+            @Override public void onError(String utteranceId) {
+                if (utteranceId != null && utteranceId.startsWith(id + ":")) main.post(() -> fail(id, listener, "Ошибка выбранного Android TTS"));
+            }
             @Override public void onError(String utteranceId, int errorCode) { onError(utteranceId); }
+            @Override public void onStop(String utteranceId, boolean interrupted) {
+                if (utteranceId != null && utteranceId.startsWith(id + ":")) main.post(() -> fail(id, listener, "Android TTS прервал озвучку"));
+            }
         });
         if (timeout != null) main.removeCallbacks(timeout);
         timeout = () -> fail(id, listener, "Превышено время озвучки Android TTS");

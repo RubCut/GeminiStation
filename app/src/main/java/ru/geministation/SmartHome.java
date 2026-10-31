@@ -11,8 +11,8 @@ import org.json.JSONObject;
 final class SmartHome {
     static final String PREFS = "home_secrets";
     static final String QR = "qr";
-    private static Snapshot cached;
-    private static long cachedAt;
+    private static volatile Snapshot cached;
+    private static volatile long cachedAt;
     static final class Device {
         final String id, name, room;
         Device(String id, String name, String room) { this.id = id; this.name = name; this.room = room; }
@@ -64,6 +64,13 @@ final class SmartHome {
         String config = QR.equals(setting) ? new SecretStore(c, "led_secrets").load() : "";
         byte[] hash = java.security.MessageDigest.getInstance("SHA-256").digest((setting + "\n" + config).getBytes(java.nio.charset.StandardCharsets.UTF_8));
         return android.util.Base64.encodeToString(hash, android.util.Base64.NO_WRAP);
+    }
+    /** Safe stale snapshot for a slow network: account changes still fail closed. */
+    static Snapshot cachedForCurrentIdentity(Context c) {
+        Snapshot current = cached;
+        if (current == null || current.identity == null || android.os.SystemClock.elapsedRealtime() - cachedAt > 120000) return null;
+        try { return current.identity.equals(identity(c)) ? current : null; }
+        catch (Exception e) { return null; }
     }
     static synchronized Snapshot load(Context c) throws Exception {
         String identity = identity(c);

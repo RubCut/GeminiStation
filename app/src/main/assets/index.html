@@ -254,7 +254,7 @@ async function refreshTtsEngines(){
  }catch(e){el('ttsEngineMessage').textContent=e.message}
 }
 async function saveTtsEngine(){try{const engine=el('ttsEngine').value;const data=await request('/api/tts',{method:'POST',body:JSON.stringify({engine})});ttsDirty=false;ttsSaved=engine;el('ttsEngineMessage').textContent=data.message}catch(e){el('ttsEngineMessage').textContent=e.message}}
-async function sampleTtsEngine(){try{const engine=el('ttsEngine').value;const data=await request('/api/tts/sample',{method:'POST',body:JSON.stringify({engine})});el('ttsEngineMessage').textContent=data.message}catch(e){el('ttsEngineMessage').textContent=e.message}}
+async function sampleTtsEngine(){const button=el('sampleTtsEngine'),engine=el('ttsEngine').value;button.disabled=true;el('ttsEngineMessage').textContent='Запускаем образец на станции…';try{const data=await request('/api/tts/sample',{method:'POST',body:JSON.stringify({engine})});el('ttsEngineMessage').textContent=data.message}catch(e){el('ttsEngineMessage').textContent=e.message}finally{button.disabled=el('ttsEngine').value==='gemini'}}
 el('ttsEngine').addEventListener('change',()=>{ttsDirty=true;el('sampleTtsEngine').disabled=el('ttsEngine').value==='gemini'});
 el('saveTtsEngine').addEventListener('click',saveTtsEngine);
 el('sampleTtsEngine').addEventListener('click',sampleTtsEngine);

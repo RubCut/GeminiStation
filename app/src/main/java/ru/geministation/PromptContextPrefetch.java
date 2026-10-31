@@ -5,7 +5,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 /** Prepare device descriptions while the user is speaking; never wait indefinitely for IoT. */
 final class PromptContextPrefetch {
@@ -33,24 +32,25 @@ final class PromptContextPrefetch {
         started = now;
     }
     static final class Result {
-        final VisibleApps apps; final SmartHome.Snapshot home;
-        Result(VisibleApps apps, SmartHome.Snapshot home) { this.apps = apps; this.home = home; }
+        final VisibleApps apps; final SmartHome.Snapshot home; final boolean homeUnavailable;
+        Result(VisibleApps apps, SmartHome.Snapshot home, boolean homeUnavailable) {
+            this.apps = apps; this.home = home; this.homeUnavailable = homeUnavailable;
+        }
     }
     Result get() throws InterruptedException {
         Future<VisibleApps> appFuture; Future<SmartHome.Snapshot> homeFuture;
         synchronized (this) { appFuture = apps; homeFuture = home; }
-        long end = android.os.SystemClock.elapsedRealtime() + 700;
-        VisibleApps appResult = await(appFuture, end, null);
+        long end = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(700);
+        VisibleApps appResult = DeadlineWait.get(appFuture, end, null);
         if (appResult == null) { AppLog.add("Контекст: приложения ещё не готовы; используем пустой список"); appResult = VisibleApps.empty(); }
-        SmartHome.Snapshot homeResult = await(homeFuture, end, null);
-        if (homeResult == null) { AppLog.add("Контекст: умный дом ещё не готов; в этом запросе список недоступен"); homeResult = new SmartHome.Snapshot(); }
-        return new Result(appResult, homeResult);
-    }
-    private static <T> T await(Future<T> future, long deadline, T fallback) throws InterruptedException {
-        if (future == null) return fallback;
-        try { return future.get(Math.max(0, deadline - android.os.SystemClock.elapsedRealtime()), TimeUnit.MILLISECONDS); }
-        catch (TimeoutException e) { return fallback; }
-        catch (java.util.concurrent.ExecutionException | java.util.concurrent.CancellationException e) { return fallback; }
+        SmartHome.Snapshot homeResult = DeadlineWait.get(homeFuture, end, null);
+        if (homeResult == null) {
+            homeResult = SmartHome.cachedForCurrentIdentity(context);
+            if (homeResult != null) AppLog.add("Контекст: используем предыдущий список умного дома");
+        }
+        boolean unavailable = homeResult == null;
+        if (unavailable) { AppLog.add("Контекст: умный дом ещё не готов; в этом запросе список недоступен"); homeResult = new SmartHome.Snapshot(); }
+        return new Result(appResult, homeResult, unavailable);
     }
     void close() { pool.shutdownNow(); }
 }

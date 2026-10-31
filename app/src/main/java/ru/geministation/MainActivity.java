@@ -223,6 +223,7 @@ public final class MainActivity extends Activity {
                 final SmartHome.Snapshot home = prepared.home;
                 AppLog.add("Диалог: контекст готов через " + (SystemClock.elapsedRealtime() - answerStarted) + " мс");
                 final JSONArray homeList = home.prompt();
+                if (prepared.homeUnavailable) homeList.put(new JSONObject().put("status", "Список устройств временно недоступен; не выдумывай устройства, попроси повторить позже."));
                 final java.util.List<PluginExecution.Tool> pluginTools = PluginExecution.snapshot(getApplicationContext());
                 final JSONArray pluginDeclarations = PluginExecution.declarations(pluginTools);
                 GeminiToolProtocol.Result first = keyVault.run(KeyRotationDomains.Domain.TEXT, () -> !destroyed && resumed,

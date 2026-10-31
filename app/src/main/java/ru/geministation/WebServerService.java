@@ -83,6 +83,7 @@ public final class WebServerService extends Service {
         private final GeminiClient sampleClient;
         private final AndroidTtsPlayer systemTtsSample;
         private final AtomicBoolean sampleInProgress = new AtomicBoolean();
+        private final AtomicBoolean androidSampleInProgress = new AtomicBoolean();
         private String lastLedAsset;
         private long lastLedAssetAt;
         void closeAuth() { qrLogin.closeAsync(); systemTtsSample.stop(); }
@@ -178,12 +179,26 @@ public final class WebServerService extends Service {
                     if (!AndroidTtsEngines.available(context, engine)) return json(Response.Status.BAD_REQUEST, "Движок не установлен или недоступен");
                     if ("/api/tts/sample".equals(path)) {
                         if (AndroidTtsEngines.GEMINI.equals(engine)) return json(Response.Status.BAD_REQUEST, "Для Gemini используйте образец голоса выше");
+                        if (!androidSampleInProgress.compareAndSet(false, true))
+                            return json(Response.Status.SERVICE_UNAVAILABLE, "Дождитесь окончания предыдущего образца");
+                        java.util.concurrent.CountDownLatch started = new java.util.concurrent.CountDownLatch(1);
+                        java.util.concurrent.atomic.AtomicReference<String> sampleError = new java.util.concurrent.atomic.AtomicReference<>();
                         systemTtsSample.speak(engine, "Привет! Так звучит выбранный голосовой движок на станции.", new AndroidTtsPlayer.Listener() {
-                            @Override public void started() { AppLog.add("Android TTS: начато прослушивание образца"); }
-                            @Override public void done() { AppLog.add("Android TTS: образец завершён"); }
-                            @Override public void error(String reason) { AppLog.add("Android TTS: " + reason); }
+                            @Override public void started() { AppLog.add("Android TTS: начато прослушивание образца"); started.countDown(); }
+                            @Override public void done() { androidSampleInProgress.set(false); started.countDown(); AppLog.add("Android TTS: образец завершён"); }
+                            @Override public void error(String reason) { sampleError.set(reason); androidSampleInProgress.set(false); started.countDown(); AppLog.add("Android TTS: " + reason); }
                         });
-                        return json(Response.Status.OK, "Образец запущен на станции. При ошибке проверьте журнал.");
+                        try {
+                            if (!started.await(10, java.util.concurrent.TimeUnit.SECONDS)) {
+                                systemTtsSample.stop(); androidSampleInProgress.set(false);
+                                return json(Response.Status.SERVICE_UNAVAILABLE, "Android TTS не запустился вовремя");
+                            }
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt(); systemTtsSample.stop(); androidSampleInProgress.set(false);
+                            return json(Response.Status.SERVICE_UNAVAILABLE, "Прослушивание отменено");
+                        }
+                        if (sampleError.get() != null) return json(Response.Status.SERVICE_UNAVAILABLE, sampleError.get());
+                        return json(Response.Status.OK, "Образец воспроизводится на станции.");
                     }
                     if (!AppSettings.saveTtsEngine(context, engine)) return json(Response.Status.INTERNAL_ERROR, "Не удалось сохранить TTS");
                     AppLog.add("TTS: выбран источник озвучки через веб-интерфейс");
