@@ -18,21 +18,27 @@ assert.match(markup, /<input type="number" id="sensitivityNumber" min="1" max="1
 const saved = {model:'gemini-3.5-flash-lite', voice:'Kore', voices:['Kore','Puck','Aoede'], logs:[], buttonEnabled:false, audioDuckEnabled:true, buttonServiceConnected:false, mediaAccessGranted:false, wakeEnabled:false, wakeStatus:"Выключена", wakeSensitivity:"normal", wakeRms:-1, wakePeak:-1, dnsEnabled:true, dnsBypassVpn:true, dnsServer:"https://d.webshiftvpn.ru/dns-query", vpnActive:false, systemPrompt:"Старый промпт", defaultSystemPrompt:"Исходный промпт", apiKeys:[{id:"11111111-1111-4111-8111-111111111111"}]};
 const writes = [], samples = [];
 let sampleError = false, blockPlayback = false, revoked = [];
+let copyAllowed=true, copied='', clipboardAllowed=false, pendingLogFetch=null;
 function page() {
-  const nodes = new Map();
+  const nodes = new Map(), docHandlers={};
+  let selection=null, focused=null;
   function element(id) {
     if (!nodes.has(id)) {
       const node = {value:'',_text:'',disabled:false,children:[],handlers:{},attributes:{},style:{setProperty(name,value){this[name]=value}},
         setAttribute(name,value){this.attributes[name]=value}, addEventListener(type, fn){this.handlers[type]=fn},
         appendChild(child){this.children.push(child);if(id==='keyList'&&this.children.length===1)this.value=child.value},
-        removeAttribute() {}, focus(){this.focused=true}, play:async()=>{if(blockPlayback)throw Error('blocked')}};
+        removeAttribute() {}, focus(){this.focused=true;focused=this}, select(){this.selected=true},
+        contains(other){return other===this}, play:async()=>{if(blockPlayback)throw Error('blocked')}};
       Object.defineProperty(node,'textContent',{get(){return this._text},set(value){this._text=value;this.children=[];if(id==='keyList')this.value=''}});
       nodes.set(id,node);
     }
     return nodes.get(id);
   }
-  const context = vm.createContext({document:{getElementById:element,createElement:()=>({})},
+  const context = vm.createContext({document:{getElementById:element,createElement:()=>({}),
+      addEventListener(type,fn){docHandlers[type]=fn},execCommand(command){assert.equal(command,'copy');if(copyAllowed){copied=focused.value;return true}return false}},
+    window:{getSelection:()=>selection},navigator:{clipboard:{writeText:async(text)=>{if(!clipboardAllowed)throw Error('blocked');copied=text}}},
     fetch:async(path, options)=>{
+      if(path==='/api/logs' && pendingLogFetch)return new Promise(resolve=>pendingLogFetch.push(resolve));
       if(path==='/api/config') {const body=JSON.parse(options.body); writes.push(body); saved.model=body.model; saved.voice=body.voice; saved.buttonEnabled=body.buttonEnabled; saved.audioDuckEnabled=body.audioDuckEnabled; saved.wakeEnabled=body.wakeEnabled; saved.wakeSensitivity=body.wakeSensitivity;}
       if(path==='/api/network') {const body=JSON.parse(options.body); writes.push({network:body}); saved.dnsEnabled=body.enabled; saved.dnsBypassVpn=body.bypassVpn; saved.dnsServer=body.server;}
       if(path==='/api/prompt') {const body=JSON.parse(options.body); writes.push({prompt:body}); saved.systemPrompt=body.reset?saved.defaultSystemPrompt:body.prompt;}
@@ -49,7 +55,7 @@ function page() {
     }, URL:{createObjectURL:()=>`blob:sample-${samples.length}`,revokeObjectURL:url=>revoked.push(url)},
     setInterval:()=>{}, setTimeout:()=>{}, confirm:()=>true});
   vm.runInContext(script, context);
-  return {element, context};
+  return {element, context, docHandlers, selectLog(value){selection=value?{isCollapsed:false,anchorNode:element('logs'),focusNode:element('logs')}:null}};
 }
 (async()=>{
   let p=page(); await vm.runInContext('refresh()',p.context);
@@ -180,5 +186,32 @@ function page() {
   assert.equal(p.element('sensitivityNumber').value,'1','old low setting migrates to 1%');
   await vm.runInContext('save(true)',p.context);
   assert.equal(writes.at(-1).voice,'Aoede', 'deleting the key preserves the selected voice');
+  // The complete snapshot is available even after many entries, with HTTP-friendly copy fallback.
+  saved.logs=Array.from({length:40},(_,i)=>`line ${i}`);p=page();await vm.runInContext('refresh()',p.context);
+  assert.equal(p.element('logs').textContent.split('\n').length,40);
+  await p.element('copyLogs').handlers.click();
+  assert.equal(copied,saved.logs.join('\n'));assert.equal(p.element('logCopyFallback').hidden,true);
+  assert.match(p.element('logMessage').textContent,/40 записей/);
+  p.selectLog(true);saved.logs.push('line 40');await vm.runInContext('refresh()',p.context);
+  assert.equal(p.element('logs').textContent.split('\n').length,40,'selection must survive poll updates');
+  p.selectLog(false);p.docHandlers.selectionchange();assert.equal(p.element('logs').textContent.split('\n').length,41);
+  p.element('logs').handlers.pointerdown();saved.logs.push('line 41');await vm.runInContext('refresh()',p.context);
+  assert.equal(p.element('logs').textContent.split('\n').length,41,'drag start must prevent replacement');
+  p.docHandlers.pointerup();assert.equal(p.element('logs').textContent.split('\n').length,42);
+  p.element('pauseLogs').handlers.click();saved.logs.push('line 42');await vm.runInContext('refresh()',p.context);
+  assert.equal(p.element('logs').textContent.split('\n').length,42,'pause holds visible snapshot');
+  await p.element('copyLogs').handlers.click();assert.equal(copied.split('\n').length,42,'pause copies visible snapshot');
+  p.element('pauseLogs').handlers.click();assert.equal(p.element('logs').textContent.split('\n').length,43);
+  copyAllowed=false;clipboardAllowed=false;await p.element('copyLogs').handlers.click();
+  assert.equal(p.element('logCopyFallback').hidden,false);assert.equal(p.element('logCopyFallback').value,saved.logs.join('\n'));
+  assert.equal(p.element('logCopyFallback').selected,true);assert.match(p.element('logMessage').textContent,/Ctrl\+C/);
+  clipboardAllowed=true;await p.element('copyLogs').handlers.click();assert.equal(copied,saved.logs.join('\n'));
+  assert.equal(p.element('logCopyFallback').hidden,true);copyAllowed=true;clipboardAllowed=false;
+  pendingLogFetch=[];
+  const older=vm.runInContext('refresh()',p.context), newer=vm.runInContext('refresh()',p.context);
+  pendingLogFetch[1]({ok:true,json:async()=>({...saved,logs:['newer']})});await newer;
+  pendingLogFetch[0]({ok:true,json:async()=>({...saved,logs:['older']})});await older;
+  assert.equal(p.element('logs').textContent,'newer','late response must not replace a newer log snapshot');
+  pendingLogFetch=null;
   console.log('Voice settings UI test passed');
 })().catch(e=>{console.error(e);process.exitCode=1});

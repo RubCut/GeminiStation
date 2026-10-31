@@ -221,6 +221,7 @@ public final class MainActivity extends Activity {
                 final JSONArray homeList = home.prompt();
                 GeminiToolProtocol.Result result = keyVault.run(KeyRotationDomains.Domain.TEXT, () -> !destroyed && resumed, key -> client.generate(key, model, request, appList, homeList));
                 DeviceToolSpec.Action action = result.call == null ? null : DeviceToolSpec.parse(result.call, apps.size(), home.devices.size());
+                if (result.call != null) AppLog.add("Диалог: выбранная функция " + (action == null ? "отклонена" : action.kind.name()));
                 if (action != null && action.kind == DeviceToolSpec.Kind.OPEN_LINK
                         && !UserLinkAuthorization.presentInUserTurns(action.data, request)) action = null;
                 boolean search = action != null && action.kind == DeviceToolSpec.Kind.SEARCH_YOUTUBE;

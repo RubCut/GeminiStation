@@ -23,10 +23,18 @@ final class YandexCloud {
         String message = e.getMessage();
         return message != null && message.matches("HTTP [0-9]{3}") ? message : e.getClass().getSimpleName();
     }
-    static JSONObject request(Request request) throws Exception {
+    static JSONObject request(Request request, String stage) throws Exception {
+        long started = android.os.SystemClock.elapsedRealtime();
+        AppLog.add(stage + ": запрос начат");
         try (Response r = HTTP.newCall(request).execute()) {
+            AppLog.add(stage + ": HTTP " + r.code() + " через " + (android.os.SystemClock.elapsedRealtime() - started) + " мс");
             if (!r.isSuccessful()) throw new IOException("HTTP " + r.code());
-            return new JSONObject(HttpLimits.readUtf8(r.body(), 2 * 1024 * 1024));
+            JSONObject json = new JSONObject(HttpLimits.readUtf8(r.body(), 2 * 1024 * 1024));
+            AppLog.add(stage + ": ответ обработан за " + (android.os.SystemClock.elapsedRealtime() - started) + " мс");
+            return json;
+        } catch (Exception e) {
+            AppLog.add(stage + ": ошибка " + safeError(e) + " через " + (android.os.SystemClock.elapsedRealtime() - started) + " мс");
+            throw e;
         }
     }
     static String musicToken(Context c) throws Exception {
@@ -36,7 +44,7 @@ final class YandexCloud {
         FormBody form = new FormBody.Builder().add("client_secret", "53bc75238f0c4d08a118e51fe9203300")
                 .add("client_id", "23cabbbdc6cd418abb4b39c32c41195d").add("grant_type", "x-token")
                 .add("access_token", x).build();
-        String token = request(new Request.Builder().url("https://oauth.mobile.yandex.net/1/token").post(form).build()).getString("access_token");
+        String token = request(new Request.Builder().url("https://oauth.mobile.yandex.net/1/token").post(form).build(), "Яндекс: обмен QR-входа").getString("access_token");
         if (token.isEmpty()) throw new IOException("empty token");
         return token;
     }
@@ -58,9 +66,11 @@ final class YandexCloud {
         if (!account.equals(musicAccount(c))) throw new IOException("account changed");
         HttpUrl url = HttpUrl.get("https://api.music.yandex.net/search").newBuilder()
                 .addQueryParameter("text", query).addQueryParameter("type", "track").build();
-        JSONObject result = request(new Request.Builder().url(url).header("Authorization", "OAuth " + token).build())
-                .optJSONObject("result");
+        JSONObject result = request(new Request.Builder().url(url).header("Authorization", "OAuth " + token).build(), "Музыка: поиск").optJSONObject("result");
         if (!account.equals(musicAccount(c))) throw new IOException("account changed");
+        JSONObject tracks = result == null ? null : result.optJSONObject("tracks");
+        JSONArray items = tracks == null ? null : tracks.optJSONArray("results");
+        AppLog.add("Музыка: кандидатов в ответе " + (items == null ? 0 : items.length()));
         Track found = parseSearch(result);
         return new Track(found.id, found.title, account);
     }
@@ -85,9 +95,10 @@ final class YandexCloud {
         if (!"/v1.0/user/info".equals(path) && !"/v1.0/devices/actions".equals(path)) throw new IOException("bad path");
         Request.Builder req = new Request.Builder().url("https://api.iot.yandex.net" + path).header("Authorization", "Bearer " + token);
         if (body != null) req.post(RequestBody.create(body.toString(), JSON));
-        JSONObject response = request(req.build());
+        JSONObject response = request(req.build(), body == null ? "Умный дом: чтение" : "Умный дом: команда");
         String id = response.optString("request_id", "");
-        if (id.matches("[A-Za-z0-9_-]{1,100}")) AppLog.add("Умный дом: request_id " + id);
+        if (id.matches("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"))
+            AppLog.add("Умный дом: request_id " + id);
         return response;
     }
     private YandexCloud() { }

@@ -68,12 +68,16 @@ final class SmartHome {
     static synchronized Snapshot load(Context c) throws Exception {
         String identity = identity(c);
         long now = android.os.SystemClock.elapsedRealtime();
-        if (cached != null && identity.equals(cached.identity) && now - cachedAt < 30000) return cached;
+        if (cached != null && identity.equals(cached.identity) && now - cachedAt < 30000) {
+            AppLog.add("Умный дом: список из кэша, устройств " + cached.devices.size());
+            return cached;
+        }
         JSONObject result = YandexCloud.home(token(c), "/v1.0/user/info", null);
         if (!"ok".equals(result.optString("status")) || result.optJSONArray("devices") == null) throw new IOException("bad response");
         if (!identity.equals(identity(c))) throw new IOException("account changed");
         Snapshot snapshot = parse(result);
         snapshot.identity = identity;
+        AppLog.add("Умный дом: список получен, устройств с on_off " + snapshot.devices.size());
         cached = snapshot;
         cachedAt = android.os.SystemClock.elapsedRealtime();
         return snapshot;
@@ -108,7 +112,10 @@ final class SmartHome {
         if (snapshot.identity == null || !snapshot.identity.equals(identity(c))) throw new IOException("account changed");
         String token = token(c);
         if (!snapshot.identity.equals(identity(c))) throw new IOException("account changed");
-        return accepted(YandexCloud.home(token, "/v1.0/devices/actions", actionBody(device, on)), device);
+        AppLog.add("Умный дом: отправка on_off (" + (on ? "включение" : "выключение") + ")");
+        JSONObject result = YandexCloud.home(token, "/v1.0/devices/actions", actionBody(device, on));
+        AppLog.add("Умный дом: результат команды " + HomeDiagnostics.outcome(result, device.id));
+        return accepted(result, device);
     }
     private SmartHome() { }
 }

@@ -208,7 +208,7 @@ details{margin-top:18px;border-top:1px solid #303441;padding-top:16px}summary{co
    </section>
    <section class="group" id="journal" aria-labelledby="journalTitle">
     <div class="group-heading"><div><h2 id="journalTitle">Журнал</h2><p>Диагностика и события приложения</p></div><span class="section-index">04 / 04</span></div>
-    <article class="card"><div class="log-head"><div><h3>Последние события</h3><p>До 500 записей в памяти, без API-ключей и текста диалогов.</p></div><button id="refresh" class="secondary">Обновить журнал</button></div><pre class="log-output" id="logs" aria-label="Журнал событий">Загружаем журнал…</pre></article>
+    <article class="card"><div class="log-head"><div><h3>Последние события</h3><p>До 1500 записей в памяти, без API-ключей и текста диалогов. Выделение текста временно приостанавливает обновление журнала.</p></div><div class="actions"><button id="copyLogs" class="secondary">Копировать журнал</button><button id="pauseLogs" class="secondary" aria-pressed="false">Пауза</button><button id="refresh" class="secondary">Обновить журнал</button></div></div><p id="logMessage" class="status-message" role="status"></p><pre class="log-output" id="logs" aria-label="Журнал событий">Загружаем журнал…</pre><textarea id="logCopyFallback" class="log-output" aria-label="Журнал для ручного копирования" readonly hidden></textarea></article>
    </section>
    <footer class="footer"><span><strong>Gemini Station</strong> · Панель управления</span><span>Работает в вашей локальной сети</span></footer>
   </div>
@@ -221,6 +221,46 @@ async function request(path,options={}){
  const response=await fetch(path,{...options,headers:options.body?{'Content-Type':'application/json','X-Gemini-Station':'1'}:{},cache:'no-store'});
  const data=await response.json(); if(!response.ok) throw new Error(data.message||'Ошибка'); return data;
 }
+let latestLogs='', displayedLogs=null, logsLoaded=false, logsPaused=false, logPointerDown=false, logRequest=0, latestLogRequest=0;
+function selectionInLogs(){
+ const selection=typeof window.getSelection==='function'?window.getSelection():null, logs=el('logs');
+ return !!(selection && !selection.isCollapsed &&
+  ((selection.anchorNode && logs.contains(selection.anchorNode)) || (selection.focusNode && logs.contains(selection.focusNode)) ||
+   (typeof selection.containsNode==='function' && selection.containsNode(logs,true))));
+}
+function renderLogs(){
+ if(!logsLoaded||logsPaused||logPointerDown||selectionInLogs())return;
+ if(displayedLogs!==latestLogs){el('logs').textContent=latestLogs||'Пока нет событий.';displayedLogs=latestLogs}
+}
+function updateLogs(lines){latestLogs=Array.isArray(lines)?lines.join('\n'):'';logsLoaded=true;renderLogs()}
+function toggleLogs(){
+ logsPaused=!logsPaused;el('pauseLogs').textContent=logsPaused?'Продолжить':'Пауза';
+ el('pauseLogs').setAttribute('aria-pressed',String(logsPaused));
+ el('logMessage').textContent=logsPaused?'Журнал на паузе; копируется видимый снимок.':'Обновление журнала включено.';
+ renderLogs();
+}
+async function copyLogs(){
+ const text=logsPaused||selectionInLogs()?displayedLogs:latestLogs;
+ if(!logsLoaded||!text){el('logMessage').textContent='Журнал пока пуст.';return}
+ const fallback=el('logCopyFallback');fallback.value=text;
+ // LAN runs over HTTP, so navigator.clipboard is usually unavailable. Use the
+ // user-gesture-compatible copy command before any asynchronous clipboard call.
+ fallback.hidden=false;fallback.focus();fallback.select();
+ let copied=false;
+ try{copied=document.execCommand('copy')}catch(e){}
+ if(copied){fallback.hidden=true;el('logMessage').textContent='Журнал скопирован ('+text.split('\n').length+' записей).';return}
+ try{
+  if(navigator.clipboard && navigator.clipboard.writeText){await navigator.clipboard.writeText(text);fallback.hidden=true;el('logMessage').textContent='Журнал скопирован ('+text.split('\n').length+' записей).';return}
+ }catch(e){}
+ // Keep the snapshot selected and visible when the browser blocks both mechanisms.
+ fallback.hidden=false;fallback.focus();fallback.select();el('logMessage').textContent='Браузер запретил копирование. Нажмите Ctrl+C или скопируйте выделенный текст вручную.';
+}
+el('logs').addEventListener('pointerdown',()=>{logPointerDown=true});
+document.addEventListener('pointerup',()=>{logPointerDown=false;renderLogs()});
+document.addEventListener('pointercancel',()=>{logPointerDown=false;renderLogs()});
+document.addEventListener('selectionchange',()=>renderLogs());
+el('pauseLogs').addEventListener('click',toggleLogs);
+el('copyLogs').addEventListener('click',copyLogs);
 let networkDirty=false, promptDirty=false, networkBusy=false, promptBusy=false;
 let settingsLoaded=false, voiceDirty=false, buttonDirty=false, audioDuckDirty=false, wakeDirty=false, wakeSensitivityDirty=false, keyBusy=false, keyIds=null;
 function validSensitivity(value){return /^(?:[1-9]|[1-9][0-9]|100)$/.test(value)}
@@ -268,8 +308,9 @@ function updateKeys(keys){
  el('keyCount').textContent=keys.length?'Сохранено ключей: '+keys.length:'Нет сохранённых ключей';
  list.disabled=keyBusy||!keys.length;el('delete').disabled=keyBusy||!keys.length;el('addKey').disabled=keyBusy;
 }
-async function refresh(){try{
- const data=await request('/api/logs');setConnection(true);el('logs').textContent=data.logs.join('\n')||'Пока нет событий.';
+async function refresh(){const current=++logRequest;try{
+ const data=await request('/api/logs');setConnection(true);
+ if(current>=latestLogRequest){latestLogRequest=current;updateLogs(data.logs)}
  updateKeys(data.apiKeys||[]);
  el('savedVoice').textContent='Сохранённый голос: '+data.voice;
  const usingCustom=data.dnsEnabled&&!(data.dnsBypassVpn&&data.vpnActive);

@@ -55,6 +55,11 @@ final class LedController {
     private final Map<String, String> assetUrls = new HashMap<>();
     private String lastLoggedFrame;
     private long lastLoggedAt;
+    private static final class MusicRequest {
+        final String id; final long sentAt;
+        MusicRequest(String id, long sentAt) { this.id = id; this.sentAt = sentAt; }
+    }
+    private final java.util.concurrent.atomic.AtomicReference<MusicRequest> pendingMusic = new java.util.concurrent.atomic.AtomicReference<>();
     private LedController(Context context) { this.context = context; }
 
     // Called on the main thread. Coalesce changes and avoid restarting the animation each cycle.
@@ -114,7 +119,7 @@ final class LedController {
     }
     /** Discard old credentials and socket after account or station changes. */
     void invalidate() {
-        active = null; desired = null; generation++;
+        active = null; desired = null; generation++; pendingMusic.set(null);
         if (idleClose != null) main.removeCallbacks(idleClose);
         if (retry != null) main.removeCallbacks(retry);
         idleClose = null; retry = null; retries = 0;
@@ -153,13 +158,16 @@ final class LedController {
         int version = generation;
         main.postDelayed(() -> { if (generation == version) show(null); }, 10000);
     }
-    private String responseBody(Call call) throws Exception {
+    private String responseBody(Call call, String stage) throws Exception {
+        long started = SystemClock.elapsedRealtime();
+        AppLog.add(stage + ": запрос начат");
         try (Response response = call.execute()) {
-            if (!response.isSuccessful() || response.body() == null) {
-                AppLog.add("LED: Яндекс вернул HTTP " + response.code());
-                throw new Exception("Cloud request failed");
-            }
+            AppLog.add(stage + ": HTTP " + response.code() + " через " + (SystemClock.elapsedRealtime() - started) + " мс");
+            if (!response.isSuccessful() || response.body() == null) throw new Exception("Cloud request failed");
             return HttpLimits.readUtf8(response.body(), 1024 * 1024);
+        } catch (Exception e) {
+            AppLog.add(stage + ": ошибка " + e.getClass().getSimpleName() + " через " + (SystemClock.elapsedRealtime() - started) + " мс");
+            throw e;
         }
     }
     private String token(String json) throws Exception {
@@ -171,12 +179,12 @@ final class LedController {
                 .add("client_id", "23cabbbdc6cd418abb4b39c32c41195d").add("grant_type", "x-token")
                 .add("access_token", cfg.getString("x_token")).build();
         JSONObject music = new JSONObject(responseBody(cloud.newCall(new Request.Builder()
-                .url("https://oauth.mobile.yandex.net/1/token").post(form).build())));
+                .url("https://oauth.mobile.yandex.net/1/token").post(form).build()), "LED: обмен QR-входа"));
         HttpUrl url = HttpUrl.parse("https://quasar.yandex.net/glagol/token").newBuilder()
                 .addQueryParameter("device_id", cfg.getString("device_id"))
                 .addQueryParameter("platform", cfg.getString("platform")).build();
         JSONObject glagol = new JSONObject(responseBody(cloud.newCall(new Request.Builder().url(url)
-                .header("Authorization", "OAuth " + music.getString("access_token")).build())));
+                .header("Authorization", "OAuth " + music.getString("access_token")).build()), "LED: запрос токена станции"));
         if (!"ok".equals(glagol.optString("status"))) throw new Exception("Yandex token unavailable");
         String result = glagol.getString("token");
         if (result.isEmpty()) throw new Exception("Yandex token empty");
@@ -212,6 +220,7 @@ final class LedController {
             }, message -> {
                 try {
                     JSONObject reply = new JSONObject(message);
+                    recordMusicReply(reply);
                     if (reply.has("error") || reply.has("errorText")) {
                         tokenRejected.set(true); AppLog.add("LED: станция вернула ошибку; токен будет обновлён");
                         main.post(() -> scheduleRetry(generation));
@@ -224,21 +233,47 @@ final class LedController {
         JSONObject hello = envelope(auth, new JSONObject().put("command", "softwareVersion"), UUID.randomUUID().toString());
         return connection.connect(hello.toString(), 6000);
     }
-    /** Experimental playback on the already selected local station; no playback ACK is available. */
+    private void recordMusicReply(JSONObject reply) {
+        MusicRequest pending = pendingMusic.get();
+        if (pending == null) return;
+        String status = MusicDiagnostics.status(reply, pending.id);
+        if (status == null || !pendingMusic.compareAndSet(pending, null)) return;
+        AppLog.add("Музыка: ответ станции через " + (SystemClock.elapsedRealtime() - pending.sentAt)
+                + " мс, статус " + status + "; воспроизведение не подтверждено");
+    }
+    /** Experimental playback on the already selected local station; no playback ACK is guaranteed. */
     void playMusic(String id, String account) {
         if (id == null || !id.matches("[0-9]{1,20}") || account == null) return;
+        long queued = SystemClock.elapsedRealtime();
+        AppLog.add("Музыка: команда поставлена в очередь после ответа ассистента");
         executor.execute(() -> {
+            String stage = "проверка аккаунта";
+            long started = SystemClock.elapsedRealtime();
+            AppLog.add("Музыка: обработка началась через " + (started - queued) + " мс в очереди");
             try {
                 SecretStore store = new SecretStore(context, "led_secrets");
                 String cfg = store.load();
                 if (cfg.isEmpty() || !account.equals(YandexCloud.musicAccount(context))) throw new Exception("account changed");
+                stage = "токен станции";
                 String auth = token(cfg);
+                stage = "локальное соединение";
                 if (!cfg.equals(store.load()) || !account.equals(YandexCloud.musicAccount(context)) || !connect(auth)) throw new Exception("not connected");
+                stage = "отправка";
                 JSONObject payload = new JSONObject().put("command", "playMusic").put("id", id).put("type", "track");
-                if (!cfg.equals(store.load()) || !account.equals(YandexCloud.musicAccount(context)) || !connection.send(envelope(auth, payload, UUID.randomUUID().toString()).toString()))
+                if (!cfg.equals(store.load()) || !account.equals(YandexCloud.musicAccount(context))) throw new Exception("account changed");
+                String requestId = UUID.randomUUID().toString();
+                MusicRequest pending = new MusicRequest(requestId, SystemClock.elapsedRealtime());
+                pendingMusic.set(pending);
+                if (!connection.send(envelope(auth, payload, requestId).toString())) {
+                    pendingMusic.compareAndSet(pending, null);
                     throw new Exception("not sent");
-                AppLog.add("Музыка: команда станции отправлена; воспроизведение не подтверждено");
-            } catch (Exception e) { AppLog.add("Музыка: не удалось отправить команду станции (" + e.getClass().getSimpleName() + ")"); }
+                }
+                AppLog.add("Музыка: команда станции отправлена за " + (SystemClock.elapsedRealtime() - started) + " мс; воспроизведение не подтверждено");
+                main.postDelayed(() -> {
+                    if (pendingMusic.compareAndSet(pending, null)) AppLog.add("Музыка: ответа на команду нет 10 с; воспроизведение не подтверждено");
+                }, 10000);
+            } catch (Exception e) { AppLog.add("Музыка: этап " + stage + ", ошибка " + e.getClass().getSimpleName()
+                    + " через " + (SystemClock.elapsedRealtime() - started) + " мс"); }
         });
     }
     private String assetUrl(String frame) throws Exception {

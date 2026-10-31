@@ -82,6 +82,7 @@ public final class WebServerService extends Service {
         private final YandexQrLogin qrLogin;
         private final GeminiClient sampleClient;
         private final AtomicBoolean sampleInProgress = new AtomicBoolean();
+        private final java.util.concurrent.atomic.AtomicReference<Boolean> lastMediaAccess = new java.util.concurrent.atomic.AtomicReference<>();
         private String lastLedAsset;
         private long lastLedAssetAt;
         void closeAuth() { qrLogin.closeAsync(); }
@@ -137,11 +138,16 @@ public final class WebServerService extends Service {
             if (!path.startsWith("/api/")) return json(Response.Status.NOT_FOUND, "Не найдено");
             try {
                 if (session.getMethod() == Method.GET && "/api/logs".equals(path)) {
+                    boolean mediaAccess = MediaSeek.accessGranted(context);
+                    Boolean oldMediaAccess = lastMediaAccess.getAndSet(mediaAccess);
+                    if (oldMediaAccess == null || oldMediaAccess.booleanValue() != mediaAccess)
+                        AppLog.add("Медиа: доступ к уведомлениям " + (mediaAccess ? "разрешён" : "не разрешён")
+                                + (oldMediaAccess == null ? " (первичная проверка)" : " (статус изменился)"));
                     JSONObject result = new JSONObject().put("logs", AppLog.snapshot()).put("model", AppSettings.model(context))
                             .put("voice", AppSettings.voice(context)).put("voices", new org.json.JSONArray(TtsVoices.ALL))
                             .put("apiKeys", ApiKeyVault.get(context).metadata())
                             .put("buttonServiceConnected", AssistantButtonService.isConnected())
-                            .put("mediaAccessGranted", MediaSeek.accessGranted(context))
+                            .put("mediaAccessGranted", mediaAccess)
                             .put("buttonEnabled", AppSettings.buttonEnabled(context))
                             .put("audioDuckEnabled", AppSettings.audioDuckEnabled(context))
                             .put("wakeEnabled", AppSettings.wakeEnabled(context))
