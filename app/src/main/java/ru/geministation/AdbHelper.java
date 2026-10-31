@@ -14,7 +14,7 @@ import java.security.SecureRandom;
 import java.util.Arrays;
 import ru.geministation.helperprotocol.HelperProtocol;
 
-/** Internal-only capability: never expose run() to network, intents, speech or model output. */
+/** Internal helper transport; commands are available only to internal code or the consent-gated plugin broker. */
 final class AdbHelper {
     private static synchronized byte[] key(Context context) throws IOException {
         if (!context.getFileStreamPath(HelperProtocol.KEY_FILE).exists()) {
