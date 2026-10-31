@@ -50,6 +50,8 @@ jobs:
         run: node tools/test_voice_settings.js
       - name: Check supplied sound cues
         run: python3 tools/test_sound_assets.py
+      - name: Check ADB helper command surface
+        run: python3 tools/test_helper_surface.py
       - name: Prepare offline wake-word model
         env:
           GH_TOKEN: ${{ github.token }}

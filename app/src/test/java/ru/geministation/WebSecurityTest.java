@@ -25,12 +25,6 @@ public class WebSecurityTest {
         assertFalse(WebSecurity.permittedWrite(lan, "http://" + lan, null));
         assertFalse(WebSecurity.permittedWrite(lan, null, "1"));
     }
-    @Test public void mediaHelperEndpointOnlyAcceptsStationLoopback() {
-        assertTrue(WebSecurity.stationLoopback("127.0.0.1"));
-        assertFalse(WebSecurity.stationLoopback("192.168.1.4"));
-        assertFalse(WebSecurity.stationLoopback("127.0.0.1:6529"));
-        assertFalse(WebSecurity.stationLoopback(null));
-    }
     @Test public void rejectsDnsRebindingAndCrossOrigin() {
         assertFalse(WebSecurity.permittedHost("evil.example:6529"));
         assertFalse(WebSecurity.permittedWrite("localhost:6529", "http://evil.example:6529", "1"));

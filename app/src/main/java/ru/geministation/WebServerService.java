@@ -82,7 +82,6 @@ public final class WebServerService extends Service {
         private final YandexQrLogin qrLogin;
         private final GeminiClient sampleClient;
         private final AtomicBoolean sampleInProgress = new AtomicBoolean();
-        private final java.util.concurrent.atomic.AtomicReference<String> lastMediaAccess = new java.util.concurrent.atomic.AtomicReference<>();
         private String lastLedAsset;
         private long lastLedAssetAt;
         void closeAuth() { qrLogin.closeAsync(); }
@@ -113,17 +112,6 @@ public final class WebServerService extends Service {
             try { return reply(status, "application/json; charset=utf-8", new JSONObject().put("message", message).toString()); }
             catch (Exception e) { return reply(Response.Status.INTERNAL_ERROR, "text/plain", "Error"); }
         }
-        private String mediaAccessState() {
-            Boolean access = MediaSeek.accessStatus(context);
-            String state = access == null ? "unknown" : (access ? "granted" : "denied");
-            String old = lastMediaAccess.getAndSet(state);
-            if (!state.equals(old)) {
-                String text = access == null ? "проверить не удалось" : (access ? "разрешён" : "не разрешён");
-                AppLog.add("Медиа: доступ к уведомлениям " + text
-                        + (old == null ? " (первичная проверка)" : " (статус изменился)"));
-            }
-            return state;
-        }
         @Override public Response serve(IHTTPSession session) {
             String path = session.getUri();
             String host = session.getHeaders().get("host");
@@ -148,20 +136,11 @@ public final class WebServerService extends Service {
             }
             if (!path.startsWith("/api/")) return json(Response.Status.NOT_FOUND, "Не найдено");
             try {
-                if (session.getMethod() == Method.GET && "/api/media/access".equals(path)) {
-                    // Helper needs only this status, never logs, settings, or notification contents.
-                    if (!WebSecurity.stationLoopback(session.getRemoteIpAddress()))
-                        return json(Response.Status.FORBIDDEN, "Только локально");
-                    return reply(Response.Status.OK, "text/plain; charset=utf-8", mediaAccessState());
-                }
                 if (session.getMethod() == Method.GET && "/api/logs".equals(path)) {
-                    String mediaState = mediaAccessState();
-                    boolean mediaAccess = "granted".equals(mediaState);
                     JSONObject result = new JSONObject().put("logs", AppLog.snapshot()).put("model", AppSettings.model(context))
                             .put("voice", AppSettings.voice(context)).put("voices", new org.json.JSONArray(TtsVoices.ALL))
                             .put("apiKeys", ApiKeyVault.get(context).metadata())
                             .put("buttonServiceConnected", AssistantButtonService.isConnected())
-                            .put("mediaAccessGranted", mediaAccess).put("mediaAccessStatus", mediaState)
                             .put("buttonEnabled", AppSettings.buttonEnabled(context))
                             .put("audioDuckEnabled", AppSettings.audioDuckEnabled(context))
                             .put("wakeEnabled", AppSettings.wakeEnabled(context))
@@ -207,16 +186,18 @@ public final class WebServerService extends Service {
                         return json(Response.Status.INTERNAL_ERROR, "Не удалось получить образец Gemini" + safe + ". Проверьте ключ, сеть и доступ к TTS.");
                     } finally { sampleInProgress.set(false); }
                 }
-                if (session.getMethod() == Method.POST && "/api/media/settings".equals(path)) {
+                // Fixed, non-parameterized health check only; arbitrary shell text is never accepted here.
+                if (session.getMethod() == Method.POST && "/api/helper/test".equals(path)) {
                     if (!WebSecurity.permittedWrite(host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station")))
                         return json(Response.Status.FORBIDDEN, "Запрос отклонён");
-                    try {
-                        Intent settings = new Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        context.startActivity(settings);
-                        return json(Response.Status.OK, "Открываем системные настройки на станции. Включите доступ Gemini Station — управление медиа.");
-                    } catch (RuntimeException e) {
-                        return json(Response.Status.BAD_REQUEST, "Не удалось открыть настройки. Используйте команду ADB ниже.");
-                    }
+                    if (!"2".equals(session.getHeaders().get("content-length")) || session.getHeaders().containsKey("transfer-encoding"))
+                        return json(Response.Status.BAD_REQUEST, "Недопустимый запрос");
+                    Map<String, String> files = new HashMap<>(); session.parseBody(files);
+                    if (!"{}".equals(files.get("postData"))) return json(Response.Status.BAD_REQUEST, "Недопустимый запрос");
+                    boolean ok = AdbHelper.probe(context);
+                    AppLog.add("ADB Helper: проверка соединения " + (ok ? "успешна" : "не удалась"));
+                    return json(ok ? Response.Status.OK : Response.Status.SERVICE_UNAVAILABLE,
+                            ok ? "ADB Helper подключён и подтвердил права shell." : "ADB Helper недоступен или проверка не прошла. Проверьте его журнал.");
                 }
                 if (session.getMethod() == Method.POST && "/api/home".equals(path)) {
                     if (!WebSecurity.permittedWrite(host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station")))

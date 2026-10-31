@@ -36,6 +36,14 @@ public class DeviceToolSpecTest {
         assertNull(DeviceToolSpec.parse(call("media_control", new JSONObject()), 0));
         assertNull(DeviceToolSpec.parse(call("media_control", new JSONObject().put("action", "PLAY")), 0));
     }
+    @Test public void noExactSeekOrShellToolIsExposed() throws Exception {
+        assertNull(DeviceToolSpec.parse(call("media_seek", new JSONObject().put("mode", "absolute").put("seconds", 30)), 0));
+        assertNull(DeviceToolSpec.parse(call("adb_helper", new JSONObject().put("command", "id")), 0));
+        String declarations = DeviceToolSpec.declarations().toString();
+        assertFalse(declarations.contains("media_seek"));
+        assertFalse(declarations.contains("adb_helper"));
+        assertTrue(declarations.contains("media_control"));
+    }
     @Test public void onlyAccessibleLauncherEntriesAreEligible() {
         assertTrue(DeviceToolSpec.eligible(true,true,true,true,true,false));
         assertFalse(DeviceToolSpec.eligible(false,true,true,true,true,false));

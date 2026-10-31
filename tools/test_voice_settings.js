@@ -15,8 +15,8 @@ for (const [, id] of markup.matchAll(/(?:href|for|aria-describedby|aria-labelled
 }
 assert.match(markup, /<input type="range" id="wakeSensitivity" min="1" max="100" step="1"/);
 assert.match(markup, /<input type="number" id="sensitivityNumber" min="1" max="100" step="1"/);
-const saved = {model:'gemini-3.5-flash-lite', voice:'Kore', voices:['Kore','Puck','Aoede'], logs:[], buttonEnabled:false, audioDuckEnabled:true, buttonServiceConnected:false, mediaAccessGranted:false, wakeEnabled:false, wakeStatus:"Выключена", wakeSensitivity:"normal", wakeRms:-1, wakePeak:-1, dnsEnabled:true, dnsBypassVpn:true, dnsServer:"https://d.webshiftvpn.ru/dns-query", vpnActive:false, systemPrompt:"Старый промпт", defaultSystemPrompt:"Исходный промпт", apiKeys:[{id:"11111111-1111-4111-8111-111111111111"}]};
-const writes = [], samples = [];
+const saved = {model:'gemini-3.5-flash-lite', voice:'Kore', voices:['Kore','Puck','Aoede'], logs:[], buttonEnabled:false, audioDuckEnabled:true, buttonServiceConnected:false, wakeEnabled:false, wakeStatus:"Выключена", wakeSensitivity:"normal", wakeRms:-1, wakePeak:-1, dnsEnabled:true, dnsBypassVpn:true, dnsServer:"https://d.webshiftvpn.ru/dns-query", vpnActive:false, systemPrompt:"Старый промпт", defaultSystemPrompt:"Исходный промпт", apiKeys:[{id:"11111111-1111-4111-8111-111111111111"}]};
+const writes = [], samples = [], helperRequests = [];
 let sampleError = false, blockPlayback = false, revoked = [];
 let copyAllowed=true, copied='', clipboardAllowed=false, pendingLogFetch=null;
 function page() {
@@ -47,6 +47,10 @@ function page() {
         if(body.action==='add') saved.apiKeys.push({id:'22222222-2222-4222-8222-222222222222'});
         else saved.apiKeys=saved.apiKeys.filter(key=>key.id!==body.id);
       }
+      if(path==='/api/helper/test') {
+        helperRequests.push({body:options.body,headers:options.headers});
+        return {ok:true,json:async()=>({message:'ADB Helper подключён'})};
+      }
       if(path==='/api/voice/sample') {
         samples.push({body:JSON.parse(options.body),headers:options.headers});
         return sampleError ? {ok:false,json:async()=>({message:'Нет ключа'})} : {ok:true,blob:async()=>({audio:true})};
@@ -62,12 +66,11 @@ function page() {
   assert.equal(p.element('voice').value,'Kore');
   assert.equal(p.element('voice').disabled,false);
   assert.equal(p.element('audioDuckEnabled').checked,true);
-  assert.match(p.element('mediaStatus').textContent,/не разрешён/);
-  saved.mediaAccessGranted=true;await vm.runInContext('refresh()',p.context);
-  assert.match(p.element('mediaStatus').textContent,/разрешён/);
-  saved.mediaAccessStatus='unknown';await vm.runInContext('refresh()',p.context);
-  assert.match(p.element('mediaStatus').textContent,/Не удалось проверить/);
-  delete saved.mediaAccessStatus;
+  await p.element('helperTest').handlers.click();
+  assert.equal(helperRequests.at(-1).body,'{}');
+  assert.equal(helperRequests.at(-1).headers['X-Gemini-Station'],'1');
+  assert.match(p.element('helperMessage').textContent,/подключён/);
+
   p.element('audioDuckEnabled').checked=false;p.element('audioDuckEnabled').handlers.change();
   await vm.runInContext('refresh()',p.context);
   assert.equal(p.element('audioDuckEnabled').checked,false,'poll must preserve unsaved audio-focus choice');

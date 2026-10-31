@@ -26,7 +26,9 @@ public final class ShellButtonMonitor {
                 System.err.println("Gemini button helper is already running.");
                 return;
             }
-            System.out.println("Gemini button helper started; pid=" + Process.myPid());
+            System.out.println("Gemini ADB helper started; pid=" + Process.myPid());
+            Thread commands = new Thread(new ShellCommandServer(), "helper-server");
+            commands.setDaemon(true); commands.start();
             monitor();
         } catch (Exception e) {
             System.err.println("Gemini button helper stopped: " + e);

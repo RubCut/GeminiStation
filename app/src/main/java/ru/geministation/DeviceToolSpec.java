@@ -5,7 +5,7 @@ import org.json.JSONObject;
 
 /** Strict allowlist for Gemini function calls; model output never becomes an Intent or shell command. */
 final class DeviceToolSpec {
-    enum Kind { OPEN_APP, OPEN_LINK, SEARCH_YOUTUBE, OPEN_SETTINGS, GO_HOME, SET_VOLUME, ADJUST_VOLUME, GET_VOLUME, MEDIA_CONTROL, MEDIA_SEEK, HOME_CONTROL, YANDEX_MUSIC }
+    enum Kind { OPEN_APP, OPEN_LINK, SEARCH_YOUTUBE, OPEN_SETTINGS, GO_HOME, SET_VOLUME, ADJUST_VOLUME, GET_VOLUME, MEDIA_CONTROL, HOME_CONTROL, YANDEX_MUSIC }
     static final class Action {
         final Kind kind;
         final int number;
@@ -37,11 +37,6 @@ final class DeviceToolSpec {
         declarations.put(function("media_control", "Отправить команду текущему Android-медиаплееру. Доступны play (продолжить), pause, stop, next, previous, fast_forward и rewind. Не используй для запуска конкретной песни, узнавания текущего трека или перемотки на точное время. Android выбирает плеер, выполнение не подтверждается.",
                 new JSONObject().put("action", new JSONObject().put("type", "STRING")
                         .put("enum", new JSONArray().put("play").put("pause").put("stop").put("next").put("previous").put("fast_forward").put("rewind"))), "action"));
-        declarations.put(new JSONObject().put("name", "media_seek").put("description", "Перемотать активный медиаплеер: absolute — на указанную позицию от начала, forward/backward — на указанное число секунд вперёд/назад. Примеры: на 2:30 от начала = absolute 150 секунд; на 30 секунд назад = backward 30. Только по просьбе пользователя; при неоднозначности уточни.")
-                .put("parameters", new JSONObject().put("type", "OBJECT").put("properties", new JSONObject()
-                        .put("mode", new JSONObject().put("type", "STRING").put("enum", new JSONArray().put("absolute").put("forward").put("backward")))
-                        .put("seconds", new JSONObject().put("type", "INTEGER").put("description", "целое количество секунд, не более 604800")))
-                        .put("required", new JSONArray().put("mode").put("seconds"))));
         declarations.put(new JSONObject().put("name", "home_control").put("description", "Включить или выключить одно устройство умного дома по числовому id из списка. Если устройство неоднозначно — уточни у пользователя. Не вызывай без явной просьбы.")
                 .put("parameters", new JSONObject().put("type", "OBJECT").put("properties", new JSONObject()
                         .put("id", new JSONObject().put("type", "INTEGER"))
@@ -101,12 +96,6 @@ final class DeviceToolSpec {
                 Object requested = args.opt("action");
                 if (!(requested instanceof String) || MediaCommands.parse((String) requested) == null) return null;
                 return new Action(Kind.MEDIA_CONTROL, 0, (String) requested);
-            }
-            case "media_seek": {
-                Object mode = args.opt("mode");
-                Integer seconds = integer(args, "seconds");
-                if (!(mode instanceof String) || seconds == null || !MediaSeekPolicy.valid((String) mode, seconds)) return null;
-                return new Action(Kind.MEDIA_SEEK, seconds, (String) mode);
             }
             case "home_control": {
                 Integer id = integer(args, "id");
