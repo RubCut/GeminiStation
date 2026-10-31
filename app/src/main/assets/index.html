@@ -181,7 +181,8 @@ details{margin-top:18px;border-top:1px solid #303441;padding-top:16px}summary{co
     <div class="soft-block"><p>Android требует доступ к уведомлениям для управления медиасессиями других приложений. Это широкое разрешение: оно даёт приложению возможность читать уведомления. Gemini Station не обрабатывает и не сохраняет их содержимое; доступ используется только для управления медиасессией. Без него обычные медиакнопки продолжают работать.</p></div>
     <div class="actions"><button id="mediaSettings" class="secondary">Открыть системные настройки на станции</button></div><p class="status-message" id="mediaMessage" role="status"></p>
     <p class="field-hint">Если настройки недоступны на ТВ, после установки APK включите доступ через ADB:</p><pre><code>adb shell cmd notification allow_listener ru.geministation/.MediaAccessService</code></pre>
-    <p class="field-hint">Отозвать: <code>adb shell cmd notification disallow_listener ru.geministation/.MediaAccessService</code>. Плеер должен публиковать активную медиасессию и поддерживать seekTo; отправка не гарантирует выполнение.</p>
+    <details><summary>Экспериментальная защита доступа через ADB</summary><p class="field-hint">Установите свежие Gemini Station и ButtonHelper и запустите Gemini Station. Отдельный помощник каждые несколько секунд проверяет только статус разрешения через локальный адрес станции и при отказе просит Android вернуть разрешение именно Gemini Station. При ошибках повторные попытки замедляются до минуты. Системные службы он не отключает. Это восстановление после отзыва, не предотвращение и не гарантия: прошивка может снова отозвать доступ. После перезагрузки нужно запустить защиту заново.</p><p class="field-hint"><strong>Пока защита запущена, она будет возвращать даже разрешение, которое вы отключили вручную.</strong> Чтобы отозвать его, сначала остановите защиту. Защита не читает содержимое уведомлений, но само разрешение к ним широкое.</p><p class="field-hint">Запустить с компьютера:</p><pre><code>adb shell 'APK=$(pm path ru.geministation.buttonhelper | head -n 1 | cut -d: -f2-); test -n "$APK" || exit 1; CLASSPATH="$APK" nohup app_process /system/bin --nice-name=gemini_media ru.geministation.buttonhelper.MediaAccessGuard &lt;/dev/null &gt;/data/local/tmp/gemini-media.log 2&gt;&amp;1 &amp;'</code></pre><p class="field-hint">Проверить: <code>adb shell cat /data/local/tmp/gemini-media.log</code>. Остановить: <code>adb shell pkill -x gemini_media</code>. Работа кнопочного помощника не меняется.</p></details>
+    <p class="field-hint">Отозвать после остановки защиты: <code>adb shell cmd notification disallow_listener ru.geministation/.MediaAccessService</code>. Плеер должен публиковать активную медиасессию и поддерживать seekTo; отправка не гарантирует выполнение.</p>
     </article></div>
    </section>
    <section class="group" id="display" aria-labelledby="displayTitle">
@@ -319,7 +320,7 @@ async function refresh(){const current=++logRequest;try{
  if(!promptDirty&&!promptBusy)el('systemPrompt').value=data.systemPrompt;
  if(!settingsLoaded){for(const id of ['dnsEnabled','dnsBypassVpn','dnsServer','saveDns','systemPrompt','savePrompt','resetPrompt'])el(id).disabled=false}
 
- el('mediaStatus').textContent=data.mediaAccessGranted?'Доступ к уведомлениям разрешён.':'Доступ к уведомлениям не разрешён.';
+ el('mediaStatus').textContent=data.mediaAccessStatus==='unknown'?'Не удалось проверить доступ к уведомлениям.':(data.mediaAccessGranted?'Доступ к уведомлениям разрешён.':'Доступ к уведомлениям не разрешён.');
  el('overviewVoice').textContent=data.voice;
  el('overviewWake').textContent=data.wakeEnabled?'Включена':'Выключена';
  el('overviewButton').textContent=data.buttonServiceConnected?'Подключена':'Не подключена';

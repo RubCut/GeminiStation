@@ -65,6 +65,9 @@ function page() {
   assert.match(p.element('mediaStatus').textContent,/не разрешён/);
   saved.mediaAccessGranted=true;await vm.runInContext('refresh()',p.context);
   assert.match(p.element('mediaStatus').textContent,/разрешён/);
+  saved.mediaAccessStatus='unknown';await vm.runInContext('refresh()',p.context);
+  assert.match(p.element('mediaStatus').textContent,/Не удалось проверить/);
+  delete saved.mediaAccessStatus;
   p.element('audioDuckEnabled').checked=false;p.element('audioDuckEnabled').handlers.change();
   await vm.runInContext('refresh()',p.context);
   assert.equal(p.element('audioDuckEnabled').checked,false,'poll must preserve unsaved audio-focus choice');

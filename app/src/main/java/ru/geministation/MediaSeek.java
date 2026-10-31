@@ -12,18 +12,22 @@ import java.util.List;
 /** Access and command only Android's highest-priority active session, not all players. */
 final class MediaSeek {
     static ComponentName component(Context c) { return new ComponentName(c, MediaAccessService.class); }
-    static boolean accessGranted(Context c) {
-        NotificationManager manager = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
-        try { return manager != null && manager.isNotificationListenerAccessGranted(component(c)); }
-        catch (RuntimeException e) { return false; }
+    static Boolean accessStatus(Context c) {
+        try {
+            NotificationManager manager = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
+            return manager == null ? null : manager.isNotificationListenerAccessGranted(component(c));
+        } catch (RuntimeException e) { return null; }
     }
+    static boolean accessGranted(Context c) { return Boolean.TRUE.equals(accessStatus(c)); }
     static String seek(Context c, String mode, int seconds) {
         long started = android.os.SystemClock.elapsedRealtime();
         if (!MediaSeekPolicy.valid(mode, seconds)) {
             AppLog.add("Медиа: отклонены недопустимые параметры перемотки");
             return "Некорректное время перемотки.";
         }
-        AppLog.add("Медиа: запрос точной перемотки; доступ к уведомлениям " + (accessGranted(c) ? "разрешён" : "не разрешён"));
+        Boolean access = accessStatus(c);
+        AppLog.add("Медиа: запрос точной перемотки; доступ к уведомлениям "
+                + (access == null ? "проверить не удалось" : (access ? "разрешён" : "не разрешён")));
         MediaSessionManager manager = (MediaSessionManager) c.getSystemService(Context.MEDIA_SESSION_SERVICE);
         if (manager == null) { AppLog.add("Медиа: системный менеджер недоступен"); return "Системное управление медиасессиями недоступно."; }
         try {

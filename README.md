@@ -111,7 +111,27 @@ Android 9 требует разрешить доступ к уведомлени
 adb shell cmd notification allow_listener ru.geministation/.MediaAccessService
 ```
 
-Отозвать можно в системных настройках или `adb shell cmd notification disallow_listener ru.geministation/.MediaAccessService`. На некоторых прошивках команды или системный UI могут быть недоступны. Обычные медиакнопки не требуют этого разрешения.
+#### Экспериментальное восстановление доступа
+
+Системная прошивка может повторно снять доступ. Причина отзыва не установлена. Отдельный ADB-процесс из свежего `ButtonHelper-debug` раз в несколько секунд проверяет только фактический статус через локальный endpoint запущенного Gemini Station и при отказе запрашивает разрешение обратно. Системные службы не отключаются. Это восстановление после отзыва, не запрет отзыва, и на данной станции ещё требует проверки. При повторных неудачах интервалы растут до минуты. Пока приложение/его веб-сервер недоступны, защита не меняет разрешение. После перезагрузки запустите её снова.
+
+Установите обновлённые Gemini Station и ButtonHelper, откройте Gemini Station, затем запустите с компьютера:
+
+```sh
+adb shell 'APK=$(pm path ru.geministation.buttonhelper | head -n 1 | cut -d: -f2-); test -n "$APK" || exit 1; CLASSPATH="$APK" nohup app_process /system/bin --nice-name=gemini_media ru.geministation.buttonhelper.MediaAccessGuard </dev/null >/data/local/tmp/gemini-media.log 2>&1 &'
+adb shell cat /data/local/tmp/gemini-media.log
+```
+
+`restore requested` означает попытку, а не успех; подтверждение — последующее `Media access: granted`. Командный статус Android 9 может быть нулевым даже при ошибке. Помощник кнопки и защита — отдельные процессы.
+
+**Сначала остановите защиту**, иначе она вернёт и вручную отозванный доступ:
+
+```sh
+adb shell pkill -x gemini_media
+adb shell cmd notification disallow_listener ru.geministation/.MediaAccessService
+```
+
+Доступ к уведомлениям широк, хотя приложение и помощник не читают их содержимое. На некоторых прошивках команды или системный UI могут быть недоступны. Обычные медиакнопки не требуют этого разрешения.
 
 ## Эксперимент: обработчик пульта через ADB shell
 
@@ -137,7 +157,7 @@ adb shell 'APK=$(pm path ru.geministation.buttonhelper | head -n 1 | cut -d: -f2
 adb shell 'APK=$(pm path ru.geministation.buttonhelper | head -n 1 | cut -d: -f2-); test -n "$APK" || exit 1; CLASSPATH="$APK" nohup app_process /system/bin --nice-name=gemini_button ru.geministation.buttonhelper.ShellButtonMonitor </dev/null >/data/local/tmp/gemini-button.log 2>&1 &'
 ```
 
-Проверить запуск: `adb shell cat /data/local/tmp/gemini-button.log`. Остановить: `adb shell pkill -x gemini_button`. Блокировка не позволяет одновременно запустить две копии. Доступ к событиям заканчивается при остановке процесса. Для полного удаления: сначала остановите процесс, затем `adb uninstall ru.geministation.buttonhelper`. Эта отдельная программа не имеет сетевого интерфейса и не обращается к API-ключу.
+Проверить запуск: `adb shell cat /data/local/tmp/gemini-button.log`. Остановить: `adb shell pkill -x gemini_button`. Блокировка не позволяет одновременно запустить две копии. Доступ к событиям заканчивается при остановке процесса. Для полного удаления: сначала остановите процесс, затем `adb uninstall ru.geministation.buttonhelper`. Эта отдельная программа не имеет сетевого интерфейса и не обращается к API-ключу. Отдельно запускаемая защита медиа обращается только к локальному адресу статуса Gemini Station.
 
 ## Эксперимент: вызов кнопкой ассистента
 

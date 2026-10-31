@@ -21,6 +21,7 @@ final class WebSecurity {
         } catch (Exception ignored) { }
         return false;
     }
+    static boolean stationLoopback(String remoteIp) { return "127.0.0.1".equals(remoteIp); }
     static boolean permittedWrite(String host, String origin, String marker) {
         return permittedHost(host) && origin != null && origin.equalsIgnoreCase("http://" + host)
                 && "1".equals(marker);

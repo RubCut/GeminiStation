@@ -82,7 +82,7 @@ public final class WebServerService extends Service {
         private final YandexQrLogin qrLogin;
         private final GeminiClient sampleClient;
         private final AtomicBoolean sampleInProgress = new AtomicBoolean();
-        private final java.util.concurrent.atomic.AtomicReference<Boolean> lastMediaAccess = new java.util.concurrent.atomic.AtomicReference<>();
+        private final java.util.concurrent.atomic.AtomicReference<String> lastMediaAccess = new java.util.concurrent.atomic.AtomicReference<>();
         private String lastLedAsset;
         private long lastLedAssetAt;
         void closeAuth() { qrLogin.closeAsync(); }
@@ -113,6 +113,17 @@ public final class WebServerService extends Service {
             try { return reply(status, "application/json; charset=utf-8", new JSONObject().put("message", message).toString()); }
             catch (Exception e) { return reply(Response.Status.INTERNAL_ERROR, "text/plain", "Error"); }
         }
+        private String mediaAccessState() {
+            Boolean access = MediaSeek.accessStatus(context);
+            String state = access == null ? "unknown" : (access ? "granted" : "denied");
+            String old = lastMediaAccess.getAndSet(state);
+            if (!state.equals(old)) {
+                String text = access == null ? "проверить не удалось" : (access ? "разрешён" : "не разрешён");
+                AppLog.add("Медиа: доступ к уведомлениям " + text
+                        + (old == null ? " (первичная проверка)" : " (статус изменился)"));
+            }
+            return state;
+        }
         @Override public Response serve(IHTTPSession session) {
             String path = session.getUri();
             String host = session.getHeaders().get("host");
@@ -120,7 +131,7 @@ public final class WebServerService extends Service {
             if (session.getMethod() == Method.GET && "/".equals(path)) return reply(Response.Status.OK, "text/html; charset=utf-8", page);
             // Only the station itself may fetch the fixed images.
             if (session.getMethod() == Method.GET && path.matches("/led/(listening|thinking|speaking|clear)\\.gif")) {
-                if (!"127.0.0.1".equals(session.getRemoteIpAddress())) return json(Response.Status.FORBIDDEN, "Только локально");
+                if (!WebSecurity.stationLoopback(session.getRemoteIpAddress())) return json(Response.Status.FORBIDDEN, "Только локально");
                 try {
                     synchronized (this) {
                         long now = android.os.SystemClock.elapsedRealtime();
@@ -137,17 +148,20 @@ public final class WebServerService extends Service {
             }
             if (!path.startsWith("/api/")) return json(Response.Status.NOT_FOUND, "Не найдено");
             try {
+                if (session.getMethod() == Method.GET && "/api/media/access".equals(path)) {
+                    // Helper needs only this status, never logs, settings, or notification contents.
+                    if (!WebSecurity.stationLoopback(session.getRemoteIpAddress()))
+                        return json(Response.Status.FORBIDDEN, "Только локально");
+                    return reply(Response.Status.OK, "text/plain; charset=utf-8", mediaAccessState());
+                }
                 if (session.getMethod() == Method.GET && "/api/logs".equals(path)) {
-                    boolean mediaAccess = MediaSeek.accessGranted(context);
-                    Boolean oldMediaAccess = lastMediaAccess.getAndSet(mediaAccess);
-                    if (oldMediaAccess == null || oldMediaAccess.booleanValue() != mediaAccess)
-                        AppLog.add("Медиа: доступ к уведомлениям " + (mediaAccess ? "разрешён" : "не разрешён")
-                                + (oldMediaAccess == null ? " (первичная проверка)" : " (статус изменился)"));
+                    String mediaState = mediaAccessState();
+                    boolean mediaAccess = "granted".equals(mediaState);
                     JSONObject result = new JSONObject().put("logs", AppLog.snapshot()).put("model", AppSettings.model(context))
                             .put("voice", AppSettings.voice(context)).put("voices", new org.json.JSONArray(TtsVoices.ALL))
                             .put("apiKeys", ApiKeyVault.get(context).metadata())
                             .put("buttonServiceConnected", AssistantButtonService.isConnected())
-                            .put("mediaAccessGranted", mediaAccess)
+                            .put("mediaAccessGranted", mediaAccess).put("mediaAccessStatus", mediaState)
                             .put("buttonEnabled", AppSettings.buttonEnabled(context))
                             .put("audioDuckEnabled", AppSettings.audioDuckEnabled(context))
                             .put("wakeEnabled", AppSettings.wakeEnabled(context))
