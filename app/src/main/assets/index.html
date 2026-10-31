@@ -128,6 +128,8 @@ details{margin-top:18px;border-top:1px solid #303441;padding-top:16px}summary{co
       <div class="privacy"><svg class="icon"><use href="#i-lock"/></svg><span>Gemini Live отправляет запрос и аудио в Gemini API и может расходовать квоту.</span></div>
      </article>
      <article class="card"><div class="card-head"><span class="card-icon blue"><svg class="icon"><use href="#i-volume"/></svg></span><div><h3>Голос ответа</h3><p>Выберите, как будет звучать ассистент.</p></div></div>
+      <div class="field"><label class="field-label" for="ttsEngine">Источник озвучки</label><select id="ttsEngine" disabled></select><p class="field-hint">Gemini TTS или установленный Android Text-to-Speech движок. Не каждое приложение умеет работать как TTS; выбранный движок получит текст ответа. Русский язык и голоса настраиваются в самом движке.</p></div>
+      <div class="actions"><button id="saveTtsEngine" class="secondary" disabled>Сохранить источник</button><button id="sampleTtsEngine" class="secondary" disabled>Прослушать Android TTS на станции</button><button id="refreshTtsEngines" class="secondary">Обновить список движков</button></div><p class="status-message" id="ttsEngineMessage" role="status"></p>
       <div class="field"><label class="field-label" for="voice">Голос Gemini</label><select id="voice" disabled></select><p class="field-hint" id="savedVoice">Загружаем сохранённый голос…</p></div>
       <div class="actions"><button id="sampleVoice" class="secondary" disabled>▶ &nbsp; Прослушать голос</button><button id="saveVoice" disabled>Сохранить голос</button></div><p class="status-message" id="voiceMessage" role="status"></p><p class="status-message" id="sampleStatus" role="status"></p><audio id="sampleAudio" controls hidden style="width:100%;margin-top:12px"></audio>
       <div class="privacy"><svg class="icon"><use href="#i-info"/></svg><span>Образец запрашивается через Gemini TTS и может расходовать квоту. Выбор применяется со следующего ответа.</span></div>
@@ -160,6 +162,8 @@ details{margin-top:18px;border-top:1px solid #303441;padding-top:16px}summary{co
       <div class="range-labels" aria-hidden="true"><span>1%</span><span>50%</span><span>100%</span></div>
       <p class="field-hint" id="sensitivityHint">Выберите ползунком или введите целое число от 1 до 100. Чем выше значение, тем вероятнее случайные срабатывания.</p>
       <p class="range-error" id="sensitivityError" role="status"></p>
+      <div class="toggle-line"><div class="toggle-copy"><strong>Фильтр коротких звуков</strong><span>Экспериментально: проверяет, что сигнал похож на продолжительную речь. Может пропустить тихое слово.</span></div><label class="switch"><input type="checkbox" id="wakeFilter" aria-label="Фильтр коротких звуков" disabled><span class="switch-track"></span></label></div>
+      <div class="toggle-line"><div class="toggle-copy"><strong>Усиление тихого сигнала</strong><span>Ограниченное цифровое усиление над фоновым уровнем. Шум и речь усиливаются вместе, если их нельзя разделить.</span></div><label class="switch"><input type="checkbox" id="wakeAmplify" aria-label="Усиление тихого сигнала" disabled><span class="switch-track"></span></label></div>
       <div class="status-row"><span class="status-dot" id="wakeDot"></span><span id="wakeStatus" role="status">Проверяем состояние…</span></div>
       <div class="level"><div class="level-title"><span>Уровень микрофона</span><span id="wakeLevel" role="status">Нет данных</span></div><div class="level-track" aria-hidden="true"><div class="level-bar" id="wakeMeter"></div></div></div>
       <div class="actions"><button id="saveWakeSettings" disabled>Сохранить</button></div><p class="status-message" id="wakeMessage" role="status"></p>
@@ -238,6 +242,24 @@ el('pluginInstall').onclick=async()=>{try{const file=el('pluginFile').files[0];i
  const result=await request('/api/plugins',{method:'POST',body:JSON.stringify({action:'install',zip:btoa(binary)})});el('pluginMessage').textContent=result.message;
  }catch(e){el('pluginMessage').textContent=e.message}};
 refreshPlugins();
+let ttsLoaded=false, ttsDirty=false, ttsSaved='gemini';
+async function refreshTtsEngines(){
+ try {const data=await request('/api/tts');const select=el('ttsEngine'), old=select.value; select.textContent='';
+  const entries=Array.isArray(data.engines)?data.engines:[];
+  entries.forEach(engine=>{const option=document.createElement('option');option.value=engine.id;option.textContent=engine.name;select.appendChild(option)});
+  ttsSaved=data.engine||'gemini';
+  if(!entries.some(engine=>engine.id===ttsSaved)){const option=document.createElement('option');option.value=ttsSaved;option.textContent=ttsSaved+' — не установлен';select.appendChild(option)}
+  select.value=ttsDirty&&entries.some(engine=>engine.id===old)?old:ttsSaved;
+  select.disabled=false;el('saveTtsEngine').disabled=false;el('sampleTtsEngine').disabled=select.value==='gemini';ttsLoaded=true;
+ }catch(e){el('ttsEngineMessage').textContent=e.message}
+}
+async function saveTtsEngine(){try{const engine=el('ttsEngine').value;const data=await request('/api/tts',{method:'POST',body:JSON.stringify({engine})});ttsDirty=false;ttsSaved=engine;el('ttsEngineMessage').textContent=data.message}catch(e){el('ttsEngineMessage').textContent=e.message}}
+async function sampleTtsEngine(){try{const engine=el('ttsEngine').value;const data=await request('/api/tts/sample',{method:'POST',body:JSON.stringify({engine})});el('ttsEngineMessage').textContent=data.message}catch(e){el('ttsEngineMessage').textContent=e.message}}
+el('ttsEngine').addEventListener('change',()=>{ttsDirty=true;el('sampleTtsEngine').disabled=el('ttsEngine').value==='gemini'});
+el('saveTtsEngine').addEventListener('click',saveTtsEngine);
+el('sampleTtsEngine').addEventListener('click',sampleTtsEngine);
+el('refreshTtsEngines').addEventListener('click',refreshTtsEngines);
+refreshTtsEngines();
 let latestLogs='', displayedLogs=null, logsLoaded=false, logsPaused=false, logPointerDown=false, logRequest=0, latestLogRequest=0;
 function selectionInLogs(){
  const selection=typeof window.getSelection==='function'?window.getSelection():null, logs=el('logs');
@@ -279,7 +301,7 @@ document.addEventListener('selectionchange',()=>renderLogs());
 el('pauseLogs').addEventListener('click',toggleLogs);
 el('copyLogs').addEventListener('click',copyLogs);
 let networkDirty=false, promptDirty=false, networkBusy=false, promptBusy=false;
-let settingsLoaded=false, voiceDirty=false, buttonDirty=false, audioDuckDirty=false, wakeDirty=false, wakeSensitivityDirty=false, keyBusy=false, keyIds=null;
+let settingsLoaded=false, voiceDirty=false, buttonDirty=false, audioDuckDirty=false, wakeDirty=false, wakeSensitivityDirty=false, wakeFilterDirty=false, wakeAmplifyDirty=false, keyBusy=false, keyIds=null;
 function validSensitivity(value){return /^(?:[1-9]|[1-9][0-9]|100)$/.test(value)}
 function sensitivityError(message){
  el('sensitivityError').textContent=message;
@@ -349,8 +371,8 @@ async function refresh(){const current=++logRequest;try{
  if(!settingsLoaded){
   el('model').value=data.model;const select=el('voice');select.textContent='';
   data.voices.forEach(voice=>{const option=document.createElement('option');option.value=voice;option.textContent=voice;select.appendChild(option)});
-  select.value=data.voice;select.disabled=false;el('model').disabled=false;el('key').disabled=false;el('buttonEnabled').checked=data.buttonEnabled;el('buttonEnabled').disabled=false;el('audioDuckEnabled').checked=data.audioDuckEnabled;el('audioDuckEnabled').disabled=false;el('saveDuckSettings').disabled=false;el('wakeEnabled').checked=data.wakeEnabled;el('wakeEnabled').disabled=false;setSensitivity(data.wakeSensitivity);el('wakeSensitivity').disabled=false;el('sensitivityNumber').disabled=false;el('saveWakeSettings').disabled=false;el('saveVoice').disabled=false;el('save').disabled=false;el('saveButtonSettings').disabled=false;el('sampleVoice').disabled=false;settingsLoaded=true;
- }else{if(!voiceDirty)el('voice').value=data.voice;if(!buttonDirty)el('buttonEnabled').checked=data.buttonEnabled;if(!audioDuckDirty)el('audioDuckEnabled').checked=data.audioDuckEnabled;if(!wakeDirty)el('wakeEnabled').checked=data.wakeEnabled;if(!wakeSensitivityDirty)setSensitivity(data.wakeSensitivity)}
+  select.value=data.voice;select.disabled=false;el('model').disabled=false;el('key').disabled=false;el('buttonEnabled').checked=data.buttonEnabled;el('buttonEnabled').disabled=false;el('audioDuckEnabled').checked=data.audioDuckEnabled;el('audioDuckEnabled').disabled=false;el('saveDuckSettings').disabled=false;el('wakeEnabled').checked=data.wakeEnabled;el('wakeEnabled').disabled=false;setSensitivity(data.wakeSensitivity);el('wakeSensitivity').disabled=false;el('sensitivityNumber').disabled=false;el('wakeFilter').checked=data.wakeFilter!==false;el('wakeAmplify').checked=data.wakeAmplify!==false;el('wakeFilter').disabled=false;el('wakeAmplify').disabled=false;el('saveWakeSettings').disabled=false;el('saveVoice').disabled=false;el('save').disabled=false;el('saveButtonSettings').disabled=false;el('sampleVoice').disabled=false;settingsLoaded=true;
+ }else{if(!voiceDirty)el('voice').value=data.voice;if(!buttonDirty)el('buttonEnabled').checked=data.buttonEnabled;if(!audioDuckDirty)el('audioDuckEnabled').checked=data.audioDuckEnabled;if(!wakeDirty)el('wakeEnabled').checked=data.wakeEnabled;if(!wakeSensitivityDirty)setSensitivity(data.wakeSensitivity);if(!wakeFilterDirty)el('wakeFilter').checked=data.wakeFilter!==false;if(!wakeAmplifyDirty)el('wakeAmplify').checked=data.wakeAmplify!==false}
  return data;
 }catch(e){setConnection(false);el('message').textContent=e.message;throw e}}
 let sampleUrl='';
@@ -370,14 +392,16 @@ async function sampleVoice(){
 }
 async function save(remove,feedback='message'){
  try{
-  const voice=el('voice').value, buttonEnabled=el('buttonEnabled').checked, audioDuckEnabled=el('audioDuckEnabled').checked, wakeEnabled=el('wakeEnabled').checked, wakeSensitivity=getSensitivity();
+  const voice=el('voice').value, buttonEnabled=el('buttonEnabled').checked, audioDuckEnabled=el('audioDuckEnabled').checked, wakeEnabled=el('wakeEnabled').checked, wakeSensitivity=getSensitivity(), wakeFilter=el('wakeFilter').checked, wakeAmplify=el('wakeAmplify').checked;
   if(wakeSensitivity===null){sensitivityError('Введите целое число от 1 до 100.');el('sensitivityNumber').focus();return}
-  await request('/api/config',{method:'POST',body:JSON.stringify({model:el('model').value,voice,buttonEnabled,audioDuckEnabled,wakeEnabled,wakeSensitivity,key:'',deleteKey:remove})});
+  await request('/api/config',{method:'POST',body:JSON.stringify({model:el('model').value,voice,buttonEnabled,audioDuckEnabled,wakeEnabled,wakeSensitivity,wakeFilter,wakeAmplify,key:'',deleteKey:remove})});
   if(el('voice').value===voice)voiceDirty=false;
   if(el('buttonEnabled').checked===buttonEnabled)buttonDirty=false;
   if(el('audioDuckEnabled').checked===audioDuckEnabled)audioDuckDirty=false;
   if(el('wakeEnabled').checked===wakeEnabled)wakeDirty=false;
   if(getSensitivity()===wakeSensitivity)wakeSensitivityDirty=false;
+  if(el('wakeFilter').checked===wakeFilter)wakeFilterDirty=false;
+  if(el('wakeAmplify').checked===wakeAmplify)wakeAmplifyDirty=false;
   el(feedback).textContent=remove?'Ключи удалены':'Настройки сохранены';await refresh();
  }catch(e){el(feedback).textContent=e.message}
 }
@@ -453,6 +477,8 @@ el('buttonEnabled').addEventListener('change',()=>{buttonDirty=true});
 el('audioDuckEnabled').addEventListener('change',()=>{audioDuckDirty=true});
 el('saveDuckSettings').addEventListener('click',()=>save(false,'duckMessage'));
 el('wakeEnabled').addEventListener('change',()=>{wakeDirty=true});
+el('wakeFilter').addEventListener('change',()=>{wakeFilterDirty=true});
+el('wakeAmplify').addEventListener('change',()=>{wakeAmplifyDirty=true});
 el('wakeSensitivity').addEventListener('input',sliderChanged);
 el('wakeSensitivity').addEventListener('change',sliderChanged);
 el('sensitivityNumber').addEventListener('input',numberChanged);

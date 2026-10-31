@@ -38,6 +38,9 @@ public final class MainActivity extends Activity {
     private final ExecutorService speechExecutor = Executors.newSingleThreadExecutor();
     private final AtomicInteger speechGeneration = new AtomicInteger();
     private final VoicePlayer voicePlayer = new VoicePlayer();
+    private AndroidTtsPlayer androidTts;
+    private PromptContextPrefetch promptContext;
+    private long answerStarted;
     private SoundCuePlayer soundCuePlayer;
     private BackgroundAudioFocus backgroundAudioFocus;
     private SharedPreferences preferences;
@@ -77,6 +80,9 @@ public final class MainActivity extends Activity {
         WakeWordController.get(this).dialogOpening();
         keyVault = ApiKeyVault.get(this);
         soundCuePlayer = new SoundCuePlayer(this);
+        androidTts = new AndroidTtsPlayer(this);
+        promptContext = new PromptContextPrefetch(this);
+        promptContext.refresh();
         backgroundAudioFocus = new BackgroundAudioFocus(this);
         preferences = getSharedPreferences("MainActivity", Context.MODE_PRIVATE);
         preferences.registerOnSharedPreferenceChangeListener(preferenceListener);
@@ -207,17 +213,15 @@ public final class MainActivity extends Activity {
         try { request = new JSONArray(history.toString()); request.put(turn("user", question)); }
         catch (Exception e) { showErrorAndClose("Не удалось подготовить запрос."); return; }
         String model = AppSettings.model(this);
+        answerStarted = SystemClock.elapsedRealtime();
         AppLog.add("Диалог: запрос к Gemini начат");
         executor.execute(() -> {
             try {
-                VisibleApps apps = VisibleApps.load(getApplicationContext());
+                PromptContextPrefetch.Result prepared = promptContext.get();
+                VisibleApps apps = prepared.apps;
                 JSONArray appList = apps.promptList();
-                SmartHome.Snapshot snapshot = new SmartHome.Snapshot();
-                try {
-                    if (!new SecretStore(getApplicationContext(), SmartHome.PREFS).load().isEmpty())
-                        snapshot = SmartHome.load(getApplicationContext());
-                } catch (Exception e) { AppLog.add("Умный дом: список недоступен (" + YandexCloud.safeError(e) + ")"); }
-                final SmartHome.Snapshot home = snapshot;
+                final SmartHome.Snapshot home = prepared.home;
+                AppLog.add("Диалог: контекст готов через " + (SystemClock.elapsedRealtime() - answerStarted) + " мс");
                 final JSONArray homeList = home.prompt();
                 final java.util.List<PluginExecution.Tool> pluginTools = PluginExecution.snapshot(getApplicationContext());
                 final JSONArray pluginDeclarations = PluginExecution.declarations(pluginTools);
@@ -306,7 +310,7 @@ public final class MainActivity extends Activity {
                     } catch (Exception ignored) { }
                     // Keep the thinking animation until audio actually starts.
                     showText(response);
-                    AppLog.add("Диалог: текст ответа получен; начинаем синтез");
+                    AppLog.add("Диалог: текст ответа получен через " + (SystemClock.elapsedRealtime() - answerStarted) + " мс; начинаем синтез");
                     speak(response);
                 });
             } catch (Exception e) {
@@ -323,17 +327,29 @@ public final class MainActivity extends Activity {
     private void stopSpeaking() {
         speechGeneration.incrementAndGet();
         voicePlayer.stop();
+        if (androidTts != null) androidTts.stop();
         if (client != null) client.cancelSpeech();
     }
     private void onPlaybackStarted(int generation) {
         runOnUiThread(() -> {
             if (destroyed || !resumed || speechGeneration.get() != generation || flow.phase() != ConversationFlow.Phase.SPEAKING) return;
+            AppLog.add("Диалог: озвучка началась через " + (SystemClock.elapsedRealtime() - answerStarted) + " мс после распознавания");
             animatePulse(true); led.show("speaking");
         });
     }
     private void speak(String response) {
         backgroundAudioFocus.acquire();
         final int generation = speechGeneration.incrementAndGet();
+        final String engine = AppSettings.ttsEngine(this);
+        if (!AndroidTtsEngines.GEMINI.equals(engine)) {
+            AppLog.add("TTS: выбран Android-движок");
+            androidTts.speak(engine, response, new AndroidTtsPlayer.Listener() {
+                @Override public void started() { onPlaybackStarted(generation); }
+                @Override public void done() { speechFinished(generation); }
+                @Override public void error(String reason) { speechFailed(generation, reason); }
+            });
+            return;
+        }
         // Snapshot once per reply so streaming and fallback cannot use different voices.
         final String voice = AppSettings.voice(this);
         AppLog.add("TTS: выбран голос " + voice);
@@ -353,27 +369,32 @@ public final class MainActivity extends Activity {
                     }
                     return null;
                 });
-                if (speechGeneration.get() != generation) return;
-                AppLog.add("TTS: воспроизведение завершено");
-                runOnUiThread(() -> {
-                    if (!destroyed && resumed && speechGeneration.get() == generation) {
-                        backgroundAudioFocus.release();
-                        handler.postDelayed(() -> { if (!destroyed && resumed && speechGeneration.get() == generation) beginFollowUp(); }, 350);
-                    }
-                });
+                speechFinished(generation);
             } catch (Exception e) {
                 AppLog.add("TTS: ошибка обработки " + e.getClass().getSimpleName());
-                runOnUiThread(() -> {
-                    if (destroyed || !resumed || speechGeneration.get() != generation) return;
-                    String detail = e instanceof java.io.IOException && e.getMessage() != null && e.getMessage().startsWith("Gemini TTS: HTTP")
-                            ? " (" + e.getMessage() + ")" : "";
-                    AppLog.add("TTS: синтез не удался" + detail + "; ответ оставлен на экране");
-                    stopSpinner(); stopPulse();
-                    backgroundAudioFocus.release();
-                    // Keep the answer visible briefly, then allow a follow-up even if audio failed.
-                    handler.postDelayed(() -> { if (!destroyed && resumed && speechGeneration.get() == generation) beginFollowUp(); }, 2000);
-                });
+                String detail = e instanceof java.io.IOException && e.getMessage() != null && e.getMessage().startsWith("Gemini TTS: HTTP")
+                        ? " (" + e.getMessage() + ")" : "";
+                speechFailed(generation, "Синтез Gemini не удался" + detail);
             }
+        });
+    }
+    private void speechFinished(int generation) {
+        if (speechGeneration.get() != generation) return;
+        AppLog.add("TTS: воспроизведение завершено");
+        runOnUiThread(() -> {
+            if (!destroyed && resumed && speechGeneration.get() == generation) {
+                backgroundAudioFocus.release();
+                handler.postDelayed(() -> { if (!destroyed && resumed && speechGeneration.get() == generation) beginFollowUp(); }, 350);
+            }
+        });
+    }
+    private void speechFailed(int generation, String reason) {
+        runOnUiThread(() -> {
+            if (destroyed || !resumed || speechGeneration.get() != generation) return;
+            AppLog.add("TTS: " + reason + "; ответ оставлен на экране");
+            stopSpinner(); stopPulse();
+            backgroundAudioFocus.release();
+            handler.postDelayed(() -> { if (!destroyed && resumed && speechGeneration.get() == generation) beginFollowUp(); }, 2000);
         });
     }
     private void beginFollowUp() {
@@ -466,6 +487,7 @@ public final class MainActivity extends Activity {
     private void startListening(final boolean followUp) {
         if (destroyed || !resumed || listening) return;
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) { showErrorAndClose("Нет доступа к микрофону."); return; }
+        promptContext.refresh();
         final int attempt = ++recognitionAttempt;
         recognitionStarted = SystemClock.elapsedRealtime(); partialCount = 0; heardSpeech = false;
         listeningPolicy.reset();
@@ -582,6 +604,7 @@ public final class MainActivity extends Activity {
         pendingNavigation = null;
         cancelRecognition();
         stopSpeaking();
+        promptContext.close();
         client.cancel(); executor.shutdownNow(); speechExecutor.shutdownNow();
         super.onDestroy();
     }

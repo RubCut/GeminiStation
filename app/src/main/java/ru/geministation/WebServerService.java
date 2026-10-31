@@ -81,14 +81,16 @@ public final class WebServerService extends Service {
         private final String page;
         private final YandexQrLogin qrLogin;
         private final GeminiClient sampleClient;
+        private final AndroidTtsPlayer systemTtsSample;
         private final AtomicBoolean sampleInProgress = new AtomicBoolean();
         private String lastLedAsset;
         private long lastLedAssetAt;
-        void closeAuth() { qrLogin.closeAsync(); }
+        void closeAuth() { qrLogin.closeAsync(); systemTtsSample.stop(); }
         Server(Context context) throws Exception {
             super(PORT); // Listen on all interfaces. Use ADB forwarding on untrusted networks.
             this.context = context;
             this.sampleClient = new GeminiClient(context);
+            this.systemTtsSample = new AndroidTtsPlayer(context);
             this.qrLogin = new YandexQrLogin(context);
             try (InputStream in = context.getAssets().open("index.html"); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
                 byte[] buffer = new byte[4096];
@@ -146,6 +148,8 @@ public final class WebServerService extends Service {
                             .put("wakeEnabled", AppSettings.wakeEnabled(context))
                             .put("wakeStatus", WakeWordController.get(context).status())
                             .put("wakeSensitivity", AppSettings.wakeSensitivity(context))
+                            .put("wakeFilter", AppSettings.wakeFilter(context))
+                            .put("wakeAmplify", AppSettings.wakeAmplify(context))
                             .put("wakeRms", WakeWordController.get(context).rms())
                             .put("wakePeak", WakeWordController.get(context).peak())
                             .put("dnsEnabled", AppSettings.dnsEnabled(context))
@@ -155,6 +159,35 @@ public final class WebServerService extends Service {
                             .put("systemPrompt", AppSettings.systemPrompt(context))
                             .put("defaultSystemPrompt", SystemPrompt.DEFAULT);
                     return reply(Response.Status.OK, "application/json; charset=utf-8", result.toString());
+                }
+                if (session.getMethod() == Method.GET && "/api/tts".equals(path)) {
+                    return reply(Response.Status.OK, "application/json; charset=utf-8", new JSONObject()
+                            .put("engine", AppSettings.ttsEngine(context)).put("engines", AndroidTtsEngines.json(context)).toString());
+                }
+                if (session.getMethod() == Method.POST && ("/api/tts".equals(path) || "/api/tts/sample".equals(path))) {
+                    if (!WebSecurity.permittedWrite(host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station")))
+                        return json(Response.Status.FORBIDDEN, "Запрос отклонён");
+                    String lengthHeader = session.getHeaders().get("content-length");
+                    long length = lengthHeader == null ? -1 : Long.parseLong(lengthHeader);
+                    if (length < 1 || length > 512 || session.getHeaders().containsKey("transfer-encoding"))
+                        return json(Response.Status.BAD_REQUEST, "Недопустимый размер запроса");
+                    Map<String, String> files = new HashMap<>(); session.parseBody(files);
+                    JSONObject data = new JSONObject(files.get("postData"));
+                    if (!(data.opt("engine") instanceof String)) return json(Response.Status.BAD_REQUEST, "Укажите TTS-движок");
+                    String engine = data.getString("engine");
+                    if (!AndroidTtsEngines.available(context, engine)) return json(Response.Status.BAD_REQUEST, "Движок не установлен или недоступен");
+                    if ("/api/tts/sample".equals(path)) {
+                        if (AndroidTtsEngines.GEMINI.equals(engine)) return json(Response.Status.BAD_REQUEST, "Для Gemini используйте образец голоса выше");
+                        systemTtsSample.speak(engine, "Привет! Так звучит выбранный голосовой движок на станции.", new AndroidTtsPlayer.Listener() {
+                            @Override public void started() { AppLog.add("Android TTS: начато прослушивание образца"); }
+                            @Override public void done() { AppLog.add("Android TTS: образец завершён"); }
+                            @Override public void error(String reason) { AppLog.add("Android TTS: " + reason); }
+                        });
+                        return json(Response.Status.OK, "Образец запущен на станции. При ошибке проверьте журнал.");
+                    }
+                    if (!AppSettings.saveTtsEngine(context, engine)) return json(Response.Status.INTERNAL_ERROR, "Не удалось сохранить TTS");
+                    AppLog.add("TTS: выбран источник озвучки через веб-интерфейс");
+                    return json(Response.Status.OK, "Источник озвучки сохранён для следующего ответа.");
                 }
                 if (session.getMethod() == Method.POST && "/api/voice/sample".equals(path)) {
                     if (!WebSecurity.permittedWrite(host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station")))
@@ -431,6 +464,12 @@ public final class WebServerService extends Service {
                     if (data.has("wakeSensitivity") && !(data.opt("wakeSensitivity") instanceof String))
                         return json(Response.Status.BAD_REQUEST, "Некорректная чувствительность");
                     String wakeSensitivity = data.has("wakeSensitivity") ? data.optString("wakeSensitivity", "") : AppSettings.wakeSensitivity(context);
+                    if (data.has("wakeFilter") && !(data.opt("wakeFilter") instanceof Boolean))
+                        return json(Response.Status.BAD_REQUEST, "Некорректный фильтр активации");
+                    if (data.has("wakeAmplify") && !(data.opt("wakeAmplify") instanceof Boolean))
+                        return json(Response.Status.BAD_REQUEST, "Некорректное усиление активации");
+                    boolean wakeFilter = data.has("wakeFilter") ? data.optBoolean("wakeFilter") : AppSettings.wakeFilter(context);
+                    boolean wakeAmplify = data.has("wakeAmplify") ? data.optBoolean("wakeAmplify") : AppSettings.wakeAmplify(context);
                     if (!WakeSensitivity.valid(wakeSensitivity)) return json(Response.Status.BAD_REQUEST, "Некорректная чувствительность");
                     String key = data.optString("key", "").trim();
                     boolean deleteKey = data.optBoolean("deleteKey", false);
@@ -442,7 +481,7 @@ public final class WebServerService extends Service {
                         try { vault.add(key); }
                         catch (IllegalArgumentException e) { return json(Response.Status.BAD_REQUEST, e.getMessage()); }
                     }
-                    if (!AppSettings.save(context, model, voice, buttonEnabled, wakeEnabled, wakeSensitivity, audioDuckEnabled)) return json(Response.Status.INTERNAL_ERROR, "Не удалось сохранить настройки");
+                    if (!AppSettings.save(context, model, voice, buttonEnabled, wakeEnabled, wakeSensitivity, audioDuckEnabled, wakeFilter, wakeAmplify)) return json(Response.Status.INTERNAL_ERROR, "Не удалось сохранить настройки");
                     WakeWordController.get(context).settingsChanged();
                     AppLog.add(deleteKey ? "API-ключ удалён через веб-интерфейс" : "Настройки сохранены через веб-интерфейс");
                     return json(Response.Status.OK, "Настройки сохранены");

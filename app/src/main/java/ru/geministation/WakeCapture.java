@@ -24,6 +24,7 @@ final class WakeCapture {
     private static final int RATE = 16000, CHUNK = 1600;
     private final Listener listener;
     private final String sensitivity;
+    private final boolean filter, amplify;
     private final AtomicBoolean stopping = new AtomicBoolean();
     private volatile AudioRecord recorder;
     private Decoder decoder;
@@ -31,7 +32,12 @@ final class WakeCapture {
     private String sourceName;
     private boolean utteranceStarted;
 
-    WakeCapture(Listener listener, String sensitivity) { this.listener = listener; this.sensitivity = sensitivity; }
+    WakeCapture(Listener listener, String sensitivity, boolean filter, boolean amplify) {
+        this.listener = listener; this.sensitivity = sensitivity; this.filter = filter; this.amplify = amplify;
+    }
+    boolean sameSettings(String value, boolean filterEnabled, boolean amplifyEnabled) {
+        return sensitivity.equals(value) && filter == filterEnabled && amplify == amplifyEnabled;
+    }
     String sensitivity() { return sensitivity; }
     String sourceName() { return sourceName; }
     boolean isAlive() { return thread != null && thread.isAlive(); }
@@ -89,6 +95,8 @@ final class WakeCapture {
         try {
             short[] samples = new short[CHUNK];
             AudioLevel level = new AudioLevel();
+            WakeAudioFilter conditioning = new WakeAudioFilter();
+            long lastRejectedLog = 0;
             long lastLevel = SystemClock.elapsedRealtime();
             while (!stopping.get()) {
                 int count = recorder.read(samples, 0, samples.length);
@@ -96,6 +104,7 @@ final class WakeCapture {
                 if (count < 0) throw new IOException("AudioRecord.read=" + count);
                 if (count == 0) { Thread.sleep(20); continue; }
                 level.add(samples, count);
+                conditioning.process(samples, count, amplify);
                 decoder.processRaw(samples, count, false, false);
                 long now = SystemClock.elapsedRealtime();
                 if (now - lastLevel >= 2000) {
@@ -104,8 +113,17 @@ final class WakeCapture {
                 }
                 Hypothesis result = decoder.hyp();
                 if (result != null && WakeWordResult.matches(result.getHypstr())) {
-                    listener.onTrigger(this);
-                    break;
+                    if (!filter || conditioning.speechLike()) {
+                        listener.onTrigger(this);
+                        break;
+                    }
+                    if (now - lastRejectedLog >= 10000) {
+                        AppLog.add("Голосовая активация: отфильтрован короткий/неречевой сигнал; RMS " + conditioning.rms()
+                                + ", фон " + conditioning.floor() + ", усиление " + conditioning.gainPercent() + "%");
+                        lastRejectedLog = now;
+                    }
+                    // KWS hypotheses can persist for the whole utterance; discard the rejected event.
+                    decoder.endUtt(); decoder.startUtt(); conditioning.clearSpeech();
                 }
             }
         } catch (Exception | LinkageError e) {

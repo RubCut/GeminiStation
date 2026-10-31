@@ -15,8 +15,8 @@ for (const [, id] of markup.matchAll(/(?:href|for|aria-describedby|aria-labelled
 }
 assert.match(markup, /<input type="range" id="wakeSensitivity" min="1" max="100" step="1"/);
 assert.match(markup, /<input type="number" id="sensitivityNumber" min="1" max="100" step="1"/);
-const saved = {model:'gemini-3.5-flash-lite', voice:'Kore', voices:['Kore','Puck','Aoede'], logs:[], buttonEnabled:false, audioDuckEnabled:true, buttonServiceConnected:false, wakeEnabled:false, wakeStatus:"Выключена", wakeSensitivity:"normal", wakeRms:-1, wakePeak:-1, dnsEnabled:true, dnsBypassVpn:true, dnsServer:"https://d.webshiftvpn.ru/dns-query", vpnActive:false, systemPrompt:"Старый промпт", defaultSystemPrompt:"Исходный промпт", apiKeys:[{id:"11111111-1111-4111-8111-111111111111"}]};
-const writes = [], samples = [], helperRequests = [];
+const saved = {model:'gemini-3.5-flash-lite', voice:'Kore', voices:['Kore','Puck','Aoede'], logs:[], buttonEnabled:false, audioDuckEnabled:true, buttonServiceConnected:false, wakeEnabled:false, wakeFilter:true, wakeAmplify:true, engine:'gemini', engines:[{id:'gemini',name:'Gemini TTS'},{id:'org.example.tts',name:'Пример TTS'}], wakeStatus:"Выключена", wakeSensitivity:"normal", wakeRms:-1, wakePeak:-1, dnsEnabled:true, dnsBypassVpn:true, dnsServer:"https://d.webshiftvpn.ru/dns-query", vpnActive:false, systemPrompt:"Старый промпт", defaultSystemPrompt:"Исходный промпт", apiKeys:[{id:"11111111-1111-4111-8111-111111111111"}]};
+const writes = [], samples = [], helperRequests = [], ttsSamples = [];
 let sampleError = false, blockPlayback = false, revoked = [];
 let copyAllowed=true, copied='', clipboardAllowed=false, pendingLogFetch=null;
 function page() {
@@ -39,7 +39,9 @@ function page() {
     window:{getSelection:()=>selection},navigator:{clipboard:{writeText:async(text)=>{if(!clipboardAllowed)throw Error('blocked');copied=text}}},
     fetch:async(path, options)=>{
       if(path==='/api/logs' && pendingLogFetch)return new Promise(resolve=>pendingLogFetch.push(resolve));
-      if(path==='/api/config') {const body=JSON.parse(options.body); writes.push(body); saved.model=body.model; saved.voice=body.voice; saved.buttonEnabled=body.buttonEnabled; saved.audioDuckEnabled=body.audioDuckEnabled; saved.wakeEnabled=body.wakeEnabled; saved.wakeSensitivity=body.wakeSensitivity;}
+      if(path==='/api/config') {const body=JSON.parse(options.body); writes.push(body); saved.model=body.model; saved.voice=body.voice; saved.buttonEnabled=body.buttonEnabled; saved.audioDuckEnabled=body.audioDuckEnabled; saved.wakeEnabled=body.wakeEnabled; saved.wakeSensitivity=body.wakeSensitivity; saved.wakeFilter=body.wakeFilter; saved.wakeAmplify=body.wakeAmplify;}
+      if(path==='/api/tts' && options.method==='POST') {const body=JSON.parse(options.body); saved.engine=body.engine;return {ok:true,json:async()=>({message:'Источник сохранён'})};}
+      if(path==='/api/tts/sample') {ttsSamples.push(JSON.parse(options.body));return {ok:true,json:async()=>({message:'Образец на станции'})};}
       if(path==='/api/network') {const body=JSON.parse(options.body); writes.push({network:body}); saved.dnsEnabled=body.enabled; saved.dnsBypassVpn=body.bypassVpn; saved.dnsServer=body.server;}
       if(path==='/api/prompt') {const body=JSON.parse(options.body); writes.push({prompt:body}); saved.systemPrompt=body.reset?saved.defaultSystemPrompt:body.prompt;}
       if(path==='/api/keys') {
@@ -63,6 +65,21 @@ function page() {
 }
 (async()=>{
   let p=page(); await vm.runInContext('refresh()',p.context);
+  await vm.runInContext('refreshTtsEngines()',p.context);
+  assert.equal(p.element('ttsEngine').value,'gemini');
+  assert.equal(p.element('sampleTtsEngine').disabled,true);
+  p.element('ttsEngine').value='org.example.tts';p.element('ttsEngine').handlers.change();
+  await p.element('sampleTtsEngine').handlers.click();
+  assert.equal(ttsSamples.at(-1).engine,'org.example.tts');
+  assert.equal(saved.engine,'gemini','preview must not save');
+  await p.element('saveTtsEngine').handlers.click();
+  assert.equal(saved.engine,'org.example.tts');
+  assert.equal(p.element('wakeFilter').checked,true);
+  p.element('wakeFilter').checked=false;p.element('wakeFilter').handlers.change();
+  await vm.runInContext('refresh()',p.context);
+  assert.equal(p.element('wakeFilter').checked,false,'poll must preserve unsaved filter');
+  await p.element('saveWakeSettings').handlers.click();
+  assert.equal(saved.wakeFilter,false);
   assert.equal(p.element('voice').value,'Kore');
   assert.equal(p.element('voice').disabled,false);
   assert.equal(p.element('audioDuckEnabled').checked,true);

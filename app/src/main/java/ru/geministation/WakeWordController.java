@@ -64,9 +64,10 @@ final class WakeWordController {
             return;
         }
         String sensitivity = AppSettings.wakeSensitivity(context);
+        boolean filter = AppSettings.wakeFilter(context), amplify = AppSettings.wakeAmplify(context);
         WakeCapture current = capture;
         if (current != null) {
-            if (current.isAlive() && current.sensitivity().equals(sensitivity)) return;
+            if (current.isAlive() && current.sameSettings(sensitivity, filter, amplify)) return;
             if (!stopCapture()) { status = "Не удалось освободить микрофон"; return; }
         }
         status = "Подготавливаем локальную модель";
@@ -116,12 +117,12 @@ final class WakeWordController {
                         }
                     });
                 }
-            }, sensitivity);
+            }, sensitivity, filter, amplify);
             capture = next; rms = -1; peak = -1;
             next.start(model);
             if (!wanted()) { reconcile(); return; }
             status = "Микрофон запущен (" + next.sourceName() + ")";
-            AppLog.add("Голосовая активация: микрофон запущен (" + next.sourceName() + "), чувствительность " + sensitivity);
+            AppLog.add("Голосовая активация: микрофон запущен (" + next.sourceName() + "), чувствительность " + sensitivity + ", фильтр " + filter + ", усиление " + amplify);
         } catch (Exception | LinkageError e) {
             stopCapture();
             status = "Ошибка запуска; проверьте журнал";

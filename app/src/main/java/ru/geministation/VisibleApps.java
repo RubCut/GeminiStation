@@ -29,6 +29,7 @@ final class VisibleApps {
     }
     private final List<App> apps;
     private VisibleApps(List<App> apps) { this.apps = apps; }
+    static VisibleApps empty() { return new VisibleApps(new ArrayList<>()); }
     int size() { return apps.size(); }
     App get(int index) { return apps.get(index); }
 
