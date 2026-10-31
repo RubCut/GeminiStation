@@ -108,12 +108,23 @@ final class SmartHome {
         }
         return false;
     }
+    static final class ControlDenied extends IOException {
+        ControlDenied() { super("HTTP 403"); }
+    }
+    static boolean controlForbidden(Exception error) {
+        return error instanceof IOException && "HTTP 403".equals(error.getMessage());
+    }
     static boolean set(Context c, Snapshot snapshot, Device device, boolean on) throws Exception {
         if (snapshot.identity == null || !snapshot.identity.equals(identity(c))) throw new IOException("account changed");
         String token = token(c);
         if (!snapshot.identity.equals(identity(c))) throw new IOException("account changed");
         AppLog.add("Умный дом: отправка on_off (" + (on ? "включение" : "выключение") + ")");
-        JSONObject result = YandexCloud.home(token, "/v1.0/devices/actions", actionBody(device, on));
+        JSONObject result;
+        try { result = YandexCloud.home(token, "/v1.0/devices/actions", actionBody(device, on)); }
+        catch (IOException e) {
+            if (controlForbidden(e)) throw new ControlDenied();
+            throw e;
+        }
         AppLog.add("Умный дом: результат команды " + HomeDiagnostics.outcome(result, device.id));
         return accepted(result, device);
     }

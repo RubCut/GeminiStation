@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.net.Proxy;
 import java.util.concurrent.TimeUnit;
 import okhttp3.FormBody;
-import okhttp3.HttpUrl;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -64,9 +63,7 @@ final class YandexCloud {
         String account = musicAccount(c);
         String token = musicToken(c);
         if (!account.equals(musicAccount(c))) throw new IOException("account changed");
-        HttpUrl url = HttpUrl.get("https://api.music.yandex.net/search").newBuilder()
-                .addQueryParameter("text", query).addQueryParameter("type", "track").build();
-        JSONObject result = request(new Request.Builder().url(url).header("Authorization", "OAuth " + token).build(), "Музыка: поиск").optJSONObject("result");
+        JSONObject result = request(YandexMusicSearch.request(query, token), "Музыка: поиск").optJSONObject("result");
         if (!account.equals(musicAccount(c))) throw new IOException("account changed");
         JSONObject tracks = result == null ? null : result.optJSONObject("tracks");
         JSONArray items = tracks == null ? null : tracks.optJSONArray("results");

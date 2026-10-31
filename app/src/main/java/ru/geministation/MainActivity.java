@@ -254,7 +254,9 @@ public final class MainActivity extends Activity {
                         networkText = ok ? ("Команда выполнена: " + device.name + ".") : "Яндекс не подтвердил выполнение команды умного дома.";
                     } catch (Exception e) {
                         AppLog.add("Умный дом: ошибка команды (" + YandexCloud.safeError(e) + ")");
-                        networkText = "Не удалось выполнить команду умного дома. Проверьте доступ и журнал.";
+                        networkText = e instanceof SmartHome.ControlDenied
+                                ? "Яндекс отказал в управлении. Возможно, токену не хватает права iot control. Проверьте настройки умного дома."
+                                : "Не удалось выполнить команду умного дома. Проверьте доступ и журнал.";
                     }
                 } else if (action != null && action.kind == DeviceToolSpec.Kind.YANDEX_MUSIC && !destroyed && resumed) {
                     try {

@@ -35,6 +35,13 @@ public class SmartHomeTest {
         call.getJSONObject("args").put("on", true).put("id", 0.5);
         assertNull(DeviceToolSpec.parse(call, 0, 1));
     }
+    @Test public void onlyHttp403FromActionIsClassifiedAsDenied() {
+        assertTrue(SmartHome.controlForbidden(new java.io.IOException("HTTP 403")));
+        assertFalse(SmartHome.controlForbidden(new java.io.IOException("HTTP 400")));
+        assertFalse(SmartHome.controlForbidden(new java.io.IOException("HTTP 401")));
+        assertFalse(SmartHome.controlForbidden(new IllegalStateException("HTTP 403")));
+        assertFalse(SmartHome.controlForbidden(new java.io.IOException()));
+    }
     @Test public void musicSearchUsesOnlyRealAvailableNumericTrack() throws Exception {
         JSONObject result = new JSONObject("{\"tracks\":{\"results\":[{\"id\":\"42\",\"title\":\"Недоступный\",\"available\":false},{\"id\":\"123\",\"title\":\"Песня\",\"artists\":[{\"name\":\"Исполнитель\"}]}]}}");
         YandexCloud.Track track = YandexCloud.parseSearch(result);
