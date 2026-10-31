@@ -25,6 +25,7 @@ final class WakeCapture {
     private final Listener listener;
     private final String sensitivity;
     private final boolean filter, amplify;
+    private final VoiceTuning tuning;
     private final AtomicBoolean stopping = new AtomicBoolean();
     private volatile AudioRecord recorder;
     private Decoder decoder;
@@ -32,11 +33,11 @@ final class WakeCapture {
     private String sourceName;
     private boolean utteranceStarted;
 
-    WakeCapture(Listener listener, String sensitivity, boolean filter, boolean amplify) {
-        this.listener = listener; this.sensitivity = sensitivity; this.filter = filter; this.amplify = amplify;
+    WakeCapture(Listener listener, String sensitivity, boolean filter, boolean amplify, VoiceTuning tuning) {
+        this.listener = listener; this.sensitivity = sensitivity; this.filter = filter; this.amplify = amplify; this.tuning = tuning;
     }
-    boolean sameSettings(String value, boolean filterEnabled, boolean amplifyEnabled) {
-        return sensitivity.equals(value) && filter == filterEnabled && amplify == amplifyEnabled;
+    boolean sameSettings(String value, boolean filterEnabled, boolean amplifyEnabled, VoiceTuning other) {
+        return sensitivity.equals(value) && filter == filterEnabled && amplify == amplifyEnabled && tuning.sameWake(other);
     }
     String sensitivity() { return sensitivity; }
     String sourceName() { return sourceName; }
@@ -117,7 +118,7 @@ final class WakeCapture {
                 }
                 Hypothesis result = decoder.hyp();
                 if (result != null && WakeWordResult.matches(result.getHypstr())) {
-                    if (conditioning.candidateAllowed(filter)) {
+                    if (conditioning.candidateAllowed(filter, tuning.wakeMinMs, tuning.wakeRecentMs)) {
                         AppLog.add("Голосовая активация: кандидат принят; сигнал " + conditioning.activeMillis()
                                 + " мс, пауза " + conditioning.quietMillis() + " мс, RMS " + conditioning.rms()
                                 + ", фон " + conditioning.floor() + ", фильтр " + filter);
@@ -133,7 +134,7 @@ final class WakeCapture {
                     }
                     // KWS hypotheses can persist for the whole utterance; discard the rejected event.
                     decoder.endUtt(); decoder.startUtt(); conditioning.clearSpeech();
-                } else if (conditioning.resetForSilence()) {
+                } else if (conditioning.resetForSilence(tuning.wakeResetMs)) {
                     // KWS searches are continuous and can otherwise retain old detections.
                     decoder.endUtt(); decoder.startUtt(); conditioning.clearSpeech();
                 }

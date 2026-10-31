@@ -151,6 +151,7 @@ public final class WebServerService extends Service {
                             .put("wakeSensitivity", AppSettings.wakeSensitivity(context))
                             .put("wakeFilter", AppSettings.wakeFilter(context))
                             .put("wakeAmplify", AppSettings.wakeAmplify(context))
+                            .put("voiceTuning", VoiceTuning.load(context).json())
                             .put("wakeRms", WakeWordController.get(context).rms())
                             .put("wakePeak", WakeWordController.get(context).peak())
                             .put("dnsEnabled", AppSettings.dnsEnabled(context))
@@ -420,6 +421,22 @@ public final class WebServerService extends Service {
                         AppLog.add("API: ключ удалён через веб-интерфейс");
                     } else return json(Response.Status.BAD_REQUEST, "Неизвестное действие");
                     return json(Response.Status.OK, "Сохранено");
+                }
+                if (session.getMethod() == Method.POST && "/api/voice-config".equals(path)) {
+                    if (!WebSecurity.permittedWrite(host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station")))
+                        return json(Response.Status.FORBIDDEN, "Запрос отклонён");
+                    String lengthHeader = session.getHeaders().get("content-length");
+                    long length = lengthHeader == null ? -1 : Long.parseLong(lengthHeader);
+                    if (length < 1 || length > 4096 || session.getHeaders().containsKey("transfer-encoding"))
+                        return json(Response.Status.BAD_REQUEST, "Недопустимый размер запроса");
+                    Map<String, String> files = new HashMap<>(); session.parseBody(files);
+                    VoiceTuning tuning;
+                    try { tuning = VoiceTuning.parse(new JSONObject(files.get("postData"))); }
+                    catch (Exception e) { return json(Response.Status.BAD_REQUEST, "Проверьте параметры распознавания и их границы"); }
+                    if (!tuning.save(context)) return json(Response.Status.INTERNAL_ERROR, "Не удалось сохранить настройки распознавания");
+                    WakeWordController.get(context).settingsChanged();
+                    AppLog.add("Распознавание: настройки сохранены через веб-интерфейс");
+                    return json(Response.Status.OK, "Настройки распознавания сохранены");
                 }
                 if (session.getMethod() == Method.POST && ("/api/network".equals(path) || "/api/prompt".equals(path))) {
                     if (!WebSecurity.permittedWrite(host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station")))

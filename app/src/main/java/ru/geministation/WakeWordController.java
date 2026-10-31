@@ -65,9 +65,10 @@ final class WakeWordController {
         }
         String sensitivity = AppSettings.wakeSensitivity(context);
         boolean filter = AppSettings.wakeFilter(context), amplify = AppSettings.wakeAmplify(context);
+        VoiceTuning tuning = VoiceTuning.load(context);
         WakeCapture current = capture;
         if (current != null) {
-            if (current.isAlive() && current.sameSettings(sensitivity, filter, amplify)) return;
+            if (current.isAlive() && current.sameSettings(sensitivity, filter, amplify, tuning)) return;
             if (!stopCapture()) { status = "Не удалось освободить микрофон"; return; }
         }
         status = "Подготавливаем локальную модель";
@@ -117,7 +118,7 @@ final class WakeWordController {
                         }
                     });
                 }
-            }, sensitivity, filter, amplify);
+            }, sensitivity, filter, amplify, tuning);
             capture = next; rms = -1; peak = -1;
             next.start(model);
             if (!wanted()) { reconcile(); return; }

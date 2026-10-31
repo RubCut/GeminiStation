@@ -19,6 +19,7 @@ import org.json.JSONObject;
 final class LiveTranscriber {
     interface Listener {
         void onReady();
+        void onConnected();
         void onPartial(String value);
         void onFinal(String value);
         void onError(String message, boolean rateLimited, boolean retrySafe);
@@ -28,11 +29,15 @@ final class LiveTranscriber {
     private final GeminiClient client;
     private final String key;
     private final Listener listener;
+    private final VoiceTuning tuning;
     private final Handler main = new Handler(Looper.getMainLooper());
     private final Object lock = new Object();
+    private static final int MAX_PENDING_BYTES = 16000 * 2 * 10;
+    private final AudioStreamBuffer pendingAudio = new AudioStreamBuffer(MAX_PENDING_BYTES);
     private final AtomicBoolean stopped = new AtomicBoolean();
     private final AtomicBoolean ending = new AtomicBoolean();
     private final AtomicBoolean captureStarted = new AtomicBoolean();
+    private final AtomicBoolean setupReady = new AtomicBoolean(), captureAllowed = new AtomicBoolean();
     private final AtomicBoolean binaryFrameLogged = new AtomicBoolean();
     private final TranscriptAccumulator transcript = new TranscriptAccumulator();
     private volatile long lastSignalAt;
@@ -41,8 +46,8 @@ final class LiveTranscriber {
     private AudioRecord recording;
     private long started;
 
-    LiveTranscriber(GeminiClient client, String key, Listener listener) {
-        this.client = client; this.key = key; this.listener = listener;
+    LiveTranscriber(GeminiClient client, String key, VoiceTuning tuning, Listener listener) {
+        this.client = client; this.key = key; this.tuning = tuning; this.listener = listener;
     }
     void start() {
         started = SystemClock.elapsedRealtime();
@@ -76,9 +81,12 @@ final class LiveTranscriber {
                         fail("Gemini Live отклонил запрос" + (limited ? " (429)" : (code == 0 ? "" : " (" + code + ")")), "API error " + code, limited);
                         return;
                     }
-                    if (data.has("setupComplete") && captureStarted.compareAndSet(false, true)) {
+                    if (data.has("setupComplete") && setupReady.compareAndSet(false, true)) {
                         AppLog.add("Live STT: сессия готова за " + (SystemClock.elapsedRealtime() - started) + " мс");
-                        new Thread(() -> capture(webSocket), "GeminiMicrophone").start();
+                        int buffered = pendingAudio.connect(audioSink(webSocket));
+                        if (buffered > 0) AppLog.add("Live STT: отправлен буфер до подключения " + buffered / 32 + " мс");
+                        main.post(() -> { if (!stopped.get()) listener.onConnected(); });
+                        maybeStartCapture();
                     }
                     JSONObject content = data.optJSONObject("serverContent");
                     if (content == null) return;
@@ -88,7 +96,7 @@ final class LiveTranscriber {
                         if (!value.trim().isEmpty()) {
                             String display = transcript.partial(value);
                             main.post(() -> {
-                                if (!stopped.get()) { listener.onPartial(display); scheduleTranscriptCompletion(1800); }
+                                if (!stopped.get()) { listener.onPartial(display); scheduleTranscriptCompletion(tuning.interimMs); }
                             });
                         }
                     }
@@ -98,7 +106,7 @@ final class LiveTranscriber {
                         if (!value.isEmpty()) {
                             String display = transcript.addFinal(value);
                             main.post(() -> {
-                                if (!stopped.get()) { listener.onPartial(display); scheduleTranscriptCompletion(800); }
+                                if (!stopped.get()) { listener.onPartial(display); scheduleTranscriptCompletion(tuning.finalMs); }
                             });
                         }
                     }
@@ -118,6 +126,14 @@ final class LiveTranscriber {
                 fail("Gemini Live закрыл соединение (" + code + ")", "WebSocket code " + code, RateLimitSignals.closeReason(reason));
             }
         }); } catch (IOException e) { fail("Не удалось подключить Gemini Live. Проверьте настройки DNS", e.getClass().getSimpleName()); }
+    }
+    /** Connection may be prepared during the cue, but the microphone is never opened before it ends. */
+    void allowCapture() { captureAllowed.set(true); maybeStartCapture(); }
+    private void maybeStartCapture() {
+        WebSocket current = socket;
+        if (!stopped.get() && !ending.get() && (tuning.earlyCapture || setupReady.get()) && captureAllowed.get() && current != null
+                && captureStarted.compareAndSet(false, true))
+            new Thread(() -> capture(current), "GeminiMicrophone").start();
     }
     private AudioRecord createRecorder(int source, int size) {
         try {
@@ -180,13 +196,20 @@ final class LiveTranscriber {
                     AppLog.add("Live STT: уровень микрофона RMS=" + rms + " пик=" + peak + " (0–32768)");
                     peak = 0; samples = 0; sumSquares = 0; lastLevel = now;
                 }
-                JSONObject audio = new JSONObject().put("mimeType", "audio/pcm;rate=16000")
-                        .put("data", Base64.encodeToString(Arrays.copyOf(buffer, count), Base64.NO_WRAP));
-                if (webSocket.queueSize() > 512 * 1024 || !webSocket.send(new JSONObject().put("realtimeInput", new JSONObject().put("audio", audio)).toString()))
-                    throw new IOException("WebSocket audio queue unavailable");
+                byte[] chunk = Arrays.copyOf(buffer, count);
+                if (ending.get() || stopped.get()) break;
+                if (!pendingAudio.write(chunk, audioSink(webSocket))) {
+                    if (ending.get() || stopped.get()) break;
+                    throw new IOException("Gemini Live не подключился: буфер аудио 10 с заполнен");
+                }
             }
         } catch (Exception e) {
-            if (!stopped.get() && !ending.get()) fail("Не удалось получить звук с микрофона", e.getClass().getSimpleName());
+            if (!stopped.get() && !ending.get()) {
+                String detail = e.getMessage();
+                boolean bufferFull = detail != null && detail.contains("буфер аудио");
+                fail(bufferFull ? "Gemini Live не подключился вовремя" : "Не удалось получить звук с микрофона",
+                        e.getClass().getSimpleName() + (bufferFull ? ": " + detail : ""));
+            }
         } finally {
             synchronized (lock) {
                 if (recorder != null) {
@@ -197,6 +220,20 @@ final class LiveTranscriber {
             }
             AppLog.add("Live STT: запись микрофона остановлена");
         }
+    }
+    private static AudioStreamBuffer.Sink audioSink(WebSocket webSocket) {
+        return new AudioStreamBuffer.Sink() {
+            public void audio(byte[] chunk) throws Exception {
+                JSONObject audio = new JSONObject().put("mimeType", "audio/pcm;rate=16000")
+                        .put("data", Base64.encodeToString(chunk, Base64.NO_WRAP));
+                if (webSocket.queueSize() > 512 * 1024 || !webSocket.send(new JSONObject().put("realtimeInput", new JSONObject().put("audio", audio)).toString()))
+                    throw new IOException("WebSocket audio queue unavailable");
+            }
+            public void end() throws Exception {
+                if (!webSocket.send(new JSONObject().put("realtimeInput", new JSONObject().put("audioStreamEnd", true)).toString()))
+                    throw new IOException("WebSocket unavailable");
+            }
+        };
     }
     private void scheduleTranscriptCompletion(long delay) {
         if (transcriptTimer != null) main.removeCallbacks(transcriptTimer);
@@ -235,8 +272,8 @@ final class LiveTranscriber {
         stopRecording();
         try {
             WebSocket current = socket;
-            if (current == null || !current.send(new JSONObject().put("realtimeInput", new JSONObject().put("audioStreamEnd", true)).toString()))
-                fail("Не удалось завершить аудиопоток Gemini", "WebSocket unavailable");
+            if (current == null) fail("Не удалось завершить аудиопоток Gemini", "WebSocket unavailable");
+            else pendingAudio.finish(audioSink(current)); // Setup callback drains before end if still connecting.
         } catch (Exception e) { fail("Не удалось завершить аудиопоток Gemini", e.getClass().getSimpleName()); }
     }
     void cancel() {
@@ -260,6 +297,7 @@ final class LiveTranscriber {
         }
     }
     private void releaseResources() {
+        pendingAudio.cancel();
         stopRecording();
         WebSocket current = socket;
         if (current != null) current.cancel();

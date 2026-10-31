@@ -60,7 +60,8 @@ public final class MainActivity extends Activity {
     private Runnable recognitionTimeout;
     private long recognitionStarted;
     private int recognitionAttempt, partialCount, handoffGeneration;
-    private boolean waitingForFinal, heardSpeech, listening;
+    private boolean waitingForFinal, heardSpeech, listening, cueComplete, micReady, liveConnected;
+    private VoiceTuning voiceTuning;
     private volatile boolean destroyed, resumed;
     private boolean initialStartPending = true, permissionPending, micHandoffReady;
 
@@ -111,15 +112,25 @@ public final class MainActivity extends Activity {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.HORIZONTAL);
         root.setGravity(Gravity.BOTTOM | Gravity.START);
-        root.setPadding(dp(24), dp(8), dp(24), dp(24));
+        // Expand the bubble around the existing logo position rather than moving it.
+        root.setPadding(dp(16), dp(0), dp(16), dp(16));
         root.setBackgroundColor(Color.TRANSPARENT);
         root.setFocusableInTouchMode(true);
+        LinearLayout bubble = new LinearLayout(this);
+        bubble.setOrientation(LinearLayout.HORIZONTAL);
+        bubble.setGravity(Gravity.BOTTOM | Gravity.START);
+        bubble.setPadding(dp(8), dp(8), dp(8), dp(8));
+        GradientDrawable background = new GradientDrawable();
+        background.setColor(0xd91b1926);
+        background.setCornerRadius(dp(20));
+        bubble.setBackground(background);
+        root.addView(bubble, new LinearLayout.LayoutParams(-2, -2));
         logo = new ImageView(this);
         logo.setImageResource(ru.geministation.R.drawable.gemini_star);
         logo.setContentDescription("Gemini");
         LinearLayout.LayoutParams logoParams = new LinearLayout.LayoutParams(dp(32), dp(32));
         logoParams.gravity = Gravity.BOTTOM;
-        root.addView(logo, logoParams);
+        bubble.addView(logo, logoParams);
         text = new TextView(this);
         text.setTextColor(Color.WHITE);
         text.setTextSize(16);
@@ -128,14 +139,10 @@ public final class MainActivity extends Activity {
         text.setMaxWidth(dp(420));
         text.setMaxLines(4);
         text.setEllipsize(TextUtils.TruncateAt.END);
-        GradientDrawable background = new GradientDrawable();
-        background.setColor(0xd91b1926);
-        background.setCornerRadius(dp(12));
-        text.setBackground(background);
         LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(-2, -2);
         textParams.gravity = Gravity.BOTTOM;
         textParams.setMarginStart(dp(10));
-        root.addView(text, textParams);
+        bubble.addView(text, textParams);
         setContentView(root);
         getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
@@ -409,9 +416,7 @@ public final class MainActivity extends Activity {
         }
         if (!flow.followUp()) return;
         AppLog.add("Диалог: ожидание ответа пользователя");
-        soundCuePlayer.play(R.raw.waiting_for_answer, "ожидание ответа", () -> {
-            if (!destroyed && resumed && flow.phase() == ConversationFlow.Phase.FOLLOW_UP) startListening(true);
-        });
+        startListening(true, R.raw.waiting_for_answer, "ожидание ответа");
     }
     private void startInitial() {
         if (!resumed || destroyed || !micHandoffReady || permissionPending || flow.phase() != ConversationFlow.Phase.NEW) return;
@@ -423,15 +428,18 @@ public final class MainActivity extends Activity {
         }
         initialStartPending = false;
         backgroundAudioFocus.acquire();
-        // Confirmation of activation, not an indication that Gemini Live is ready yet.
-        // Play before opening Live's microphone so the cue isn't sent for transcription.
-        soundCuePlayer.play(R.raw.assistant_start, "активация", () -> {
-            if (!resumed || destroyed || flow.phase() != ConversationFlow.Phase.NEW) return;
-            try {
-                if (keyVault.keys().isEmpty()) { showErrorAndClose("Добавьте API-ключ в веб-интерфейсе на порту 6529."); return; }
-            } catch (Exception e) { showErrorAndClose("Не удалось прочитать API-ключ. Проверьте веб-настройки."); return; }
-            if (flow.initialListening()) startListening(false);
-        });
+        String keyError = null;
+        try {
+            if (keyVault.keys().isEmpty()) keyError = "Добавьте API-ключ в веб-интерфейсе на порту 6529.";
+        } catch (Exception e) { keyError = "Не удалось прочитать API-ключ. Проверьте веб-настройки."; }
+        if (keyError != null) {
+            final String message = keyError;
+            soundCuePlayer.play(R.raw.assistant_start, "активация", () -> {
+                if (resumed && !destroyed) showErrorAndClose(message);
+            });
+            return;
+        }
+        if (flow.initialListening()) startListening(false, R.raw.assistant_start, "активация");
     }
     private long recognitionElapsed() { return SystemClock.elapsedRealtime() - recognitionStarted; }
     private void clearRecognitionTimeout() {
@@ -478,20 +486,22 @@ public final class MainActivity extends Activity {
         handler.postDelayed(recognitionTimeout, FINAL_RESULT_TIMEOUT_MS);
     }
     private void finishVoiceInput() {
-        if (!listening || waitingForFinal) return;
+        if (!listening || waitingForFinal || !cueComplete) return;
         if (liveTranscriber == null) return;
         waitingForFinal = true;
         AppLog.add("Речь #" + recognitionAttempt + ": ручное завершение через " + recognitionElapsed() + " мс");
         scheduleFinalTimeout(recognitionAttempt);
         liveTranscriber.finishInput();
     }
-    private void startListening(final boolean followUp) {
+    private void startListening(final boolean followUp, int cue, String cueLabel) {
         if (destroyed || !resumed || listening) return;
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) { showErrorAndClose("Нет доступа к микрофону."); return; }
         promptContext.refresh();
         final int attempt = ++recognitionAttempt;
         recognitionStarted = SystemClock.elapsedRealtime(); partialCount = 0; heardSpeech = false;
         listeningPolicy.reset();
+        voiceTuning = VoiceTuning.load(this);
+        cueComplete = false;
         // Keep the answer on screen during follow-up silence; replace it as soon as speech begins.
         animatePulse(false); led.show("listening");
         if (!followUp) showText("Подключаюсь…");
@@ -500,18 +510,34 @@ public final class MainActivity extends Activity {
         catch (Exception e) { showErrorAndClose("Не удалось прочитать API-ключи."); return; }
         if (keys.isEmpty()) { showErrorAndClose("Добавьте API-ключ в веб-интерфейсе на порту 6529."); return; }
         startLiveRecognition(attempt, followUp, keys);
+        // The connection can start in parallel, but audio is captured only after the cue.
+        soundCuePlayer.play(cue, cueLabel, () -> {
+            if (!listening || attempt != recognitionAttempt || destroyed || !resumed) return;
+            cueComplete = true;
+            if (liveTranscriber != null) {
+                if (!voiceTuning.preconnect) liveTranscriber.start();
+                liveTranscriber.allowCapture();
+            }
+        });
     }
     private void startLiveRecognition(final int attempt, final boolean followUp, final KeyRotation.Attempt keys) {
         final String key = keys.key();
-        listening = true; waitingForFinal = false;
+        listening = true; waitingForFinal = false; micReady = false; liveConnected = false;
         AppLog.add("Речь #" + attempt + ": режим Gemini Live" + (followUp ? "; продолжение" : "; первый запрос"));
-        liveTranscriber = new LiveTranscriber(client, key, new LiveTranscriber.Listener() {
+        liveTranscriber = new LiveTranscriber(client, key, voiceTuning, new LiveTranscriber.Listener() {
             private boolean active() { return listening && recognitionAttempt == attempt; }
             public void onReady() {
                 if (!active()) return;
                 AppLog.add("Речь #" + attempt + ": прямой микрофон готов через " + recognitionElapsed() + " мс");
-                if (!followUp) showText("Слушаю…");
-                if (!heardSpeech && !waitingForFinal) scheduleNoSpeechTimeout(attempt, ListeningPolicy.NO_SPEECH_MS);
+                micReady = true;
+                if (!followUp) showText(liveConnected ? "Слушаю…" : "Слушаю… Подключаюсь к Gemini");
+                if (liveConnected && !heardSpeech && !waitingForFinal) scheduleNoSpeechTimeout(attempt, voiceTuning.silenceMs);
+            }
+            public void onConnected() {
+                if (!active()) return;
+                liveConnected = true;
+                if (!waitingForFinal) clearRecognitionTimeout();
+                if (micReady && !heardSpeech && !waitingForFinal) scheduleNoSpeechTimeout(attempt, voiceTuning.silenceMs);
             }
             public void onPartial(String value) {
                 if (!active()) return;
@@ -554,7 +580,8 @@ public final class MainActivity extends Activity {
             showErrorAndClose("Не удалось подключить Gemini Live. Проверьте сеть и логи.");
         };
         handler.postDelayed(recognitionTimeout, 20000);
-        liveTranscriber.start();
+        if (voiceTuning.preconnect || cueComplete) liveTranscriber.start();
+        if (cueComplete) liveTranscriber.allowCapture();
     }
     @Override public void onRequestPermissionsResult(int request, String[] permissions, int[] results) {
         super.onRequestPermissionsResult(request, permissions, results);

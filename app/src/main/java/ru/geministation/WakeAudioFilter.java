@@ -52,12 +52,17 @@ final class WakeAudioFilter {
     }
     /** Mandatory recent-signal guard, even when the optional stricter filter is disabled. */
     boolean candidateAllowed(boolean strict) {
-        return recentTotal >= RATE / 5 && recentVoiced >= (strict ? RATE * 3 / 10 : RATE / 5)
-                && sinceActive <= RATE * 3 / 10;
+        return candidateAllowed(strict, 300, 300);
+    }
+    boolean candidateAllowed(boolean strict, int minMs, int recentMs) {
+        int requiredMs = strict ? minMs : 100;
+        return recentTotal >= RATE * requiredMs / 1000 && recentVoiced >= RATE * requiredMs / 1000
+                && sinceActive <= RATE * recentMs / 1000;
     }
     boolean speechLike() { return candidateAllowed(false); }
     /** Reset the decoder periodically in silence so stale KWS hypotheses do not accumulate. */
-    boolean resetForSilence() { return sinceReset >= RATE * 4 / 5; }
+    boolean resetForSilence() { return resetForSilence(800); }
+    boolean resetForSilence(int milliseconds) { return sinceReset >= RATE * milliseconds / 1000; }
     int rms() { return lastRms; }
     int floor() { return (int) Math.round(noiseFloor); }
     int gainPercent() { return (int) Math.round(gain * 100); }

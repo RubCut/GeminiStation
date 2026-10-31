@@ -64,7 +64,8 @@ public class WakeAudioFilterTest {
         WakeAudioFilter filter = new WakeAudioFilter();
         for (int i = 0; i < 10; i++) filter.process(new short[1600], 1600, false);
         filter.process(sine(300), 1600, false);
-        assertFalse(filter.candidateAllowed(false));
+        assertTrue(filter.candidateAllowed(false)); // relaxed mode keeps a 100 ms signal guard
+        assertFalse(filter.candidateAllowed(true));
         filter.process(sine(300), 1600, false);
         assertTrue(filter.candidateAllowed(false));
         assertFalse(filter.candidateAllowed(true));
@@ -93,5 +94,18 @@ public class WakeAudioFilterTest {
         assertTrue(filter.candidateAllowed(false));
         for (int i = 0; i < 7; i++) filter.process(new short[800], 800, false);
         assertFalse(filter.candidateAllowed(false));
+    }
+    @Test public void wakeTuningControlsDurationRecencyAndReset() {
+        WakeAudioFilter filter = new WakeAudioFilter();
+        for (int i = 0; i < 10; i++) filter.process(new short[1600], 1600, false);
+        for (int i = 0; i < 2; i++) filter.process(sine(300), 1600, false);
+        assertTrue(filter.candidateAllowed(true, 200, 400));
+        assertFalse(filter.candidateAllowed(true, 300, 400));
+        for (int i = 0; i < 4; i++) filter.process(new short[1600], 1600, false);
+        assertTrue(filter.candidateAllowed(true, 200, 400));
+        assertFalse(filter.candidateAllowed(true, 200, 300));
+        assertFalse(filter.resetForSilence(1200));
+        for (int i = 0; i < 8; i++) filter.process(new short[1600], 1600, false);
+        assertTrue(filter.resetForSilence(1200));
     }
 }

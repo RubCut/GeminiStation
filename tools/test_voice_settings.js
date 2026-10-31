@@ -16,6 +16,7 @@ for (const [, id] of markup.matchAll(/(?:href|for|aria-describedby|aria-labelled
 assert.match(markup, /<input type="range" id="wakeSensitivity" min="1" max="100" step="1"/);
 assert.match(markup, /<input type="number" id="sensitivityNumber" min="1" max="100" step="1"/);
 const saved = {model:'gemini-3.5-flash-lite', voice:'Kore', voices:['Kore','Puck','Aoede'], logs:[], buttonEnabled:false, audioDuckEnabled:true, buttonServiceConnected:false, wakeEnabled:false, wakeFilter:true, wakeAmplify:true, engine:'gemini', engines:[{id:'gemini',name:'Gemini TTS'},{id:'org.example.tts',name:'Пример TTS'}], wakeStatus:"Выключена", wakeSensitivity:"normal", wakeRms:-1, wakePeak:-1, dnsEnabled:true, dnsBypassVpn:true, dnsServer:"https://d.webshiftvpn.ru/dns-query", vpnActive:false, systemPrompt:"Старый промпт", defaultSystemPrompt:"Исходный промпт", apiKeys:[{id:"11111111-1111-4111-8111-111111111111"}]};
+saved.voiceTuning={wakeMinMs:200,wakeRecentMs:400,wakeResetMs:1200,silenceMs:5000,finalMs:800,interimMs:1800,preconnect:true,earlyCapture:true};
 const writes = [], samples = [], helperRequests = [], ttsSamples = [];
 let sampleError = false, blockPlayback = false, revoked = [];
 let copyAllowed=true, copied='', clipboardAllowed=false, pendingLogFetch=null;
@@ -42,6 +43,7 @@ function page() {
       if(path==='/api/config') {const body=JSON.parse(options.body); writes.push(body); saved.model=body.model; saved.voice=body.voice; saved.buttonEnabled=body.buttonEnabled; saved.audioDuckEnabled=body.audioDuckEnabled; saved.wakeEnabled=body.wakeEnabled; saved.wakeSensitivity=body.wakeSensitivity; saved.wakeFilter=body.wakeFilter; saved.wakeAmplify=body.wakeAmplify;}
       if(path==='/api/tts' && options.method==='POST') {const body=JSON.parse(options.body); saved.engine=body.engine;return {ok:true,json:async()=>({message:'Источник сохранён'})};}
       if(path==='/api/tts/sample') {ttsSamples.push(JSON.parse(options.body));return {ok:true,json:async()=>({message:'Образец на станции'})};}
+      if(path==='/api/voice-config') {const body=JSON.parse(options.body); writes.push({tuning:body}); saved.voiceTuning={...body};}
       if(path==='/api/network') {const body=JSON.parse(options.body); writes.push({network:body}); saved.dnsEnabled=body.enabled; saved.dnsBypassVpn=body.bypassVpn; saved.dnsServer=body.server;}
       if(path==='/api/prompt') {const body=JSON.parse(options.body); writes.push({prompt:body}); saved.systemPrompt=body.reset?saved.defaultSystemPrompt:body.prompt;}
       if(path==='/api/keys') {
@@ -65,6 +67,23 @@ function page() {
 }
 (async()=>{
   let p=page(); await vm.runInContext('refresh()',p.context);
+  p.element('nav-editor').handlers.click({preventDefault(){}});
+  assert.equal(p.element('editor').hidden,false);assert.equal(p.element('assistant').hidden,true);
+  p.element('systemPrompt').value='Несохранённый текст';p.element('systemPrompt').handlers.input();
+  p.element('nav-activation').handlers.click({preventDefault(){}});
+  assert.equal(p.element('editor').hidden,true);assert.equal(p.element('activation').hidden,false);
+  p.element('wakeMinMs').value='300';p.element('wakeMinMs').handlers.input();
+  await vm.runInContext('refresh()',p.context);
+  assert.equal(p.element('wakeMinMs').value,'300','poll must preserve unsaved tuning');
+  await p.element('saveVoiceTuning').handlers.click();
+  assert.equal(saved.voiceTuning.wakeMinMs,300);
+  p.element('wakeMinMs').value='not a number';
+  await p.element('resetVoiceTuning').handlers.click();
+  assert.equal(saved.voiceTuning.wakeMinMs,200,'reset must work even with invalid input');
+  p.element('nav-editor').handlers.click({preventDefault(){}});
+  assert.equal(p.element('systemPrompt').value,'Несохранённый текст','tab switch must preserve editor');
+  p.element('systemPrompt').value='Старый промпт';p.element('systemPrompt').handlers.input();
+
   await vm.runInContext('refreshTtsEngines()',p.context);
   assert.equal(p.element('ttsEngine').value,'gemini');
   assert.equal(p.element('sampleTtsEngine').disabled,true);
