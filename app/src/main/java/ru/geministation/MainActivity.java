@@ -54,7 +54,8 @@ public final class MainActivity extends Activity {
     private ApiKeyVault keyVault;
     private LiveTranscriber liveTranscriber;
     private TextView text;
-    private ImageView logo;
+    private ImageView logo, mediaIcon;
+    private boolean closeAfterResponse;
     private ObjectAnimator spin, pulse;
     private LedController led;
     private Runnable recognitionTimeout;
@@ -104,6 +105,7 @@ public final class MainActivity extends Activity {
         else if (flow.phase() == ConversationFlow.Phase.SPEAKING) {
             stopSpeaking();
             pendingNavigation = null;
+            closeAfterResponse = false; // A new explicit invocation overrides the prior model decision.
             beginFollowUp();
         }
     }
@@ -143,6 +145,12 @@ public final class MainActivity extends Activity {
         textParams.gravity = Gravity.BOTTOM;
         textParams.setMarginStart(dp(10));
         bubble.addView(text, textParams);
+        mediaIcon = new ImageView(this);
+        mediaIcon.setVisibility(View.GONE);
+        LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(dp(40), dp(40));
+        iconParams.gravity = Gravity.BOTTOM;
+        iconParams.setMarginStart(dp(14));
+        bubble.addView(mediaIcon, iconParams);
         setContentView(root);
         getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
@@ -154,7 +162,26 @@ public final class MainActivity extends Activity {
         root.requestFocus();
         showText("Подключаюсь…");
     }
-    private void showText(String value) { text.setText(value); }
+    private void showText(String value) {
+        mediaIcon.setVisibility(View.GONE); text.setVisibility(View.VISIBLE); text.setText(value);
+    }
+    private void showMediaIcon(MediaCommands.Command command) {
+        int drawable;
+        switch (command) {
+            case PLAY: drawable = R.drawable.media_play; break;
+            case PAUSE: drawable = R.drawable.media_pause; break;
+            case STOP: drawable = R.drawable.media_stop; break;
+            case NEXT: drawable = R.drawable.media_next; break;
+            case PREVIOUS: drawable = R.drawable.media_previous; break;
+            case FAST_FORWARD: drawable = R.drawable.media_fast_forward; break;
+            case REWIND: drawable = R.drawable.media_rewind; break;
+            default: throw new IllegalArgumentException("Unknown media command");
+        }
+        stopSpinner(); text.setVisibility(View.GONE);
+        mediaIcon.setImageResource(drawable);
+        mediaIcon.setContentDescription("Команда отправлена: " + command.description + "; выполнение плеером не подтверждено");
+        mediaIcon.setVisibility(View.VISIBLE);
+    }
     private void animatePulse(boolean speaking) {
         stopSpinner();
         if (pulse != null) pulse.cancel();
@@ -299,6 +326,8 @@ public final class MainActivity extends Activity {
                 runOnUiThread(() -> {
                     if (destroyed || !resumed || !flow.answered()) return;
                     String response = result.text;
+                    boolean mediaDispatched = false;
+                    closeAfterResponse = result.finishDialog;
                     if (result.call != null) {
                         if (remoteText != null) {
                             response = remoteText;
@@ -306,6 +335,7 @@ public final class MainActivity extends Activity {
                         } else {
                             DeviceActions.Outcome outcome = deviceActions.prepare(chosen, apps);
                             response = outcome.text;
+                            mediaDispatched = outcome.mediaDispatched;
                             if (videoSearch && outcome.navigation != null)
                                 response = nativeVideoSearch ? "Ищу и открываю видео в SmartTube." :
                                         (videoFound ? "Открываю найденное видео." : "Открываю результаты поиска YouTube.");
@@ -316,6 +346,11 @@ public final class MainActivity extends Activity {
                         history.put(turn("user", question)); history.put(turn("model", response));
                         while (history.length() > 20) { history.remove(0); history.remove(0); }
                     } catch (Exception ignored) { }
+                    AppLog.add("Диалог: решение после ответа — " + (closeAfterResponse ? "завершить" : "продолжить"));
+                    if (mediaDispatched && chosen != null && chosen.kind == DeviceToolSpec.Kind.MEDIA_CONTROL) {
+                        MediaCommands.Command command = MediaCommands.parse(chosen.data);
+                        if (command != null) { mediaAcknowledgement(command); return; }
+                    }
                     // Keep the thinking animation until audio actually starts.
                     showText(response);
                     AppLog.add("Диалог: текст ответа получен через " + (SystemClock.elapsedRealtime() - answerStarted) + " мс; начинаем синтез");
@@ -337,6 +372,19 @@ public final class MainActivity extends Activity {
         voicePlayer.stop();
         if (androidTts != null) androidTts.stop();
         if (client != null) client.cancelSpeech();
+        if (soundCuePlayer != null) soundCuePlayer.cancel();
+    }
+    private void mediaAcknowledgement(MediaCommands.Command command) {
+        final int generation = speechGeneration.incrementAndGet();
+        showMediaIcon(command);
+        animatePulse(true); led.show("speaking");
+        AppLog.add("Медиа: команда отправлена; показываем иконку и воспроизводим сигнал без TTS");
+        soundCuePlayer.play(R.raw.waiting_for_answer, "подтверждение медиакоманды", () -> {
+            if (destroyed || !resumed || speechGeneration.get() != generation || flow.phase() != ConversationFlow.Phase.SPEAKING) return;
+            backgroundAudioFocus.release();
+            // Reuse the confirmation as the follow-up cue, so it is not played twice.
+            handler.postDelayed(() -> { if (!destroyed && resumed && speechGeneration.get() == generation) beginFollowUp(true); }, 350);
+        });
     }
     private void onPlaybackStarted(int generation) {
         runOnUiThread(() -> {
@@ -405,7 +453,8 @@ public final class MainActivity extends Activity {
             handler.postDelayed(() -> { if (!destroyed && resumed && speechGeneration.get() == generation) beginFollowUp(); }, 2000);
         });
     }
-    private void beginFollowUp() {
+    private void beginFollowUp() { beginFollowUp(false); }
+    private void beginFollowUp(boolean cueAlreadyPlayed) {
         backgroundAudioFocus.release();
         if (pendingNavigation != null) {
             DeviceActions.Navigation navigation = pendingNavigation;
@@ -414,9 +463,13 @@ public final class MainActivity extends Activity {
             else { flow.finish(); finish(); }
             return;
         }
+        if (closeAfterResponse) {
+            AppLog.add("Диалог: завершён по решению модели после ответа");
+            flow.finish(); stopPulse(); led.show(null); finish(); return;
+        }
         if (!flow.followUp()) return;
         AppLog.add("Диалог: ожидание ответа пользователя");
-        startListening(true, R.raw.waiting_for_answer, "ожидание ответа");
+        startListening(true, cueAlreadyPlayed ? 0 : R.raw.waiting_for_answer, "ожидание ответа");
     }
     private void startInitial() {
         if (!resumed || destroyed || !micHandoffReady || permissionPending || flow.phase() != ConversationFlow.Phase.NEW) return;
@@ -511,14 +564,15 @@ public final class MainActivity extends Activity {
         if (keys.isEmpty()) { showErrorAndClose("Добавьте API-ключ в веб-интерфейсе на порту 6529."); return; }
         startLiveRecognition(attempt, followUp, keys);
         // The connection can start in parallel, but audio is captured only after the cue.
-        soundCuePlayer.play(cue, cueLabel, () -> {
+        Runnable afterCue = () -> {
             if (!listening || attempt != recognitionAttempt || destroyed || !resumed) return;
             cueComplete = true;
             if (liveTranscriber != null) {
                 if (!voiceTuning.preconnect) liveTranscriber.start();
                 liveTranscriber.allowCapture();
             }
-        });
+        };
+        if (cue == 0) afterCue.run(); else soundCuePlayer.play(cue, cueLabel, afterCue);
     }
     private void startLiveRecognition(final int attempt, final boolean followUp, final KeyRotation.Attempt keys) {
         final String key = keys.key();

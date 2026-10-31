@@ -22,7 +22,7 @@ final class MicroWakeDetector implements AutoCloseable {
     private MicroFrontend frontend;
     private Interpreter interpreter;
     private int frames, historyCount, historyNext;
-    private float probabilitySum;
+    private float probabilitySum, lastAverage, intervalPeak;
     private long samplesProcessed, processingNs, maxChunkNs;
 
     MicroWakeDetector(Context context, String sensitivity) throws IOException {
@@ -72,13 +72,22 @@ final class MicroWakeDetector implements AutoCloseable {
                 float score = ((output.get() & 0xff) - outputZero) * outputScale;
                 if (historyCount == AVERAGE) probabilitySum -= probabilities[historyNext]; else historyCount++;
                 probabilities[historyNext] = score; probabilitySum += score; historyNext = (historyNext + 1) % AVERAGE;
-                if (historyCount == AVERAGE && probabilitySum / AVERAGE >= threshold) hit = true;
+                if (historyCount == AVERAGE) {
+                    lastAverage = probabilitySum / AVERAGE;
+                    intervalPeak = Math.max(intervalPeak, lastAverage);
+                    if (lastAverage >= threshold) hit = true;
+                }
                 frames = 0; input.clear();
             }
         }
         long elapsed = System.nanoTime() - started;
         processingNs += elapsed; maxChunkNs = Math.max(maxChunkNs, elapsed); samplesProcessed += count;
         return hit;
+    }
+    String diagnostic() {
+        String value = String.format(java.util.Locale.US, "пик %.3f, порог %.3f; %s", intervalPeak, threshold, timing());
+        intervalPeak = 0;
+        return value;
     }
     String timing() {
         // CPU time for frontend+inference, relative to real audio time; excludes AudioRecord waiting.

@@ -44,6 +44,15 @@ final class DeviceToolSpec {
                         .put("required", new JSONArray().put("id").put("on"))));
         declarations.put(function("yandex_music", "Найти и попытаться включить конкретный трек в Яндекс Музыке по названию и исполнителю. Не применяй для паузы и для плейлистов.",
                 new JSONObject().put("query", new JSONObject().put("type", "STRING")), "query"));
+        // One optional lifecycle decision per action, never another device command.
+        for (int i = 0; i < declarations.length(); i++) {
+            JSONObject item = declarations.getJSONObject(i);
+            JSONObject parameters = item.optJSONObject("parameters");
+            if (parameters == null) { parameters = new JSONObject().put("type", "OBJECT").put("properties", new JSONObject()); item.put("parameters", parameters); }
+            parameters.getJSONObject("properties").put("dialog", new JSONObject().put("type", "STRING")
+                    .put("description", "После ответа: продолжить разговор или завершить его")
+                    .put("enum", new JSONArray().put("continue").put("end")));
+        }
         return declarations;
     }
     private static JSONObject function(String name, String description, JSONObject properties, String required) throws Exception {

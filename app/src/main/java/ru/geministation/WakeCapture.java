@@ -124,8 +124,8 @@ final class WakeCapture {
                     listener.onLevel(this, level.rms(), level.peak());
                     level.reset(); lastLevel = now;
                 }
-                if (micro != null && now - lastTiming >= 60000) {
-                    AppLog.add("microWakeWord: " + micro.timing()); lastTiming = now;
+                if (micro != null && now - lastTiming >= 20000) {
+                    AppLog.add("microWakeWord за последние 20 с: " + micro.diagnostic()); lastTiming = now;
                 }
                 Hypothesis result = decoder == null ? null : decoder.hyp();
                 if (microHit || (result != null && WakeWordResult.matches(result.getHypstr()))) {

@@ -15,7 +15,11 @@ final class DeviceActions {
     static final class Outcome {
         final String text;
         final Navigation navigation;
-        Outcome(String text, Navigation navigation) { this.text = text; this.navigation = navigation; }
+        final boolean mediaDispatched;
+        Outcome(String text, Navigation navigation) { this(text, navigation, false); }
+        Outcome(String text, Navigation navigation, boolean mediaDispatched) {
+            this.text = text; this.navigation = navigation; this.mediaDispatched = mediaDispatched;
+        }
     }
     private final Activity activity;
     DeviceActions(Activity activity) { this.activity = activity; }
@@ -78,7 +82,7 @@ final class DeviceActions {
         }
         // dispatchMediaKeyEvent has no success callback; do not claim the player complied.
         AppLog.add("Медиа: отправлена команда " + command.id + "; ответ плеера недоступен");
-        return new Outcome("Отправлена команда медиаплееру: " + command.description + ".", null);
+        return new Outcome("Отправлена команда медиаплееру: " + command.description + ".", null, true);
     }
     private Outcome volume(DeviceToolSpec.Action action) {
         AudioManager audio = (AudioManager) activity.getSystemService(Activity.AUDIO_SERVICE);

@@ -30,6 +30,20 @@ public class GeminiToolProtocolTest {
         assertTrue(SystemPrompt.valid(""));
         assertFalse(SystemPrompt.valid(new String(new char[8001])));
     }
+    @Test public void textAndToolsCarryOptionalDialogDecisions() throws Exception {
+        JSONObject request = GeminiToolProtocol.request(new JSONArray(), new JSONArray(), "Коротко");
+        String instruction = request.getJSONObject("systemInstruction").getJSONArray("parts").getJSONObject(0).getString("text");
+        assertTrue(instruction.contains("[[DIALOG_END]]"));
+        JSONArray defs = request.getJSONArray("tools").getJSONObject(0).getJSONArray("functionDeclarations");
+        for (int i = 0; i < defs.length(); i++)
+            assertTrue(defs.getJSONObject(i).getJSONObject("parameters").getJSONObject("properties").has("dialog"));
+        GeminiToolProtocol.Result text = GeminiToolProtocol.parse(reply(new JSONArray().put(new JSONObject().put("text", "Пока! [[DIALOG_END]]"))));
+        assertEquals("Пока!", text.text); assertTrue(text.finishDialog);
+        JSONObject call = new JSONObject().put("name", "media_control").put("args", new JSONObject().put("action", "pause").put("dialog", "end"));
+        GeminiToolProtocol.Result tool = GeminiToolProtocol.parse(reply(new JSONArray().put(new JSONObject().put("functionCall", call))));
+        assertTrue(tool.finishDialog);
+        assertEquals(DeviceToolSpec.Kind.MEDIA_CONTROL, DeviceToolSpec.parse(tool.call, 0).kind);
+    }
     @Test public void parsesTextOrOneFunctionAndRejectsMultipleActions() throws Exception {
         assertEquals("Привет", GeminiToolProtocol.parse(reply(new JSONArray().put(new JSONObject().put("text", "Привет")))).text);
         JSONObject call = new JSONObject().put("name", "go_home").put("args", new JSONObject());
