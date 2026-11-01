@@ -120,6 +120,16 @@ public final class WebServerService extends Service {
             String host = session.getHeaders().get("host");
             if (!WebSecurity.permittedHost(host)) return json(Response.Status.FORBIDDEN, "Недопустимый адрес");
             if (session.getMethod() == Method.GET && "/".equals(path)) return reply(Response.Status.OK, "text/html; charset=utf-8", page);
+            // Read-only panel previews expose only fixed, non-sensitive animation assets.
+            String previewAsset = LedPreviewAsset.assetForPath(path);
+            if (session.getMethod() == Method.GET && previewAsset != null) {
+                try {
+                    InputStream gif = context.getAssets().open(previewAsset);
+                    Response response = newFixedLengthResponse(Response.Status.OK, "image/gif", gif, gif.available());
+                    response.addHeader("Cache-Control", "no-store");
+                    return response;
+                } catch (Exception e) { return json(Response.Status.NOT_FOUND, "Нет изображения"); }
+            }
             // Only the station itself may fetch the fixed images.
             if (session.getMethod() == Method.GET && path.matches("/led/(listening|thinking|speaking|clear)\\.gif")) {
                 if (!WebSecurity.stationLoopback(session.getRemoteIpAddress())) return json(Response.Status.FORBIDDEN, "Только локально");

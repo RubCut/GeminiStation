@@ -53,8 +53,10 @@ jobs:
           python-version: '3.11'
       - name: Verify microWakeWord frontend parity
         run: |
-          python3 -m pip install 'numpy<2' pymicro-features==2.0.2
+          python3 -m pip install 'numpy<2' pymicro-features==2.0.2 Pillow==11.3.0
           python3 tools/test_microfrontend.py
+      - name: Check LED animation assets
+        run: python3 tools/test_led_animations.py
       - name: Check wake-word stress coverage
         run: python3 experiments/microwakeword/test_pronunciations.py
       - name: Check supplied sound cues

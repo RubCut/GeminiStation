@@ -123,6 +123,17 @@ function page() {
   assert.equal(saved.audioDuckEnabled,false);
   assert.equal(p.element('duckMessage').textContent,'Настройки сохранены');
 
+  assert.equal(p.element('setupGuide').hidden,true,'setup guide is hidden once a key is saved');
+  const currentKeys=saved.apiKeys;saved.apiKeys=[];await vm.runInContext('refresh()',p.context);
+  assert.equal(p.element('setupGuide').hidden,false,'guide is visible when no key is saved');
+  saved.apiKeys=currentKeys;await vm.runInContext('refresh()',p.context);
+  saved.wakeEnabled=true;saved.wakeStatus='Микрофон запущен (MIC, microwakeword_all_stress)';await vm.runInContext('refresh()',p.context);
+  assert.equal(p.element('wakeStatus').textContent,'Готова к голосовому вызову');
+  assert.equal(p.element('overviewWake').textContent,'Готова');
+  saved.wakeStatus='Ошибка запуска; проверьте журнал';await vm.runInContext('refresh()',p.context);
+  assert.match(p.element('wakeStatus').textContent,/Ошибка запуска/);
+  assert.equal(p.element('overviewWake').textContent,'Проверка');
+  saved.wakeStatus='Выключена';saved.wakeEnabled=false;
   assert.equal(p.element('keyCount').textContent,'Сохранено ключей: 1');
   assert.equal(p.element('dnsEnabled').checked,true);
   assert.equal(p.element('dnsBypassVpn').checked,true);
@@ -205,7 +216,7 @@ function page() {
   assert.equal(p.element('sensitivityNumber').value,'100');
   assert.equal(p.element('wakeSensitivity').style['--progress'],'100%');
   saved.wakeRms=123; saved.wakePeak=456; await vm.runInContext('refresh()',p.context);
-  assert.match(p.element('wakeLevel').textContent,/RMS 123 · пик 456/);
+  assert.equal(p.element('wakeLevel').textContent,'Микрофон работает');
   assert.notEqual(p.element('wakeMeter').style.width,'0%');
   assert.equal(p.element('connectionStatus').textContent,'Станция на связи');
   saved.voice='Aoede'; await vm.runInContext('refresh()',p.context);
