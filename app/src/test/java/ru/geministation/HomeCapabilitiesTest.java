@@ -15,7 +15,7 @@ public class HomeCapabilitiesTest {
             "{\"type\":\"devices.capabilities.range\",\"parameters\":{\"instance\":\"volume\",\"random_access\":false,\"range\":{\"min\":0,\"max\":100}}}," +
             "{\"type\":\"devices.capabilities.mode\",\"parameters\":{\"instance\":\"work_speed\",\"modes\":[{\"value\":\"low\"},{\"value\":\"high\"}]}}," +
             "{\"type\":\"devices.capabilities.color_setting\",\"parameters\":{\"color_model\":\"rgb\",\"temperature_k\":{\"min\":2700,\"max\":6500},\"color_scene\":{\"scenes\":[{\"id\":\"alarm\"}]}}}," +
-            "{\"type\":\"devices.capabilities.video_stream\"}],\"properties\":[{\"type\":\"devices.properties.float\",\"state\":{\"instance\":\"temperature\",\"value\":22.5},\"last_updated\":1710000000}]} ");
+            "{\"type\":\"devices.capabilities.video_stream\"}],\"properties\":[{\"type\":\"devices.properties.float\",\"state\":{\"instance\":\"temperature\",\"value\":22.5},\"parameters\":{\"unit\":\"unit.temperature.celsius\"},\"last_updated\":1710000000}]} ");
     }
     @Test public void advertisesOnlyValidatedCapabilities() throws Exception {
         JSONObject d = device(); List<HomeCapabilities.Capability> caps = HomeCapabilities.parse(d);
@@ -32,6 +32,8 @@ public class HomeCapabilitiesTest {
         assertEquals("alarm", caps.get(6).value("alarm")); assertNull(caps.get(6).value("other"));
         assertFalse(HomeCapabilities.prompt(d).toString().contains("secret-device"));
         assertEquals(22.5, HomeCapabilities.properties(d).getJSONObject(0).getDouble("value"), 0.001);
+        assertEquals("unit.temperature.celsius", HomeCapabilities.properties(d).getJSONObject(0).getString("unit"));
+        assertTrue(HomeCapabilities.properties(d).getJSONObject(0).getLong("updated_age_seconds") > 0);
     }
     @Test public void scopeMatchesRoomsAndFailsClosedForChangedIdentity() throws Exception {
         String kitchen = HomeSelection.key("house1", "room1"), bedroom = HomeSelection.key("house1", "room2");

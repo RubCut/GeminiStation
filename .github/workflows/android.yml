@@ -48,6 +48,8 @@ jobs:
         run: ./tools/test_signing_setup.sh
       - name: Test web voice settings
         run: node tools/test_voice_settings.js
+      - name: Test smart home room selection
+        run: node tools/test_home_rooms.js
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'

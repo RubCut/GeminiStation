@@ -414,14 +414,14 @@ public final class WebServerService extends Service {
                     }
                     qrLogin.clear();
                     boolean deleted = data.optBoolean("delete", false);
-                    if (deleted) { store.clear(); AppLog.add("LED: настройки удалены"); }
+                    if (deleted) { synchronized (HomeSelection.LOCK) { store.clear(); } AppLog.add("LED: настройки удалены"); }
                     else {
                         String token = data.optString("x_token", "").trim();
                         String device = data.optString("device_id", "").trim();
                         String platform = data.optString("platform", "").trim();
                         if (token.isEmpty() || token.length() > 4096 || !device.matches("[A-Za-z0-9._:-]{1,200}") || !platform.matches("[A-Za-z0-9._:-]{1,200}"))
                             return json(Response.Status.BAD_REQUEST, "В файле нет подходящих x_token, device_id и platform");
-                        store.save(new JSONObject().put("x_token", token).put("device_id", device).put("platform", platform).toString());
+                        synchronized (HomeSelection.LOCK) { store.save(new JSONObject().put("x_token", token).put("device_id", device).put("platform", platform).toString()); }
                         AppLog.add("LED: настройки импортированы через веб-интерфейс");
                     }
                     new Handler(Looper.getMainLooper()).post(() -> {

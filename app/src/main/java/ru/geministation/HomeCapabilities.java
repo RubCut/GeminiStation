@@ -12,6 +12,8 @@ final class HomeCapabilities {
         final double min, max, step;
         final List<String> modes;
         final Object state;
+        String unit;
+        Object lastUpdated;
         Capability(String type, String instance, String kind, double min, double max, double step, List<String> modes, Object state) {
             this.type = type; this.instance = instance; this.kind = kind; this.min = min; this.max = max; this.step = step; this.modes = modes; this.state = state;
         }
@@ -37,6 +39,11 @@ final class HomeCapabilities {
             if ("number".equals(kind) || "rgb".equals(kind)) o.put("min", min).put("max", max).put("step", step);
             if ("mode".equals(kind)) o.put("modes", new JSONArray(modes));
             if (state != null) o.put("state", state);
+            if (unit != null) o.put("unit", unit);
+            if (lastUpdated != null) {
+                o.put("last_updated", lastUpdated);
+                o.put("updated_age_seconds", Math.max(0, (long)(System.currentTimeMillis() / 1000.0 - ((Number)lastUpdated).doubleValue())));
+            }
             return o;
         }
     }
@@ -46,6 +53,7 @@ final class HomeCapabilities {
         if (caps == null) return out;
         for (int i = 0; i < caps.length() && out.size() < 50; i++) {
             JSONObject c = caps.optJSONObject(i); if (c == null) continue;
+            int first = out.size();
             String type = c.optString("type", ""); JSONObject p = c.optJSONObject("parameters"), state = c.optJSONObject("state");
             String instance = p == null ? "" : p.optString("instance", "");
             if (instance.isEmpty() && state != null) instance = state.optString("instance", "");
@@ -61,7 +69,7 @@ final class HomeCapabilities {
                     if (validInstance(v) && !valid.contains(v)) valid.add(v);
                 }
                 if (!valid.isEmpty()) out.add(new Capability(type, instance, "mode", 0, 0, 0, valid, value));
-            } else if ("devices.capabilities.range".equals(type) && validInstance(instance) && p != null && p.optBoolean("random_access", false)) {
+            } else if ("devices.capabilities.range".equals(type) && validInstance(instance) && p != null && p.optBoolean("random_access", true)) {
                 Capability cap = range(type, instance, p.optJSONObject("range"), value);
                 if (cap != null) out.add(cap);
             } else if ("devices.capabilities.color_setting".equals(type) && p != null) {
@@ -77,15 +85,22 @@ final class HomeCapabilities {
                 }
                 if (!valid.isEmpty()) out.add(new Capability(type, "scene", "mode", 0, 0, 0, valid, null));
             }
+            String unit = p == null ? "" : p.optString("unit", "");
+            Object updated = c.opt("last_updated");
+            for (int j = first; j < out.size(); j++) {
+                if (validUnit(unit)) out.get(j).unit = unit;
+                if (updated instanceof Number && Double.isFinite(((Number) updated).doubleValue())) out.get(j).lastUpdated = updated;
+            }
         }
         return out;
     }
     private static Capability range(String type, String instance, JSONObject r, Object state) {
         if (r == null || !(r.opt("min") instanceof Number) || !(r.opt("max") instanceof Number)) return null;
-        double min = r.optDouble("min", Double.NaN), max = r.optDouble("max", Double.NaN), step = r.optDouble("precision", 0);
+        double min = r.optDouble("min", Double.NaN), max = r.optDouble("max", Double.NaN), step = r.optDouble("precision", 1);
         if (!Double.isFinite(min) || !Double.isFinite(max) || !Double.isFinite(step) || min > max || step < 0 || Math.abs(min) > 1e9 || Math.abs(max) > 1e9) return null;
         return new Capability(type, instance, "number", min, max, step, null, state);
     }
+    private static boolean validUnit(String s) { return s != null && s.matches("unit\\.[a-z0-9_.]{1,75}"); }
     private static boolean validInstance(String s) { return s != null && s.matches("[a-z0-9_]{1,80}"); }
     private static Object primitive(Object v) {
         if (v instanceof Boolean) return v;
@@ -109,8 +124,11 @@ final class HomeCapabilities {
             if (!type.matches("devices\\.properties\\.[a-z_]{1,40}") || !validInstance(instance) || value == null) continue;
             JSONObject o = new JSONObject().put("type", type.substring("devices.properties.".length())).put("instance", instance).put("value", value);
             JSONObject parameters = p.optJSONObject("parameters");
-            if (parameters != null && validInstance(parameters.optString("unit", ""))) o.put("unit", parameters.optString("unit"));
-            Object time = p.opt("last_updated"); if (time instanceof Number && Double.isFinite(((Number) time).doubleValue())) o.put("last_updated", time);
+            if (parameters != null && validUnit(parameters.optString("unit", ""))) o.put("unit", parameters.optString("unit"));
+            Object time = p.opt("last_updated");
+            if (time instanceof Number && Double.isFinite(((Number) time).doubleValue())) {
+                o.put("last_updated", time).put("updated_age_seconds", Math.max(0, (long)(System.currentTimeMillis() / 1000.0 - ((Number)time).doubleValue())));
+            }
             out.put(o);
         }
         return out;

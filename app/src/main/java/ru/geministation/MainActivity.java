@@ -367,10 +367,11 @@ public final class MainActivity extends Activity {
                     if (foundTrack != null) {
                         showMediaCard(foundTrack.title, "ru.yandex.music", R.drawable.yandex_music_fallback, "Яндекс Музыка");
                         final int generation = speechGeneration.incrementAndGet();
-                        led.playMusic(foundTrack.id, foundTrack.type, foundTrack.account, sent -> {
+                        led.playMusic(foundTrack.id, foundTrack.type, foundTrack.account,
+                                () -> !destroyed && resumed && speechGeneration.get() == generation, sent -> {
                             if (destroyed || !resumed || speechGeneration.get() != generation || flow.phase() != ConversationFlow.Phase.SPEAKING) return;
-                            if (!sent) { showText("Не удалось отправить команду Яндекс Музыке. Проверьте подключение станции и журнал.");
-                                speak("Не удалось отправить команду Яндекс Музыке. Проверьте подключение станции и журнал."); return; }
+                            if (!sent) { showText("Станция не приняла команду Яндекс Музыки или недоступна. Проверьте подключение и журнал.");
+                                speak("Станция не приняла команду Яндекс Музыки или недоступна. Проверьте подключение и журнал."); return; }
                             pendingNavigation = () -> true; // A queued command is not proof of playback.
                             confirmMedia(1400);
                         });

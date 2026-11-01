@@ -231,8 +231,10 @@ final class YandexQrLogin {
         Session s = session(id);
         if (s.token == null || index < 0 || index >= s.stations.length()) throw new IOException("invalid selection");
         JSONObject selected = s.stations.getJSONObject(index);
-        new SecretStore(context, "led_secrets").save(new JSONObject().put("x_token", s.token)
-                .put("device_id", selected.getString("device")).put("platform", selected.getString("platform")).toString());
+        synchronized (HomeSelection.LOCK) {
+            new SecretStore(context, "led_secrets").save(new JSONObject().put("x_token", s.token)
+                    .put("device_id", selected.getString("device")).put("platform", selected.getString("platform")).toString());
+        }
         clear();
         AppLog.add("Яндекс: станция для LED выбрана");
     }

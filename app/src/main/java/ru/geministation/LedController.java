@@ -55,9 +55,11 @@ final class LedController {
     private final Map<String, String> assetUrls = new HashMap<>();
     private String lastLoggedFrame;
     private long lastLoggedAt;
-    private static final class MusicRequest {
-        final String id; final long sentAt;
-        MusicRequest(String id, long sentAt) { this.id = id; this.sentAt = sentAt; }
+    private final class MusicRequest {
+        final String id; final long sentAt; final java.util.function.Consumer<Boolean> callback;
+        final java.util.concurrent.atomic.AtomicBoolean reported = new java.util.concurrent.atomic.AtomicBoolean();
+        MusicRequest(String id, long sentAt, java.util.function.Consumer<Boolean> callback) { this.id = id; this.sentAt = sentAt; this.callback = callback; }
+        void report(boolean ok) { if (reported.compareAndSet(false, true)) main.post(() -> callback.accept(ok)); }
     }
     private final java.util.concurrent.atomic.AtomicReference<MusicRequest> pendingMusic = new java.util.concurrent.atomic.AtomicReference<>();
     private LedController(Context context) { this.context = context; }
@@ -119,7 +121,8 @@ final class LedController {
     }
     /** Discard old credentials and socket after account or station changes. */
     void invalidate() {
-        active = null; desired = null; generation++; pendingMusic.set(null);
+        active = null; desired = null; generation++;
+        MusicRequest cancelled = pendingMusic.getAndSet(null); if (cancelled != null) cancelled.report(false);
         if (idleClose != null) main.removeCallbacks(idleClose);
         if (retry != null) main.removeCallbacks(retry);
         idleClose = null; retry = null; retries = 0;
@@ -238,14 +241,17 @@ final class LedController {
         if (pending == null) return;
         String status = MusicDiagnostics.status(reply, pending.id);
         if (status == null || !pendingMusic.compareAndSet(pending, null)) return;
+        pending.report(!"error".equals(status));
         AppLog.add("Музыка: ответ станции через " + (SystemClock.elapsedRealtime() - pending.sentAt)
                 + " мс, статус " + status + "; воспроизведение не подтверждено");
     }
     /** Experimental playback on the already selected local station; no playback ACK is guaranteed. */
-    void playMusic(String id, String type, String account, java.util.function.Consumer<Boolean> callback) {
+    void playMusic(String id, String type, String account, java.util.function.BooleanSupplier active, java.util.function.Consumer<Boolean> callback) {
+        java.util.concurrent.atomic.AtomicBoolean callbackSent = new java.util.concurrent.atomic.AtomicBoolean();
+        java.util.function.Consumer<Boolean> complete = ok -> { if (callbackSent.compareAndSet(false, true)) callback.accept(ok); };
         boolean valid = id != null && (("track".equals(type) || "album".equals(type)) && id.matches("[0-9]{1,20}")
                 || "playlist".equals(type) && id.matches("[0-9]{1,20}:[0-9]{1,20}"));
-        if (!valid || account == null) { main.post(() -> callback.accept(false)); return; }
+        if (!valid || account == null) { main.post(() -> complete.accept(false)); return; }
         long queued = SystemClock.elapsedRealtime();
         AppLog.add("Музыка: команда поставлена в очередь после ответа ассистента");
         executor.execute(() -> {
@@ -255,28 +261,33 @@ final class LedController {
             try {
                 SecretStore store = new SecretStore(context, "led_secrets");
                 String cfg = store.load();
-                if (cfg.isEmpty() || !account.equals(YandexCloud.musicAccount(context))) throw new Exception("account changed");
+                if (!active.getAsBoolean() || cfg.isEmpty() || !account.equals(YandexCloud.musicAccount(context))) throw new Exception("account changed");
                 stage = "токен станции";
                 String auth = token(cfg);
                 stage = "локальное соединение";
                 if (!cfg.equals(store.load()) || !account.equals(YandexCloud.musicAccount(context)) || !connect(auth)) throw new Exception("not connected");
                 stage = "отправка";
                 JSONObject payload = new JSONObject().put("command", "playMusic").put("id", id).put("type", type);
-                if (!cfg.equals(store.load()) || !account.equals(YandexCloud.musicAccount(context))) throw new Exception("account changed");
+                if (!active.getAsBoolean() || !cfg.equals(store.load()) || !account.equals(YandexCloud.musicAccount(context))) throw new Exception("account changed or request cancelled");
                 String requestId = UUID.randomUUID().toString();
-                MusicRequest pending = new MusicRequest(requestId, SystemClock.elapsedRealtime());
-                pendingMusic.set(pending);
+                MusicRequest pending = new MusicRequest(requestId, SystemClock.elapsedRealtime(), complete);
+                MusicRequest previous = pendingMusic.getAndSet(pending); if (previous != null) previous.report(false);
                 if (!connection.send(envelope(auth, payload, requestId).toString())) {
                     pendingMusic.compareAndSet(pending, null);
+                    pending.report(false);
                     throw new Exception("not sent");
                 }
                 AppLog.add("Музыка: команда станции отправлена за " + (SystemClock.elapsedRealtime() - started) + " мс; воспроизведение не подтверждено");
-                main.post(() -> callback.accept(true));
+                // Briefly surface an explicit station error; silence means only that the frame was sent.
+                main.postDelayed(() -> pending.report(true), 1000);
                 main.postDelayed(() -> {
                     if (pendingMusic.compareAndSet(pending, null)) AppLog.add("Музыка: ответа на команду нет 10 с; воспроизведение не подтверждено");
                 }, 10000);
             } catch (Exception e) { AppLog.add("Музыка: этап " + stage + ", ошибка " + e.getClass().getSimpleName()
-                    + " через " + (SystemClock.elapsedRealtime() - started) + " мс"); main.post(() -> callback.accept(false)); }
+                    + " через " + (SystemClock.elapsedRealtime() - started) + " мс");
+                MusicRequest failed = pendingMusic.get();
+                if (failed != null && failed.callback == complete && pendingMusic.compareAndSet(failed, null)) failed.report(false);
+                else main.post(() -> complete.accept(false)); }
         });
     }
     private String assetUrl(String frame) throws Exception {

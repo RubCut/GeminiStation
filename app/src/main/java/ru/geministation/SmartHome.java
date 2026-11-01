@@ -36,9 +36,12 @@ final class SmartHome {
             JSONArray out = new JSONArray();
             for (int i = 0; i < devices.size(); i++) {
                 Device d = devices.get(i);
-                out.put(new JSONObject().put("id", i).put("name", d.name).put("room", d.room).put("home", d.home)
+                JSONObject item = new JSONObject().put("id", i).put("name", d.name).put("room", d.room).put("home", d.home)
                         .put("capabilities", HomeCapabilities.prompt(d.raw)).put("properties", HomeCapabilities.properties(d.raw))
-                        .put("snapshot_age_seconds", Math.max(0, (System.currentTimeMillis() - loadedAt) / 1000)));
+                        .put("snapshot_age_seconds", Math.max(0, (System.currentTimeMillis() - loadedAt) / 1000));
+                String type = d.raw.optString("type", "");
+                if (type.matches("devices\\.types\\.[a-z0-9_.]{1,80}")) item.put("type", type);
+                out.put(item);
             }
             return out;
         }
