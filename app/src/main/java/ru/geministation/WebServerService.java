@@ -432,7 +432,7 @@ public final class WebServerService extends Service {
                         catch (IllegalArgumentException e) { return json(Response.Status.BAD_REQUEST, "Некорректный GIF"); }
                         saved = LedAnimations.upload(context, mode, bytes);
                     } else return json(Response.Status.BAD_REQUEST, "Неизвестное действие");
-                    if (!saved) return json(Response.Status.BAD_REQUEST, "Не удалось сохранить: нужен GIF 25×16, до 512 КБ и 600 кадров, с задержкой не менее 20 мс.");
+                    if (!saved) return json(Response.Status.BAD_REQUEST, "Не удалось сохранить: нужен GIF 25×16, до 512 КБ и 600 кадров, с задержкой каждого кадра от 20 мс до 10 секунд.");
                     new Handler(Looper.getMainLooper()).post(() -> LedController.get(context).animationsChanged());
                     AppLog.add("LED: выбор анимации сохранён для " + mode);
                     return json(Response.Status.OK, "Анимация сохранена. Показ на экране станции нужно проверить.");

@@ -45,7 +45,8 @@ final class LedController {
     private volatile int generation;
     // The following fields are only touched from the main thread.
     private String active, desired;
-    private Runnable idleClose, retry;
+    private Runnable idleClose, retry, testEnd;
+    private boolean testing;
     private int retries;
     private long requestedAt;
     // These fields are only touched by the single LED executor.
@@ -66,6 +67,7 @@ final class LedController {
 
     // Called on the main thread. Coalesce changes and avoid restarting the animation each cycle.
     void show(String next) {
+        cancelTest();
         if (next == null) {
             if (active != null) clear();
             return;
@@ -75,6 +77,7 @@ final class LedController {
     }
     /** Replaces the current animation with a very short, finite blank GIF. No account changes. */
     void clear() {
+        cancelTest();
         active = null;
         change("clear");
         final int version = generation;
@@ -121,6 +124,7 @@ final class LedController {
     }
     /** Discard old credentials and socket after account or station changes. */
     void invalidate() {
+        cancelTest();
         active = null; desired = null; generation++;
         MusicRequest cancelled = pendingMusic.getAndSet(null); if (cancelled != null) cancelled.report(false);
         if (idleClose != null) main.removeCallbacks(idleClose);
@@ -160,11 +164,16 @@ final class LedController {
             }
         });
     }
+    private void cancelTest() {
+        testing = false;
+        if (testEnd != null) { main.removeCallbacks(testEnd); testEnd = null; }
+    }
     void test() {
         if (active != null) { AppLog.add("LED: проверка доступна только вне диалога"); return; }
         show("thinking");
-        int version = generation;
-        main.postDelayed(() -> { if (generation == version) show(null); }, 10000);
+        testing = true;
+        testEnd = () -> { if (testing) { testEnd = null; testing = false; show(null); } };
+        main.postDelayed(testEnd, 10000);
     }
     private String responseBody(Call call, String stage) throws Exception {
         long started = SystemClock.elapsedRealtime();
