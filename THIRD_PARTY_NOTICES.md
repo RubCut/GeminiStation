@@ -53,3 +53,8 @@ The offline wake-word detector uses [PocketSphinx Android](https://github.com/cm
 Custom IP-based DNS uses [dnsjava](https://github.com/dnsjava/dnsjava) 3.6.3 under the BSD 3-Clause license: `licenses/dnsjava.txt` (also bundled as `assets/licenses/dnsjava.txt`).
 
 The experimental microWakeWord backend uses TensorFlow Lite (Apache 2.0) and the TensorFlow Lite Micro frontend as packaged by [pymicro-features 2.0.2](https://github.com/rhasspy/pymicro-features), Apache 2.0 (`licenses/microfrontend-apache-2.0.txt`, included in APK). The frontend includes KissFFT, BSD 3-Clause (`licenses/kissfft.txt`, included in APK). The experimental model was trained using synthesized Piper Dmitri and Irina voices; the Irina model card lists the underlying RHVoice dataset licence as **unknown**, so rights for redistribution of the resulting trained model have not been established. Review before further distribution.
+
+
+The app embeds [Google Sans](https://github.com/google/fonts/tree/main/ofl/googlesans) (font SHA-256 `d0a87d835a944b8b40d0e82a5651bb59ab97b936a2aeed5946eb57e7b2a3a90a`) under the SIL Open Font License 1.1. The license and trademark notices are in `licenses/google-sans-ofl.txt` and `licenses/google-sans-trademarks.md` and bundled in the APK. Google Sans is not the proprietary Product Sans font.
+
+UI and media icons include [Material Icons](https://github.com/google/material-design-icons), Apache License 2.0 (`licenses/material-icons-apache-2.0.txt`, included in the APK). Google and Gemini marks are trademarks of their respective owners; this is an unofficial project and is not endorsed by Google.

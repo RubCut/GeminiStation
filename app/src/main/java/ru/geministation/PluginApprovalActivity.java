@@ -20,8 +20,8 @@ public final class PluginApprovalActivity extends Activity {
                 + "\n\nВыполняется произвольный Python-код в отдельном приложении. Он имеет доступ к сети, может взаимодействовать с доступными локальными сервисами, включая веб-панель без пароля, и отправлять полученные данные в сеть. Устанавливайте только доверенный код."
                 + (manifest.shell ? "\n\nОПАСНО: плагин запросил ADB shell. После разрешения его инструменты смогут выполнять команды с правами shell без повторного подтверждения. Это не root, но такие команды могут изменять настройки и данные устройства." : "\n\nADB shell не запрошен.");
         AlertDialog dialog = new AlertDialog.Builder(this).setTitle("Установить / включить Python-плагин?").setMessage(warning)
-                .setPositiveButton("Разрешить", (dialog, which) -> finishDecision(true))
-                .setNegativeButton("Отмена", (dialog, which) -> finishDecision(false))
+                .setPositiveButton("Разрешить", (d, which) -> finishDecision(true))
+                .setNegativeButton("Отмена", (d, which) -> finishDecision(false))
                 .setOnCancelListener(d -> finishDecision(false)).show();
         if (dialog.getWindow() != null) BrandFont.apply(dialog.getWindow().getDecorView());
     }

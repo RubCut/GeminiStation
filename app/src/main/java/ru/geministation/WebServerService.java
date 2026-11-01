@@ -158,6 +158,9 @@ public final class WebServerService extends Service {
                     }
                     String mode = path.substring(5, path.length() - 4);
                     byte[] bytes = LedAnimations.current(context, mode);
+                    java.util.List<String> versions = session.getParameters().get("v");
+                    if (versions != null && (versions.size() != 1 || !LedAssetUrl.build(mode, new java.io.ByteArrayInputStream(bytes)).endsWith("?v=" + versions.get(0))))
+                        return json(Response.Status.NOT_FOUND, "Анимация уже изменилась");
                     Response response = newFixedLengthResponse(Response.Status.OK, "image/gif", new java.io.ByteArrayInputStream(bytes), bytes.length);
                     response.addHeader("Cache-Control", "no-store");
                     return response;

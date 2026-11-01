@@ -50,15 +50,19 @@ jobs:
         run: node tools/test_voice_settings.js
       - name: Test smart home room selection
         run: node tools/test_home_rooms.js
+      - name: Test animation editor
+        run: node tools/test_led_editor.js
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
       - name: Verify microWakeWord frontend parity
         run: |
-          python3 -m pip install 'numpy<2' pymicro-features==2.0.2 Pillow==11.3.0
+          python3 -m pip install 'numpy<2' pymicro-features==2.0.2 Pillow==11.3.0 fonttools==4.60.1
           python3 tools/test_microfrontend.py
       - name: Check LED animation assets
         run: python3 tools/test_led_animations.py
+      - name: Check bundled typography and icons
+        run: python3 tools/test_brand_assets.py
       - name: Check wake-word stress coverage
         run: python3 experiments/microwakeword/test_pronunciations.py
       - name: Check supplied sound cues
