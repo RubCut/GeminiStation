@@ -242,8 +242,10 @@ final class LedController {
                 + " мс, статус " + status + "; воспроизведение не подтверждено");
     }
     /** Experimental playback on the already selected local station; no playback ACK is guaranteed. */
-    void playMusic(String id, String account) {
-        if (id == null || !id.matches("[0-9]{1,20}") || account == null) return;
+    void playMusic(String id, String type, String account, java.util.function.Consumer<Boolean> callback) {
+        boolean valid = id != null && (("track".equals(type) || "album".equals(type)) && id.matches("[0-9]{1,20}")
+                || "playlist".equals(type) && id.matches("[0-9]{1,20}:[0-9]{1,20}"));
+        if (!valid || account == null) { main.post(() -> callback.accept(false)); return; }
         long queued = SystemClock.elapsedRealtime();
         AppLog.add("Музыка: команда поставлена в очередь после ответа ассистента");
         executor.execute(() -> {
@@ -259,7 +261,7 @@ final class LedController {
                 stage = "локальное соединение";
                 if (!cfg.equals(store.load()) || !account.equals(YandexCloud.musicAccount(context)) || !connect(auth)) throw new Exception("not connected");
                 stage = "отправка";
-                JSONObject payload = new JSONObject().put("command", "playMusic").put("id", id).put("type", "track");
+                JSONObject payload = new JSONObject().put("command", "playMusic").put("id", id).put("type", type);
                 if (!cfg.equals(store.load()) || !account.equals(YandexCloud.musicAccount(context))) throw new Exception("account changed");
                 String requestId = UUID.randomUUID().toString();
                 MusicRequest pending = new MusicRequest(requestId, SystemClock.elapsedRealtime());
@@ -269,11 +271,12 @@ final class LedController {
                     throw new Exception("not sent");
                 }
                 AppLog.add("Музыка: команда станции отправлена за " + (SystemClock.elapsedRealtime() - started) + " мс; воспроизведение не подтверждено");
+                main.post(() -> callback.accept(true));
                 main.postDelayed(() -> {
                     if (pendingMusic.compareAndSet(pending, null)) AppLog.add("Музыка: ответа на команду нет 10 с; воспроизведение не подтверждено");
                 }, 10000);
             } catch (Exception e) { AppLog.add("Музыка: этап " + stage + ", ошибка " + e.getClass().getSimpleName()
-                    + " через " + (SystemClock.elapsedRealtime() - started) + " мс"); }
+                    + " через " + (SystemClock.elapsedRealtime() - started) + " мс"); main.post(() -> callback.accept(false)); }
         });
     }
     private String assetUrl(String frame) throws Exception {

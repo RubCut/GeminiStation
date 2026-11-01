@@ -48,9 +48,9 @@ final class YandexCloud {
         return token;
     }
     static final class Track {
-        final String id, title, account;
-        Track(String id, String title) { this(id, title, null); }
-        Track(String id, String title, String account) { this.id = id; this.title = title; this.account = account; }
+        final String id, title, account, type;
+        Track(String id, String title) { this(id, title, null, "track"); }
+        Track(String id, String title, String account, String type) { this.id = id; this.title = title; this.account = account; this.type = type; }
     }
     static String musicAccount(Context c) throws Exception {
         String config = new SecretStore(c, "led_secrets").load();
@@ -58,35 +58,45 @@ final class YandexCloud {
         byte[] digest = java.security.MessageDigest.getInstance("SHA-256").digest(config.getBytes(java.nio.charset.StandardCharsets.UTF_8));
         return android.util.Base64.encodeToString(digest, android.util.Base64.NO_WRAP);
     }
-    static Track search(Context c, String query) throws Exception {
+    static Track search(Context c, String query) throws Exception { return search(c, query, "track"); }
+    static Track search(Context c, String query, String type) throws Exception {
         if (!LinkPolicy.searchQuery(query)) throw new IOException("bad query");
         String account = musicAccount(c);
         String token = musicToken(c);
         if (!account.equals(musicAccount(c))) throw new IOException("account changed");
-        JSONObject result = request(YandexMusicSearch.request(query, token), "Музыка: поиск").optJSONObject("result");
+        JSONObject result = request(YandexMusicSearch.request(query, token, type), "Музыка: поиск").optJSONObject("result");
         if (!account.equals(musicAccount(c))) throw new IOException("account changed");
-        JSONObject tracks = result == null ? null : result.optJSONObject("tracks");
-        JSONArray items = tracks == null ? null : tracks.optJSONArray("results");
+        JSONObject section = result == null ? null : result.optJSONObject(type + "s");
+        JSONArray items = section == null ? null : section.optJSONArray("results");
         AppLog.add("Музыка: кандидатов в ответе " + (items == null ? 0 : items.length()));
-        Track found = parseSearch(result);
-        return new Track(found.id, found.title, account);
+        Track found = parseSearch(result, type);
+        return new Track(found.id, found.title, account, type);
     }
-    static Track parseSearch(JSONObject result) throws Exception {
-        JSONObject tracks = result == null ? null : result.optJSONObject("tracks");
-        JSONArray items = tracks == null ? null : tracks.optJSONArray("results");
+    static Track parseSearch(JSONObject result) throws Exception { return parseSearch(result, "track"); }
+    static Track parseSearch(JSONObject result, String type) throws Exception {
+        if (!("track".equals(type) || "album".equals(type) || "playlist".equals(type))) throw new IOException("bad type");
+        JSONObject section = result == null ? null : result.optJSONObject(type + "s");
+        JSONArray items = section == null ? null : section.optJSONArray("results");
         if (items != null) for (int i = 0; i < items.length(); i++) {
             JSONObject item = items.optJSONObject(i);
             if (item == null || !item.optBoolean("available", true)) continue;
-            String id = item.optString("id", "");
+            String id;
+            if ("playlist".equals(type)) {
+                JSONObject owner = item.optJSONObject("owner");
+                String uid = owner == null ? "" : owner.optString("uid", ""), kind = item.optString("kind", "");
+                if (!uid.matches("[0-9]{1,20}") || !kind.matches("[0-9]{1,20}")) continue;
+                id = uid + ":" + kind;
+            } else id = item.optString("id", "");
             String title = item.optString("title", "").trim();
-            if (!id.matches("[0-9]{1,20}") || title.isEmpty()) continue;
+            if ((!"playlist".equals(type) && !id.matches("[0-9]{1,20}")) || title.isEmpty()) continue;
             JSONArray artists = item.optJSONArray("artists");
             JSONObject artist = artists == null ? null : artists.optJSONObject(0);
-            String label = (artist == null ? "" : artist.optString("name", "") + " — ") + title;
-            label = label.replaceAll("[\\p{Cntrl}]", " ");
-            return new Track(id, label.substring(0, Math.min(label.length(), 160)));
+            String artistName = artist == null ? "" : artist.optString("name", "").trim();
+            String label = (artistName.isEmpty() ? "" : artistName + " — ") + title;
+            label = label.replaceAll("[\\p{Cntrl}\\p{Cf}]", " ").trim();
+            if (!label.isEmpty()) return new Track(id, label.substring(0, Math.min(label.length(), 160)), null, type);
         }
-        throw new IOException("Трек не найден");
+        throw new IOException("Музыка не найдена");
     }
     static JSONObject home(String token, String path, JSONObject body) throws Exception {
         if (!"/v1.0/user/info".equals(path) && !"/v1.0/devices/actions".equals(path)) throw new IOException("bad path");

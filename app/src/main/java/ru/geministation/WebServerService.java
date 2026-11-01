@@ -302,6 +302,26 @@ public final class WebServerService extends Service {
                     return json(ok ? Response.Status.OK : Response.Status.SERVICE_UNAVAILABLE,
                             ok ? "ADB Helper подключён и подтвердил права shell." : "ADB Helper недоступен или проверка не прошла. Проверьте его журнал.");
                 }
+                if ("/api/home/rooms".equals(path) && session.getMethod() == Method.GET) {
+                    try {
+                        SmartHome.Snapshot full = SmartHome.loadFull(context);
+                        return reply(Response.Status.OK, "application/json; charset=utf-8", new JSONObject().put("rooms", SmartHome.scopeList(context, full)).put("revision", HomeSelection.key(full.identity, "revision")).toString());
+                    } catch (Exception e) { return json(Response.Status.BAD_REQUEST, "Не удалось загрузить дома и комнаты. Проверьте подключение умного дома."); }
+                }
+                if ("/api/home/rooms".equals(path) && session.getMethod() == Method.POST) {
+                    if (!WebSecurity.permittedWrite(host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station"))) return json(Response.Status.FORBIDDEN, "Запрос отклонён");
+                    String lengthHeader = session.getHeaders().get("content-length");
+                    long length = lengthHeader == null ? -1 : Long.parseLong(lengthHeader);
+                    if (length < 1 || length > 32768 || session.getHeaders().containsKey("transfer-encoding")) return json(Response.Status.BAD_REQUEST, "Недопустимый размер запроса");
+                    Map<String, String> files = new HashMap<>(); session.parseBody(files);
+                    JSONObject data = new JSONObject(files.get("postData"));
+                    try {
+                        SmartHome.Snapshot full = SmartHome.loadFull(context);
+                        if (!HomeSelection.key(full.identity, "revision").equals(data.optString("revision")) || !HomeSelection.save(context, full, data.optJSONArray("rooms"))) return json(Response.Status.BAD_REQUEST, "Список изменился. Обновите дома и комнаты.");
+                        AppLog.add("Умный дом: выбор комнат сохранён");
+                        return json(Response.Status.OK, "Доступные комнаты сохранены. Новые комнаты по умолчанию будут выключены.");
+                    } catch (Exception e) { return json(Response.Status.BAD_REQUEST, "Не удалось сохранить комнаты. Проверьте подключение и обновите список."); }
+                }
                 if (session.getMethod() == Method.POST && "/api/home".equals(path)) {
                     if (!WebSecurity.permittedWrite(host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station")))
                         return json(Response.Status.FORBIDDEN, "Запрос отклонён");
@@ -314,7 +334,7 @@ public final class WebServerService extends Service {
                     String action = data.optString("action", "");
                     SecretStore store = new SecretStore(context, SmartHome.PREFS);
                     if ("delete".equals(action)) {
-                        store.clear(); AppLog.add("Умный дом: доступ удалён на станции");
+                        synchronized (HomeSelection.LOCK) { store.clear(); } AppLog.add("Умный дом: доступ удалён на станции");
                         return json(Response.Status.OK, "Доступ к умному дому удалён на станции");
                     }
                     if (!"qr".equals(action) && !"token".equals(action) && !"test".equals(action))
@@ -329,9 +349,9 @@ public final class WebServerService extends Service {
                         if (!"ok".equals(info.optString("status")) || info.optJSONArray("devices") == null)
                             throw new java.io.IOException("bad response");
                         int count = SmartHome.parse(info).devices.size();
-                        if (!"test".equals(action)) store.save(setting);
+                        if (!"test".equals(action)) synchronized (HomeSelection.LOCK) { store.save(setting); }
                         AppLog.add("Умный дом: проверка чтения успешна, доступных устройств " + count);
-                        return json(Response.Status.OK, "Доступ на чтение подтверждён. Устройств с включением/выключением: " + count + ". Право управления проверяется при команде.");
+                        return json(Response.Status.OK, "Доступ на чтение подтверждён. Устройств: " + count + ". Право управления проверяется при команде.");
                     } catch (Exception e) {
                         String detail = e.getMessage();
                         String safe = detail != null && detail.matches("HTTP [0-9]{3}") ? " (" + detail + ")" : "";

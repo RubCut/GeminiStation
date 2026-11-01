@@ -144,13 +144,13 @@ public final class MainActivity extends Activity {
         LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(-2, -2);
         textParams.gravity = Gravity.BOTTOM;
         textParams.setMarginStart(dp(10));
-        bubble.addView(text, textParams);
         mediaIcon = new ImageView(this);
         mediaIcon.setVisibility(View.GONE);
         LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(dp(40), dp(40));
         iconParams.gravity = Gravity.BOTTOM;
         iconParams.setMarginStart(dp(14));
         bubble.addView(mediaIcon, iconParams);
+        bubble.addView(text, textParams);
         setContentView(root);
         getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
@@ -181,6 +181,13 @@ public final class MainActivity extends Activity {
         mediaIcon.setImageResource(drawable);
         mediaIcon.setContentDescription("Команда отправлена: " + command.description + "; выполнение плеером не подтверждено");
         mediaIcon.setVisibility(View.VISIBLE);
+    }
+    private void showMediaCard(String title, String packageName, int fallback, String service) {
+        stopSpinner();
+        try { mediaIcon.setImageDrawable(getPackageManager().getApplicationIcon(packageName)); }
+        catch (Exception e) { mediaIcon.setImageResource(fallback); }
+        mediaIcon.setContentDescription(service);
+        mediaIcon.setVisibility(View.VISIBLE); text.setVisibility(View.VISIBLE); text.setText(title);
     }
     private void animatePulse(boolean speaking) {
         stopSpinner();
@@ -277,6 +284,8 @@ public final class MainActivity extends Activity {
                 if (action != null && action.kind == DeviceToolSpec.Kind.OPEN_LINK
                         && !UserLinkAuthorization.presentInUserTurns(action.data, request)) action = null;
                 boolean search = action != null && action.kind == DeviceToolSpec.Kind.SEARCH_YOUTUBE;
+                final String searchQuery = search ? action.data : null;
+                final String searchPackage = search ? apps.get(action.number).component.getPackageName() : null;
                 boolean foundVideo = false, nativeSearch = false;
                 if (search) {
                     String url;
@@ -299,11 +308,15 @@ public final class MainActivity extends Activity {
                 }
                 String networkText = null;
                 YandexCloud.Track music = null;
-                if (action != null && action.kind == DeviceToolSpec.Kind.HOME_CONTROL && !destroyed && resumed) {
+                if (action != null && (action.kind == DeviceToolSpec.Kind.HOME_CONTROL || action.kind == DeviceToolSpec.Kind.HOME_SET) && !destroyed && resumed) {
                     SmartHome.Device device = home.devices.get(action.number);
                     try {
-                        boolean ok = SmartHome.set(getApplicationContext(), home, device, "on".equals(action.data));
-                        networkText = ok ? ("Команда выполнена: " + device.name + ".") : "Яндекс не подтвердил выполнение команды умного дома.";
+                        boolean ok;
+                        if (action.kind == DeviceToolSpec.Kind.HOME_SET) {
+                            int split = action.data.indexOf(':');
+                            ok = SmartHome.setCapability(getApplicationContext(), home, device, Integer.parseInt(action.data.substring(0, split)), action.data.substring(split + 1));
+                        } else ok = SmartHome.set(getApplicationContext(), home, device, "on".equals(action.data));
+                        networkText = ok ? ("Яндекс подтвердил команду устройству «" + device.name + "».") : "Яндекс не подтвердил выполнение команды умного дома.";
                     } catch (Exception e) {
                         AppLog.add("Умный дом: ошибка команды (" + YandexCloud.safeError(e) + ")");
                         networkText = e instanceof SmartHome.ControlDenied
@@ -312,11 +325,11 @@ public final class MainActivity extends Activity {
                     }
                 } else if (action != null && action.kind == DeviceToolSpec.Kind.YANDEX_MUSIC && !destroyed && resumed) {
                     try {
-                        music = YandexCloud.search(getApplicationContext(), action.data);
+                        music = YandexCloud.search(getApplicationContext(), action.data, action.number == 1 ? "album" : action.number == 2 ? "playlist" : "track");
                         networkText = "Нашёл " + music.title + ". Пробую включить на станции.";
                     } catch (Exception e) {
                         AppLog.add("Музыка: поиск недоступен (" + YandexCloud.safeError(e) + ")");
-                        networkText = "Не удалось найти трек в Яндекс Музыке. Проверьте вход в Яндекс и журнал.";
+                        networkText = "Не удалось найти запись в Яндекс Музыке. Проверьте вход в Яндекс и журнал.";
                     }
                 }
                 final String remoteText = networkText;
@@ -331,7 +344,7 @@ public final class MainActivity extends Activity {
                     if (result.call != null) {
                         if (remoteText != null) {
                             response = remoteText;
-                            if (foundTrack != null) pendingNavigation = () -> { led.playMusic(foundTrack.id, foundTrack.account); return true; };
+                            pendingNavigation = null;
                         } else {
                             DeviceActions.Outcome outcome = deviceActions.prepare(chosen, apps);
                             response = outcome.text;
@@ -350,6 +363,23 @@ public final class MainActivity extends Activity {
                     if (mediaDispatched && chosen != null && chosen.kind == DeviceToolSpec.Kind.MEDIA_CONTROL) {
                         MediaCommands.Command command = MediaCommands.parse(chosen.data);
                         if (command != null) { mediaAcknowledgement(command); return; }
+                    }
+                    if (foundTrack != null) {
+                        showMediaCard(foundTrack.title, "ru.yandex.music", R.drawable.yandex_music_fallback, "Яндекс Музыка");
+                        final int generation = speechGeneration.incrementAndGet();
+                        led.playMusic(foundTrack.id, foundTrack.type, foundTrack.account, sent -> {
+                            if (destroyed || !resumed || speechGeneration.get() != generation || flow.phase() != ConversationFlow.Phase.SPEAKING) return;
+                            if (!sent) { showText("Не удалось отправить команду Яндекс Музыке. Проверьте подключение станции и журнал.");
+                                speak("Не удалось отправить команду Яндекс Музыке. Проверьте подключение станции и журнал."); return; }
+                            pendingNavigation = () -> true; // A queued command is not proof of playback.
+                            confirmMedia(1400);
+                        });
+                        return;
+                    }
+                    if (nativeVideoSearch && pendingNavigation != null) {
+                        showMediaCard(searchQuery, searchPackage, R.drawable.media_play, "SmartTube");
+                        confirmMedia(1400);
+                        return;
                     }
                     // Keep the thinking animation until audio actually starts.
                     showText(response);
@@ -375,15 +405,18 @@ public final class MainActivity extends Activity {
         if (soundCuePlayer != null) soundCuePlayer.cancel();
     }
     private void mediaAcknowledgement(MediaCommands.Command command) {
-        final int generation = speechGeneration.incrementAndGet();
         showMediaIcon(command);
+        confirmMedia(350);
+    }
+    private void confirmMedia(long delay) {
+        final int generation = speechGeneration.incrementAndGet();
         animatePulse(true); led.show("speaking");
-        AppLog.add("Медиа: команда отправлена; показываем иконку и воспроизводим сигнал без TTS");
+        AppLog.add("Медиа: показываем карточку и воспроизводим сигнал без TTS");
         soundCuePlayer.play(R.raw.waiting_for_answer, "подтверждение медиакоманды", () -> {
             if (destroyed || !resumed || speechGeneration.get() != generation || flow.phase() != ConversationFlow.Phase.SPEAKING) return;
             backgroundAudioFocus.release();
             // Reuse the confirmation as the follow-up cue, so it is not played twice.
-            handler.postDelayed(() -> { if (!destroyed && resumed && speechGeneration.get() == generation) beginFollowUp(true); }, 350);
+            handler.postDelayed(() -> { if (!destroyed && resumed && speechGeneration.get() == generation) beginFollowUp(true); }, delay);
         });
     }
     private void onPlaybackStarted(int generation) {

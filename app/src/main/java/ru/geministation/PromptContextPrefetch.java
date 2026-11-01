@@ -50,7 +50,7 @@ final class PromptContextPrefetch {
         }
         boolean unavailable = homeResult == null;
         if (unavailable) { AppLog.add("Контекст: умный дом ещё не готов; в этом запросе список недоступен"); homeResult = new SmartHome.Snapshot(); }
-        return new Result(appResult, homeResult, unavailable);
+        return new Result(appResult, SmartHome.filtered(context, homeResult), unavailable);
     }
     void close() { pool.shutdownNow(); }
 }

@@ -5,7 +5,7 @@ import org.json.JSONObject;
 
 /** Strict allowlist for Gemini function calls; model output never becomes an Intent or shell command. */
 final class DeviceToolSpec {
-    enum Kind { OPEN_APP, OPEN_LINK, SEARCH_YOUTUBE, OPEN_SETTINGS, GO_HOME, SET_VOLUME, ADJUST_VOLUME, GET_VOLUME, MEDIA_CONTROL, HOME_CONTROL, YANDEX_MUSIC }
+    enum Kind { OPEN_APP, OPEN_LINK, SEARCH_YOUTUBE, OPEN_SETTINGS, GO_HOME, SET_VOLUME, ADJUST_VOLUME, GET_VOLUME, MEDIA_CONTROL, HOME_CONTROL, HOME_SET, YANDEX_MUSIC }
     static final class Action {
         final Kind kind;
         final int number;
@@ -42,8 +42,15 @@ final class DeviceToolSpec {
                         .put("id", new JSONObject().put("type", "INTEGER"))
                         .put("on", new JSONObject().put("type", "BOOLEAN")))
                         .put("required", new JSONArray().put("id").put("on"))));
-        declarations.put(function("yandex_music", "Найти и попытаться включить конкретный трек в Яндекс Музыке по названию и исполнителю. Не применяй для паузы и для плейлистов.",
-                new JSONObject().put("query", new JSONObject().put("type", "STRING")), "query"));
+        declarations.put(new JSONObject().put("name", "home_set").put("description", "Установить одну указанную пользователем функцию устройства: id устройства и index функции из списка capabilities; value всегда строка (число, true/false либо один из modes). Используй только указанные доступные функции и допустимые значения. Не вызывай без явной просьбы.")
+                .put("parameters", new JSONObject().put("type", "OBJECT").put("properties", new JSONObject()
+                        .put("id", new JSONObject().put("type", "INTEGER"))
+                        .put("capability", new JSONObject().put("type", "INTEGER"))
+                        .put("value", new JSONObject().put("type", "STRING")))
+                        .put("required", new JSONArray().put("id").put("capability").put("value"))));
+        declarations.put(function("yandex_music", "Найти и попытаться включить трек, альбом или плейлист в Яндекс Музыке. Выбери kind: track, album или playlist. Если не указано иное, используй track. Не применяй для паузы.",
+                new JSONObject().put("query", new JSONObject().put("type", "STRING"))
+                        .put("kind", new JSONObject().put("type", "STRING").put("enum", new JSONArray().put("track").put("album").put("playlist"))), "query"));
         // One optional lifecycle decision per action, never another device command.
         for (int i = 0; i < declarations.length(); i++) {
             JSONObject item = declarations.getJSONObject(i);
@@ -112,10 +119,17 @@ final class DeviceToolSpec {
                 return id != null && id >= 0 && id < homeCount && on instanceof Boolean
                         ? new Action(Kind.HOME_CONTROL, id, (Boolean) on ? "on" : "off") : null;
             }
+            case "home_set": {
+                Integer id = integer(args, "id"), cap = integer(args, "capability"); Object value = args.opt("value");
+                if (id == null || id < 0 || id >= homeCount || cap == null || cap < 0 || cap >= 50 || !(value instanceof String) || ((String)value).length() > 80) return null;
+                return new Action(Kind.HOME_SET, id, cap + ":" + value);
+            }
             case "yandex_music": {
                 Object query = args.opt("query");
-                return query instanceof String && LinkPolicy.searchQuery((String) query)
-                        ? new Action(Kind.YANDEX_MUSIC, 0, (String) query) : null;
+                Object type = args.has("kind") ? args.opt("kind") : "track";
+                int kind = "track".equals(type) ? 0 : "album".equals(type) ? 1 : "playlist".equals(type) ? 2 : -1;
+                return kind >= 0 && query instanceof String && LinkPolicy.searchQuery((String) query)
+                        ? new Action(Kind.YANDEX_MUSIC, kind, (String) query) : null;
             }
             case "get_volume": return new Action(Kind.GET_VOLUME, 0);
             default: return null;

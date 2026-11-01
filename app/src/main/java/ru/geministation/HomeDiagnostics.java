@@ -19,6 +19,9 @@ final class HomeDiagnostics {
         }
     }
     static String outcome(JSONObject response, String deviceId) {
+        return outcome(response, deviceId, "devices.capabilities.on_off", "on");
+    }
+    static String outcome(JSONObject response, String deviceId, String type, String instance) {
         if (!"ok".equals(response.optString("status"))) return "общая ошибка ответа";
         JSONArray devices = response.optJSONArray("devices");
         if (devices == null) return "нет списка результатов";
@@ -29,9 +32,9 @@ final class HomeDiagnostics {
             if (caps == null) return "нет результатов функций";
             for (int j = 0; j < caps.length(); j++) {
                 JSONObject cap = caps.optJSONObject(j);
-                if (cap == null || !"devices.capabilities.on_off".equals(cap.optString("type"))) continue;
+                if (cap == null || !type.equals(cap.optString("type"))) continue;
                 JSONObject state = cap.optJSONObject("state");
-                if (state == null || !"on".equals(state.optString("instance"))) continue;
+                if (state == null || !instance.equals(state.optString("instance"))) continue;
                 JSONObject result = state.optJSONObject("action_result");
                 if (result == null) return "нет результата действия";
                 String status = result.optString("status", "");
@@ -39,7 +42,7 @@ final class HomeDiagnostics {
                 if ("ERROR".equals(status)) return "ERROR: " + errorCode(result.optString("error_code", ""));
                 return "неизвестный статус действия";
             }
-            return "нет результата on_off";
+            return "нет результата функции";
         }
         return "нет результата выбранного устройства";
     }

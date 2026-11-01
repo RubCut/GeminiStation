@@ -9,7 +9,7 @@ public class SmartHomeTest {
     @Test public void filtersAndMapsDevicesWithoutExposingTheirIds() throws Exception {
         JSONObject info = new JSONObject("{\"devices\":[{\"id\":\"secret-id\",\"name\":\"Лампа\",\"room\":\"Кухня\",\"capabilities\":[{\"type\":\"devices.capabilities.on_off\"}]},{\"id\":\"other\",\"name\":\"Датчик\",\"capabilities\":[]}]}");
         SmartHome.Snapshot snapshot = SmartHome.parse(info);
-        assertEquals(1, snapshot.devices.size());
+        assertEquals(2, snapshot.devices.size());
         assertEquals(0, snapshot.prompt().getJSONObject(0).getInt("id"));
         assertFalse(snapshot.prompt().toString().contains("secret-id"));
         JSONObject body = SmartHome.actionBody(snapshot.devices.get(0), true);

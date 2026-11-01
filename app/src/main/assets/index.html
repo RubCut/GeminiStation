@@ -262,13 +262,17 @@ details{border-color:#49454f}summary{font-size:14px;color:#d0bcff}.editor-card t
    </section>
    <section class="group" id="smartHome" aria-labelledby="smartHomeTitle" hidden>
     <div class="group-heading"><div><h2 id="smartHomeTitle">Умный дом и музыка</h2><p>Экспериментальное подключение Яндекса</p></div></div>
-    <div class="cards"><article class="card full"><div class="card-head"><div><h3>Умный дом</h3><p>Пока доступны включение и выключение отдельных устройств.</p></div><span class="tag">ЭКСПЕРИМЕНТАЛЬНО</span></div>
+    <div class="cards"><article class="card full"><div class="card-head"><div><h3>Умный дом</h3><p>Устройства и датчики в разрешённых комнатах.</p></div><span class="tag">ЭКСПЕРИМЕНТАЛЬНО</span></div>
      <div class="soft-block"><p>Названия устройств и комнат будут передаваться Gemini, чтобы ассистент мог выбрать нужное устройство. Сначала проверьте подключённый аккаунт: проверка только читает список устройств. Если управлять ими не получится, может понадобиться отдельное разрешение Яндекса.</p></div>
      <div class="actions"><button id="homeQr">Проверить существующий вход</button><button id="homeTest" class="secondary">Проверить сохранённый доступ</button><button id="homeDelete" class="danger">Отключить умный дом</button></div>
      <details><summary>Подключить отдельный OAuth-токен</summary><p class="field-hint">Если чтение работает, но Яндекс возвращает HTTP 403 при управлении, возможно, QR-токену не хватает права <code>iot:control</code>. На компьютере создайте <a href="https://oauth.yandex.ru/client/new" target="_blank" rel="noopener noreferrer">приложение Яндекс OAuth</a> и запросите для него <code>iot:view</code> и <code>iot:control</code>. В платформе приложения укажите Redirect URI <code>https://oauth.yandex.ru/verification_code</code>. Затем получите токен для того же аккаунта по <a href="https://yandex.ru/dev/id/doc/ru/tokens/debug-token" target="_blank" rel="noopener noreferrer">официальной инструкции</a> и вставьте ниже. Проверка здесь только читает устройства; право управления проверяется при реальной команде.</p><p class="field-hint"><strong>Не отправляйте токен и полный адрес страницы OAuth в чат.</strong> По локальной сети эта панель работает без пароля и HTTPS, поэтому токен передаётся открытым текстом: используйте только доверенную сеть или защищённое соединение. На станции токен хранится зашифрованным. Это отдельное разрешение умного дома; вход для экрана и музыки сохраняется.</p>
      <div class="field"><label class="field-label" for="homeToken">OAuth-токен умного дома</label><input type="password" id="homeToken" autocomplete="off"></div><div class="actions"><button id="homeSave" class="secondary">Проверить и сохранить</button></div></details>
      <p class="status-message" id="homeMessage" role="status"></p>
-     <div class="divider"></div><h3>Яндекс Музыка</h3><p class="field-hint">Войдите в Яндекс на вкладке «Экран станции» и попросите включить конкретный трек. Функция экспериментальная: воспроизведение может не работать на вашей станции или требовать подписку Яндекс Плюс.</p>
+     <div class="divider"></div><h3>Дома и комнаты</h3>
+     <p class="field-hint">Отметьте, где ассистенту разрешено видеть устройства и управлять ими. После сохранения новые комнаты нужно будет разрешать отдельно. До первого сохранения доступны все комнаты. Группы и сценарии пока не запускаются.</p>
+     <div class="actions"><button id="homeRoomsLoad" class="secondary">Загрузить дома и комнаты</button><button id="homeRoomsSave" disabled>Сохранить комнаты</button></div>
+     <div id="homeRooms"></div><p class="status-message" id="homeRoomsMessage" role="status"></p>
+     <div class="divider"></div><h3>Яндекс Музыка</h3><p class="field-hint">Войдите в Яндекс на вкладке «Экран станции» и попросите включить трек, альбом или плейлист. Функция экспериментальная: воспроизведение может не работать на вашей станции или требовать подписку Яндекс Плюс.</p>
     </article></div>
    </section>
    <section class="group" id="plugins" aria-labelledby="pluginsTitle" hidden>
@@ -558,9 +562,30 @@ el('helperTest').addEventListener('click',async()=>{
 });
 async function homeRequest(action,token){
  el('homeMessage').textContent='Проверяем доступ…';
- try{const result=await request('/api/home',{method:'POST',body:JSON.stringify({action,token:token||''})});el('homeMessage').textContent=result.message}
+ try{const result=await request('/api/home',{method:'POST',body:JSON.stringify({action,token:token||''})});el('homeMessage').textContent=result.message;if(action==='delete'){el('homeRooms').textContent='';el('homeRoomsSave').disabled=true}else await loadHomeRooms()}
  catch(e){el('homeMessage').textContent=e.message}
 }
+let homeRoomsRevision='';
+async function loadHomeRooms(){
+ const list=el('homeRooms');el('homeRoomsSave').disabled=true;el('homeRoomsMessage').textContent='Загружаем…';
+ try{const data=await request('/api/home/rooms'); homeRoomsRevision=data.revision;list.textContent='';
+  const homes=new Map();for(const room of data.rooms){let group=homes.get(room.homeId);if(!group){
+   const box=document.createElement('div');box.className='soft-block';const label=document.createElement('label');
+   const all=document.createElement('input');all.type='checkbox';label.append(all,document.createTextNode(' '+room.home));box.appendChild(label);
+   const rooms=document.createElement('div');box.appendChild(rooms);list.appendChild(box);group={all,rooms,checks:[]};homes.set(room.homeId,group);
+   all.addEventListener('change',()=>{for(const c of group.checks)c.checked=all.checked;all.indeterminate=false});}
+   const label=document.createElement('label');label.style.display='block';label.style.margin='8px 0 0 24px';const check=document.createElement('input');check.type='checkbox';check.className='room-check';check.value=room.id;check.checked=room.selected;
+   label.append(check,document.createTextNode(' '+room.room));group.rooms.appendChild(label);group.checks.push(check);
+   check.addEventListener('change',()=>{group.all.checked=group.checks.every(c=>c.checked);group.all.indeterminate=group.checks.some(c=>c.checked)&&!group.all.checked});
+  }
+  for(const group of homes.values()){group.all.checked=group.checks.every(c=>c.checked);group.all.indeterminate=group.checks.some(c=>c.checked)&&!group.all.checked}
+  el('homeRoomsMessage').textContent=data.rooms.length?'':'Комнаты и устройства не найдены.';el('homeRoomsSave').disabled=!data.rooms.length;
+ }catch(e){list.textContent='';el('homeRoomsMessage').textContent=e.message}
+}
+el('homeRoomsLoad').addEventListener('click',loadHomeRooms);
+el('homeRoomsSave').addEventListener('click',async()=>{try{const rooms=Array.from(el('homeRooms').querySelectorAll('.room-check:checked')).map(c=>c.value);
+ const result=await request('/api/home/rooms',{method:'POST',body:JSON.stringify({rooms,revision:homeRoomsRevision})});el('homeRoomsMessage').textContent=result.message;
+ }catch(e){el('homeRoomsMessage').textContent=e.message}});
 el('homeQr').addEventListener('click',()=>homeRequest('qr'));
 el('homeTest').addEventListener('click',()=>homeRequest('test'));
 el('homeDelete').addEventListener('click',()=>homeRequest('delete'));
