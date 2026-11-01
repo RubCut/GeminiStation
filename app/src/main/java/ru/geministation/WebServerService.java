@@ -108,7 +108,7 @@ public final class WebServerService extends Service {
             response.addHeader("Cache-Control", "no-store");
             response.addHeader("X-Content-Type-Options", "nosniff");
             response.addHeader("X-Frame-Options", "DENY");
-            response.addHeader("Content-Security-Policy", "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; media-src 'self' blob:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'");
+            response.addHeader("Content-Security-Policy", "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; media-src 'self' blob:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'");
             return response;
         }
         private Response json(Response.Status status, String message) {
@@ -120,6 +120,21 @@ public final class WebServerService extends Service {
             String host = session.getHeaders().get("host");
             if (!WebSecurity.permittedHost(host)) return json(Response.Status.FORBIDDEN, "Недопустимый адрес");
             if (session.getMethod() == Method.GET && "/".equals(path)) return reply(Response.Status.OK, "text/html; charset=utf-8", page);
+            if (session.getMethod() == Method.GET && "/api/fonts/google-sans.ttf".equals(path)) {
+                try {
+                    InputStream font = context.getAssets().open("fonts/google_sans.ttf");
+                    Response response = newFixedLengthResponse(Response.Status.OK, "font/ttf", font, font.available());
+                    response.addHeader("Cache-Control", "public, max-age=86400"); response.addHeader("X-Content-Type-Options", "nosniff"); return response;
+                } catch (Exception e) { return json(Response.Status.NOT_FOUND, "Шрифт недоступен"); }
+            }
+            if (session.getMethod() == Method.GET && path.matches("/api/led/preview/custom/(listening|thinking|speaking)")) {
+                try {
+                    String mode = path.substring(path.lastIndexOf('/') + 1);
+                    byte[] gif = LedAnimations.read(context, mode, "custom");
+                    Response response = newFixedLengthResponse(Response.Status.OK, "image/gif", new java.io.ByteArrayInputStream(gif), gif.length);
+                    response.addHeader("Cache-Control", "no-store"); response.addHeader("X-Content-Type-Options", "nosniff"); return response;
+                } catch (Exception e) { return json(Response.Status.NOT_FOUND, "Нет своей анимации"); }
+            }
             // Read-only panel previews expose only fixed, non-sensitive animation assets.
             String previewAsset = LedPreviewAsset.assetForPath(path);
             if (session.getMethod() == Method.GET && previewAsset != null) {
@@ -141,8 +156,9 @@ public final class WebServerService extends Service {
                             lastLedAsset = path; lastLedAssetAt = now;
                         }
                     }
-                    InputStream gif = context.getAssets().open(path.substring(1));
-                    Response response = newFixedLengthResponse(Response.Status.OK, "image/gif", gif, gif.available());
+                    String mode = path.substring(5, path.length() - 4);
+                    byte[] bytes = LedAnimations.current(context, mode);
+                    Response response = newFixedLengthResponse(Response.Status.OK, "image/gif", new java.io.ByteArrayInputStream(bytes), bytes.length);
                     response.addHeader("Cache-Control", "no-store");
                     return response;
                 } catch (Exception e) { return json(Response.Status.NOT_FOUND, "Нет изображения"); }
@@ -391,6 +407,32 @@ public final class WebServerService extends Service {
                         AppLog.add("Яндекс: ошибка QR-входа на этапе " + path.substring(path.lastIndexOf('/') + 1) + " (" + safeDetail + ")");
                         return json(Response.Status.BAD_REQUEST, "Не удалось выполнить вход. Яндекс мог запросить капчу или изменить API; попробуйте ещё раз либо импортируйте настройки Studio.");
                     }
+                }
+                if ("/api/led/animations".equals(path) && session.getMethod() == Method.GET)
+                    return reply(Response.Status.OK, "application/json; charset=utf-8", LedAnimations.info(context).toString());
+                if ("/api/led/animations".equals(path) && session.getMethod() == Method.POST) {
+                    if (!WebSecurity.permittedWrite(host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station"))) return json(Response.Status.FORBIDDEN, "Запрос отклонён");
+                    String lengthHeader = session.getHeaders().get("content-length");
+                    long length = lengthHeader == null ? -1 : Long.parseLong(lengthHeader);
+                    if (length < 1 || length > 710000 || session.getHeaders().containsKey("transfer-encoding")) return json(Response.Status.BAD_REQUEST, "Недопустимый размер запроса");
+                    Map<String, String> files = new HashMap<>(); session.parseBody(files);
+                    JSONObject data = new JSONObject(files.get("postData"));
+                    String action = data.optString("action", ""), mode = data.optString("mode", "");
+                    if (!LedAnimations.mode(mode)) return json(Response.Status.BAD_REQUEST, "Неизвестное состояние");
+                    boolean saved;
+                    if ("select".equals(action)) saved = LedAnimations.select(context, mode, data.optString("style", ""));
+                    else if ("upload".equals(action)) {
+                        String encoded = data.optString("gif", "");
+                        if (encoded.length() < 4 || encoded.length() > 699052 || !encoded.matches("[A-Za-z0-9+/]+={0,2}")) return json(Response.Status.BAD_REQUEST, "Некорректный GIF");
+                        byte[] bytes;
+                        try { bytes = android.util.Base64.decode(encoded, android.util.Base64.DEFAULT); }
+                        catch (IllegalArgumentException e) { return json(Response.Status.BAD_REQUEST, "Некорректный GIF"); }
+                        saved = LedAnimations.upload(context, mode, bytes);
+                    } else return json(Response.Status.BAD_REQUEST, "Неизвестное действие");
+                    if (!saved) return json(Response.Status.BAD_REQUEST, "Не удалось сохранить: нужен GIF 25×16, до 512 КБ и 600 кадров, с задержкой не менее 20 мс.");
+                    new Handler(Looper.getMainLooper()).post(() -> LedController.get(context).animationsChanged());
+                    AppLog.add("LED: выбор анимации сохранён для " + mode);
+                    return json(Response.Status.OK, "Анимация сохранена. Показ на экране станции нужно проверить.");
                 }
                 if (session.getMethod() == Method.POST && ("/api/led".equals(path) || "/api/led/test".equals(path) || "/api/led/clear".equals(path))) {
                     // LAN access is passwordless by design. Keep the same-origin/Host protections.

@@ -1,4 +1,4 @@
-"""Regenerate the 320 x 180 launcher banner. Requires Pillow and DejaVu Sans."""
+"""Regenerate the 320 x 180 launcher banner. Requires Pillow and bundled Google Sans."""
 import math
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
@@ -28,8 +28,8 @@ for y in range(H):
         t = min(1.,max(0.,(x / SCALE - 25 + 135 - y / SCALE) / 160))
         grad[x,y] = (round(111+125*t), round(170+6*t), round(255-34*t))
 image.paste(gradient,(0,0),mask)
-bold = ImageFont.truetype('DejaVuSans-Bold.ttf', 27*SCALE)
-regular = ImageFont.truetype('DejaVuSans.ttf', 16*SCALE)
+bold = ImageFont.truetype(str(Path(__file__).resolve().parents[1] / 'app/src/main/assets/fonts/google_sans.ttf'), 27*SCALE)
+regular = ImageFont.truetype(str(Path(__file__).resolve().parents[1] / 'app/src/main/assets/fonts/google_sans.ttf'), 16*SCALE)
 draw = ImageDraw.Draw(image)
 draw.text(point(128,56),'Gemini',font=bold,fill='#F1ECF8',stroke_width=0)
 draw.text(point(129,95),'Station',font=regular,fill='#CFC5DA')

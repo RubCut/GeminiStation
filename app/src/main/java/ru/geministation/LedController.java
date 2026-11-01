@@ -131,6 +131,11 @@ final class LedController {
             if (connection != null) connection.close();
         });
     }
+    void animationsChanged() {
+        // This cache is owned by the LED executor; enqueue its invalidation before a resend.
+        executor.execute(assetUrls::clear);
+        if (active != null) change(active);
+    }
     void serverStarted() {
         // If a dialog started before the HTTP server was ready, resend its latest phase.
         if (active != null) show(active); else prewarm();
@@ -293,7 +298,7 @@ final class LedController {
     private String assetUrl(String frame) throws Exception {
         String url = assetUrls.get(frame);
         if (url == null) {
-            try (InputStream source = context.getAssets().open("led/" + frame + ".gif")) {
+            try (InputStream source = new java.io.ByteArrayInputStream(LedAnimations.current(context, frame))) {
                 url = LedAssetUrl.build(frame, source);
             }
             assetUrls.put(frame, url);

@@ -134,6 +134,7 @@ public final class MainActivity extends Activity {
         logoParams.gravity = Gravity.BOTTOM;
         bubble.addView(logo, logoParams);
         text = new TextView(this);
+        text.setTypeface(BrandFont.get(this));
         text.setTextColor(Color.WHITE);
         text.setTextSize(16);
         text.setGravity(Gravity.CENTER_VERTICAL);
