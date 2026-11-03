@@ -57,8 +57,14 @@ jobs:
           python-version: '3.11'
       - name: Verify microWakeWord frontend parity
         run: |
-          python3 -m pip install 'numpy<2' pymicro-features==2.0.2 Pillow==11.3.0 fonttools==4.60.1
+          python3 -m pip install 'numpy<2' scipy==1.12.0 tflite-runtime==2.14.0 pymicro-features==2.0.2 piper-tts==1.3.0 Pillow==11.3.0 fonttools==4.60.1
           python3 tools/test_microfrontend.py
+      - name: Test offline wake-word comparison
+        run: python3 experiments/microwakeword/test_evaluate_recordings.py
+      - name: Test selected TTS training preparation
+        run: python3 experiments/microwakeword/test_selected_tts_experiment.py
+      - name: Test streaming negative preparation
+        run: python3 experiments/microwakeword/test_stream_negatives.py
       - name: Check LED animation assets
         run: python3 tools/test_led_animations.py
       - name: Check bundled typography and icons
@@ -73,12 +79,6 @@ jobs:
         run: python3 tools/test_meme_plugin.py
       - name: Check ADB helper command surface
         run: python3 tools/test_helper_surface.py
-      - name: Prepare offline wake-word model
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: ./tools/prepare_wakeword.sh
-      - name: Check wake-word assets
-        run: python3 tools/test_wakeword_assets.py
       - name: Build and test signed APKs
         env:
           SIGNING_PASSWORD_SECRET: ${{ secrets.GEMINI_SIGNING_PASSWORD }}

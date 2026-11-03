@@ -6,7 +6,6 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Handler;
 import android.os.Looper;
-import java.io.File;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -32,7 +31,14 @@ final class WakeWordController {
     String status() { return status; }
     int rms() { return rms; }
     int peak() { return peak; }
-    void serviceStarted() { serviceRunning = true; worker.execute(this::reconcile); }
+    void serviceStarted() {
+        serviceRunning = true;
+        worker.execute(() -> {
+            int removed = LegacyWakeCleanup.remove(context.getFilesDir());
+            if (removed > 0) AppLog.add("Удалены файлы прежней локальной модели: " + removed);
+            reconcile();
+        });
+    }
     void serviceStopped() { serviceRunning = false; worker.execute(this::reconcile); }
     void settingsChanged() { worker.execute(this::reconcile); }
     void dialogOpening() { dialogActive = true; worker.execute(this::reconcile); }
@@ -73,7 +79,6 @@ final class WakeWordController {
         }
         status = "Подготавливаем локальную модель";
         try {
-            File model = MicroWakePolicy.isMicro(engine) ? null : WakeWordAssets.prepare(context);
             if (!wanted()) { reconcile(); return; }
             WakeCapture next = new WakeCapture(context, new WakeCapture.Listener() {
                 @Override public void onLevel(WakeCapture owner, int level, int max) {
@@ -120,7 +125,7 @@ final class WakeWordController {
                 }
             }, engine, sensitivity, filter, amplify, tuning);
             capture = next; rms = -1; peak = -1;
-            next.start(model);
+            next.start();
             if (!wanted()) { reconcile(); return; }
             status = "Микрофон запущен (" + next.sourceName() + ", " + engine + ")";
             AppLog.add("Голосовая активация: микрофон запущен (" + next.sourceName() + "), движок " + engine + ", чувствительность " + sensitivity + ", фильтр " + filter + ", усиление " + amplify);

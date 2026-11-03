@@ -15,7 +15,7 @@ for (const [, id] of markup.matchAll(/(?:href|for|aria-describedby|aria-labelled
 }
 assert.match(markup, /<input type="range" id="wakeSensitivity" min="1" max="100" step="1"/);
 assert.match(markup, /<input type="number" id="sensitivityNumber" min="1" max="100" step="1"/);
-const saved = {model:'gemini-3.5-flash-lite', voice:'Kore', voices:['Kore','Puck','Aoede'], logs:[], buttonEnabled:false, audioDuckEnabled:true, buttonServiceConnected:false, wakeEnabled:false, wakeEngine:"pocketsphinx", wakeFilter:true, wakeAmplify:true, engine:'gemini', engines:[{id:'gemini',name:'Gemini TTS'},{id:'org.example.tts',name:'Пример TTS'}], wakeStatus:"Выключена", wakeSensitivity:"normal", wakeRms:-1, wakePeak:-1, dnsEnabled:true, dnsBypassVpn:true, dnsServer:"https://d.webshiftvpn.ru/dns-query", vpnActive:false, systemPrompt:"Старый промпт", defaultSystemPrompt:"Исходный промпт", apiKeys:[{id:"11111111-1111-4111-8111-111111111111"}]};
+const saved = {model:'gemini-3.5-flash-lite', voice:'Kore', voices:['Kore','Puck','Aoede'], logs:[], buttonEnabled:false, audioDuckEnabled:true, buttonServiceConnected:false, wakeEnabled:false, wakeEngine:"microwakeword_selected_tts", wakeFilter:true, wakeAmplify:true, engine:'gemini', engines:[{id:'gemini',name:'Gemini TTS'},{id:'org.example.tts',name:'Пример TTS'}], wakeStatus:"Выключена", wakeSensitivity:"normal", wakeRms:-1, wakePeak:-1, dnsEnabled:true, dnsBypassVpn:true, dnsServer:"https://d.webshiftvpn.ru/dns-query", vpnActive:false, systemPrompt:"Старый промпт", defaultSystemPrompt:"Исходный промпт", apiKeys:[{id:"11111111-1111-4111-8111-111111111111"}]};
 saved.voiceTuning={wakeMinMs:200,wakeRecentMs:400,wakeResetMs:1200,silenceMs:5000,finalMs:800,interimMs:1800,preconnect:true,earlyCapture:true};
 const writes = [], samples = [], helperRequests = [], ttsSamples = [];
 let sampleError = false, blockPlayback = false, revoked = [];
@@ -93,15 +93,15 @@ function page() {
   assert.equal(saved.engine,'gemini','preview must not save');
   await p.element('saveTtsEngine').handlers.click();
   assert.equal(saved.engine,'org.example.tts');
-  assert.equal(p.element('wakeEngine').value,'pocketsphinx');
+  assert.equal(p.element('wakeEngine').value,'microwakeword_selected_tts');
   p.element('wakeEngine').value='microwakeword';p.element('wakeEngine').handlers.change();
   await vm.runInContext('refresh()',p.context);
   assert.equal(p.element('wakeEngine').value,'microwakeword','poll must preserve unsaved detector choice');
   await p.element('saveWakeSettings').handlers.click();
   assert.equal(saved.wakeEngine,'microwakeword');
-  p.element('wakeEngine').value='pocketsphinx';p.element('wakeEngine').handlers.change();
+  p.element('wakeEngine').value='microwakeword_selected_tts';p.element('wakeEngine').handlers.change();
   await p.element('saveWakeSettings').handlers.click();
-  assert.equal(saved.wakeEngine,'pocketsphinx','must be able to revert to PocketSphinx');
+  assert.equal(saved.wakeEngine,'microwakeword_selected_tts','must be able to switch back to the new model');
   assert.equal(p.element('wakeFilter').checked,true);
   p.element('wakeFilter').checked=false;p.element('wakeFilter').handlers.change();
   await vm.runInContext('refresh()',p.context);
@@ -127,7 +127,7 @@ function page() {
   const currentKeys=saved.apiKeys;saved.apiKeys=[];await vm.runInContext('refresh()',p.context);
   assert.equal(p.element('setupGuide').hidden,false,'guide is visible when no key is saved');
   saved.apiKeys=currentKeys;await vm.runInContext('refresh()',p.context);
-  saved.wakeEnabled=true;saved.wakeStatus='Микрофон запущен (MIC, microwakeword_all_stress)';await vm.runInContext('refresh()',p.context);
+  saved.wakeEnabled=true;saved.wakeStatus='Микрофон запущен (MIC, microwakeword_selected_tts)';await vm.runInContext('refresh()',p.context);
   assert.equal(p.element('wakeStatus').textContent,'Готова к голосовому вызову');
   assert.equal(p.element('overviewWake').textContent,'Готова');
   saved.wakeStatus='Ошибка запуска; проверьте журнал';await vm.runInContext('refresh()',p.context);

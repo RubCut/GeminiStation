@@ -5,16 +5,10 @@ import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
 import android.os.SystemClock;
-import edu.cmu.pocketsphinx.Config;
-import edu.cmu.pocketsphinx.Decoder;
-import edu.cmu.pocketsphinx.Hypothesis;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-/** Owns one microphone and decoder; only the capture thread uses native decoder calls after start. */
+/** Owns one microphone and local microWakeWord detector on the capture thread. */
 final class WakeCapture {
     interface Listener {
         void onLevel(WakeCapture owner, int rms, int peak);
@@ -29,11 +23,9 @@ final class WakeCapture {
     private final VoiceTuning tuning;
     private final AtomicBoolean stopping = new AtomicBoolean();
     private volatile AudioRecord recorder;
-    private Decoder decoder;
     private MicroWakeDetector micro;
     private Thread thread;
     private String sourceName;
-    private boolean utteranceStarted;
 
     WakeCapture(Context context, Listener listener, String engine, String sensitivity, boolean filter, boolean amplify, VoiceTuning tuning) {
         this.context = context; this.listener = listener; this.engine = engine; this.sensitivity = sensitivity;
@@ -46,28 +38,9 @@ final class WakeCapture {
     String sourceName() { return sourceName; }
     boolean isAlive() { return thread != null && thread.isAlive(); }
 
-    void start(File model) throws IOException {
-        Config config = null;
+    void start() throws IOException {
         try {
-            if (MicroWakePolicy.isMicro(engine)) {
-                micro = new MicroWakeDetector(context, sensitivity, engine);
-            } else {
-                System.loadLibrary("pocketsphinx_jni");
-                config = Decoder.defaultConfig();
-                config.setString("-hmm", model.getAbsolutePath());
-                config.setString("-dict", new File(model, "words.dict").getAbsolutePath());
-                config.setString("-fdict", new File(model, "noisedict").getAbsolutePath());
-                config.setString("-lda", new File(model, "feature_transform").getAbsolutePath());
-                config.setFloat("-samprate", RATE);
-                config.setBoolean("-backtrace", false);
-                decoder = new Decoder(config);
-                File keywords = new File(model, "active-keywords.list");
-                try (FileOutputStream out = new FileOutputStream(keywords)) {
-                    out.write(WakeSensitivity.keywords(sensitivity).getBytes(StandardCharsets.UTF_8));
-                }
-                decoder.setKws("gemini-wake", keywords.getAbsolutePath());
-                decoder.setSearch("gemini-wake");
-            }
+            micro = new MicroWakeDetector(context, sensitivity, engine);
             int minimum = AudioRecord.getMinBufferSize(RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
             if (minimum <= 0) throw new IOException("16 kHz audio is not supported");
             recorder = create(MediaRecorder.AudioSource.MIC, Math.max(minimum, CHUNK * 4));
@@ -79,15 +52,12 @@ final class WakeCapture {
             if (recorder == null) throw new IOException("Cannot initialize microphone");
             recorder.startRecording();
             if (recorder.getRecordingState() != AudioRecord.RECORDSTATE_RECORDING) throw new IOException("Cannot start microphone");
-            if (decoder != null) { decoder.startUtt(); utteranceStarted = true; }
             thread = new Thread(this::capture, "GeminiWakeMicrophone");
             thread.start();
         } catch (Exception | LinkageError e) {
             cleanup();
             if (e instanceof IOException) throw (IOException) e;
             throw new IOException("Wake-word initialization failed: " + e.getClass().getSimpleName(), e);
-        } finally {
-            if (config != null) config.delete();
         }
     }
     private static AudioRecord create(int source, int size) {
@@ -117,8 +87,7 @@ final class WakeCapture {
                 count = buffered; buffered = 0;
                 level.add(samples, count);
                 conditioning.process(samples, count, amplify);
-                boolean microHit = micro != null && micro.process(samples, count);
-                if (decoder != null) decoder.processRaw(samples, count, false, false);
+                boolean microHit = micro.process(samples, count);
                 long now = SystemClock.elapsedRealtime();
                 if (now - lastLevel >= 2000) {
                     listener.onLevel(this, level.rms(), level.peak());
@@ -127,8 +96,7 @@ final class WakeCapture {
                 if (micro != null && now - lastTiming >= 20000) {
                     AppLog.add("microWakeWord за последние 20 с: " + micro.diagnostic()); lastTiming = now;
                 }
-                Hypothesis result = decoder == null ? null : decoder.hyp();
-                if (microHit || (result != null && WakeWordResult.matches(result.getHypstr()))) {
+                if (microHit) {
                     if (conditioning.candidateAllowed(filter, tuning.wakeMinMs, tuning.wakeRecentMs)) {
                         AppLog.add("Голосовая активация: кандидат принят; сигнал " + conditioning.activeMillis()
                                 + " мс, пауза " + conditioning.quietMillis() + " мс, RMS " + conditioning.rms()
@@ -143,13 +111,8 @@ final class WakeCapture {
                                 + ", усиление " + conditioning.gainPercent() + "%");
                         lastRejectedLog = now;
                     }
-                    // PocketSphinx hypotheses persist; reset only that decoder. The streaming
-                    // model retains its continuous audio history across rejected candidates.
-                    if (decoder != null) { decoder.endUtt(); decoder.startUtt(); }
+                    // Retain continuous model state, but clear the rejected signal history.
                     conditioning.clearSpeech();
-                } else if (decoder != null && conditioning.resetForSilence(tuning.wakeResetMs)) {
-                    // KWS searches are continuous and can otherwise retain old detections.
-                    decoder.endUtt(); decoder.startUtt(); conditioning.clearSpeech();
                 }
             }
         } catch (Exception | LinkageError e) {
@@ -175,9 +138,5 @@ final class WakeCapture {
             recorder.release(); recorder = null;
         }
         if (micro != null) { micro.close(); micro = null; }
-        if (decoder != null) {
-            if (utteranceStarted) try { decoder.endUtt(); } catch (RuntimeException ignored) { }
-            decoder.delete(); decoder = null;
-        }
     }
 }

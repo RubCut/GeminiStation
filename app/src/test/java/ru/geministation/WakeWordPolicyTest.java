@@ -11,12 +11,4 @@ public class WakeWordPolicyTest {
         assertFalse(WakeWordPolicy.shouldListen(true, true, true, true));
         assertFalse(WakeWordPolicy.shouldListen(true, true, false, false));
     }
-    @Test public void onlyKnownKeywordResultsTrigger() {
-        for (String word : WakeWordResult.KEYWORDS) assertTrue(WakeWordResult.matches(word));
-        assertTrue(WakeWordResult.matches("gemini1 jeminai3"));
-        assertFalse(WakeWordResult.matches(null));
-        assertFalse(WakeWordResult.matches("notgemini1"));
-        assertFalse(WakeWordResult.matches("gemini"));
-        assertFalse(WakeWordResult.matches(""));
-    }
 }

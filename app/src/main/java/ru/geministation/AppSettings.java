@@ -32,7 +32,7 @@ final class AppSettings {
         return WakeSensitivity.normalize(value);
     }
     static String wakeEngine(Context context) {
-        String value = context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE).getString("wake_engine", MicroWakePolicy.POCKET);
+        String value = context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE).getString("wake_engine", MicroWakePolicy.DEFAULT);
         return MicroWakePolicy.normalizeEngine(value);
     }
     static boolean wakeFilter(Context context) {

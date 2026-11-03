@@ -4,16 +4,18 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class MicroWakePolicyTest {
-    @Test public void defaultAndValidation() {
-        assertEquals(MicroWakePolicy.POCKET, MicroWakePolicy.normalizeEngine(null));
-        assertEquals(MicroWakePolicy.POCKET, MicroWakePolicy.normalizeEngine("other"));
-        assertTrue(MicroWakePolicy.validEngine(MicroWakePolicy.POCKET));
+    @Test public void migrationAndValidation() {
+        assertEquals(MicroWakePolicy.SELECTED_TTS, MicroWakePolicy.normalizeEngine(null));
+        assertEquals(MicroWakePolicy.SELECTED_TTS, MicroWakePolicy.normalizeEngine("other"));
+        assertEquals(MicroWakePolicy.SELECTED_TTS, MicroWakePolicy.normalizeEngine("pocketsphinx"));
+        assertEquals(MicroWakePolicy.SELECTED_TTS, MicroWakePolicy.normalizeEngine("microwakeword_all_stress"));
+        assertEquals(MicroWakePolicy.MICRO, MicroWakePolicy.normalizeEngine(MicroWakePolicy.MICRO));
         assertTrue(MicroWakePolicy.validEngine(MicroWakePolicy.MICRO));
-        assertTrue(MicroWakePolicy.validEngine(MicroWakePolicy.MICRO_STRESS));
-        assertTrue(MicroWakePolicy.isMicro(MicroWakePolicy.MICRO_STRESS));
-        assertFalse(MicroWakePolicy.isMicro(MicroWakePolicy.POCKET));
+        assertTrue(MicroWakePolicy.validEngine(MicroWakePolicy.SELECTED_TTS));
+        assertFalse(MicroWakePolicy.validEngine("pocketsphinx"));
+        assertFalse(MicroWakePolicy.validEngine("microwakeword_all_stress"));
         assertEquals("microwakeword/gemini_experimental.tflite", MicroWakePolicy.modelAsset(MicroWakePolicy.MICRO));
-        assertEquals("microwakeword/gemini_all_stress_experimental.tflite", MicroWakePolicy.modelAsset(MicroWakePolicy.MICRO_STRESS));
+        assertEquals("microwakeword/gemini_selected_tts_experimental.tflite", MicroWakePolicy.modelAsset(MicroWakePolicy.SELECTED_TTS));
         assertFalse(MicroWakePolicy.validEngine(""));
     }
     @Test public void sensitivityGoesFromStrictToSensitive() {
