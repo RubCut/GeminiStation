@@ -19,6 +19,7 @@ final class MicroWakeDetector implements AutoCloseable {
     private ByteBuffer vadInput, vadOutput;
     private Interpreter vadInterpreter;
     private final SpeechVadPolicy vad = new SpeechVadPolicy();
+    private final PersonalWakeWorker personal;
     private float vadInputScale, vadOutputScale;
     private int vadInputZero, vadOutputZero, vadRejected;
     private final ByteBuffer output = ByteBuffer.allocateDirect(1).order(ByteOrder.nativeOrder());
@@ -30,7 +31,8 @@ final class MicroWakeDetector implements AutoCloseable {
     private float probabilitySum, lastAverage, intervalPeak;
     private long samplesProcessed, processingNs, maxChunkNs;
 
-    MicroWakeDetector(Context context, String sensitivity, String engine, boolean useVad) throws IOException {
+    MicroWakeDetector(Context context, String sensitivity, String engine, boolean useVad, PersonalWakeWorker personal) throws IOException {
+        this.personal = personal;
         threshold = MicroWakePolicy.threshold(sensitivity);
         try {
             ByteBuffer model = load(context, MicroWakePolicy.modelAsset(engine));
@@ -80,6 +82,7 @@ final class MicroWakeDetector implements AutoCloseable {
         long started = System.nanoTime(); boolean hit = false;
         for (int offset = 0; offset < count; offset += FRAME) {
             if (frontend.process(samples, offset, features) == 0) continue;
+            if (personal != null) personal.add(features);
             for (float feature : features) {
                 int q = Math.round(feature / inputScale) + inputZero;
                 input.put((byte) Math.max(-128, Math.min(127, q)));
@@ -113,6 +116,7 @@ final class MicroWakeDetector implements AutoCloseable {
         processingNs += elapsed; maxChunkNs = Math.max(maxChunkNs, elapsed); samplesProcessed += count;
         return hit;
     }
+    boolean speechRecently() { return vadInterpreter == null || vad.speechRecently(); }
     String diagnostic() {
         String value = String.format(java.util.Locale.US, "пик %.3f, порог %.3f; %s; %s", intervalPeak, threshold,
                 vadInterpreter == null ? "проверка речи выключена" : String.format(java.util.Locale.US,

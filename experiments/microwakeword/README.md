@@ -191,3 +191,10 @@ python3 experiments/microwakeword/evaluate_vad.py --corpus /path/to/independent_
 ```
 
 At wake cutoff 0.9 the three keyboard sequences produced 3 raw score crossings without VAD and none with it; this is not a guaranteed device false-trigger rate. At 0.6, VAD reduced raw full-phrase hits from 322/360 to 305/360 and fragment hits from 183/256 to 141/256; ordinary-speech negatives remained 7/264. Trying 5-frame instead of 10-frame averaging increased ordinary-speech negative clips from 7 to 19/264 at 0.6, so it was **not deployed**. The cue now starts before synchronous Live client setup; 350 ms of output warm-up silence remains because the station previously required it. On-device logs separate detection, mic handoff and cue start, but cannot establish detection latency before the trigger.
+
+
+### Personal pronunciation prototypes
+
+The optional personal path is not retraining: it compares 20-dimensional normalized spectral frames using a bounded subsequence dynamic-time-warping distance on a background worker. The general microWakeWord path continues in parallel. Templates come only from user-uploaded, locally processed WAVs and are encrypted in app-private preferences; raw files are not stored or transmitted to an external model service. VAD (when enabled) and the signal guard apply to the personal path. Matches and false activations must be tested on the station; neither a voice-identity guarantee nor accuracy has been established.
+
+A preliminary, non-independent-speaker smoke test used one selected synthetic female TTS utterance as a template. Another generated utterance of the same word had a raw distance 0.416 (cutoff 0.50); a third was missed. In a separate synthetic Piper corpus with different voices, no clear negative WAV scored below 0.50, but that corpus cannot estimate human false activations; no real positive user recordings or Android end-to-end performance were evaluated. In a different small test, a male synthetic example was less similar to another positive than to some ordinary negative words. Consequently this remains experimental and users can delete all templates without changing the selected general model.

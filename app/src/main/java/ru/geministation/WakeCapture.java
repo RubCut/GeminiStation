@@ -19,21 +19,22 @@ final class WakeCapture {
     private final Listener listener;
     private final String sensitivity, engine;
     private final Context context;
-    private final boolean filter, amplify, vad;
+    private final boolean filter, amplify, vad, personalEnabled;
     private final VoiceTuning tuning;
     private final AtomicBoolean stopping = new AtomicBoolean();
     private volatile AudioRecord recorder;
     private MicroWakeDetector micro;
+    private PersonalWakeWorker personal;
     private Thread thread;
     private String sourceName;
     private long recordingStarted;
 
-    WakeCapture(Context context, Listener listener, String engine, String sensitivity, boolean filter, boolean amplify, boolean vad, VoiceTuning tuning) {
+    WakeCapture(Context context, Listener listener, String engine, String sensitivity, boolean filter, boolean amplify, boolean vad, boolean personalEnabled, VoiceTuning tuning) {
         this.context = context; this.listener = listener; this.engine = engine; this.sensitivity = sensitivity;
-        this.filter = filter; this.amplify = amplify; this.vad = vad; this.tuning = tuning;
+        this.filter = filter; this.amplify = amplify; this.vad = vad; this.personalEnabled = personalEnabled; this.tuning = tuning;
     }
-    boolean sameSettings(String selectedEngine, String value, boolean filterEnabled, boolean amplifyEnabled, boolean vadEnabled, VoiceTuning other) {
-        return engine.equals(selectedEngine) && sensitivity.equals(value) && filter == filterEnabled && amplify == amplifyEnabled && vad == vadEnabled && tuning.sameWake(other);
+    boolean sameSettings(String selectedEngine, String value, boolean filterEnabled, boolean amplifyEnabled, boolean vadEnabled, boolean personalIsEnabled, VoiceTuning other) {
+        return engine.equals(selectedEngine) && sensitivity.equals(value) && filter == filterEnabled && amplify == amplifyEnabled && vad == vadEnabled && personalEnabled == personalIsEnabled && tuning.sameWake(other);
     }
     String sensitivity() { return sensitivity; }
     String sourceName() { return sourceName; }
@@ -41,7 +42,13 @@ final class WakeCapture {
 
     void start() throws IOException {
         try {
-            micro = new MicroWakeDetector(context, sensitivity, engine, vad);
+            try {
+                java.util.List<float[][]> templates = personalEnabled ? PersonalWakeStore.load(context) : java.util.Collections.emptyList();
+                if (!templates.isEmpty()) personal = new PersonalWakeWorker(templates);
+            } catch (Exception e) {
+                AppLog.add("Образцы произношения недоступны; общая модель продолжает работать");
+            }
+            micro = new MicroWakeDetector(context, sensitivity, engine, vad, personal);
             int minimum = AudioRecord.getMinBufferSize(RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
             if (minimum <= 0) throw new IOException("16 kHz audio is not supported");
             recorder = create(MediaRecorder.AudioSource.MIC, Math.max(minimum, CHUNK * 4));
@@ -92,6 +99,8 @@ final class WakeCapture {
                 conditioning.process(samples, count, amplify);
                 boolean microHit = micro.process(samples, count);
                 long now = SystemClock.elapsedRealtime();
+                if (personal != null && conditioning.speechLike() && micro.speechRecently()) personal.offer(now);
+                boolean personalHit = personal != null && personal.takeHit(now);
                 if (now - lastLevel >= 2000) {
                     listener.onLevel(this, level.rms(), level.peak());
                     level.reset(); lastLevel = now;
@@ -102,9 +111,10 @@ final class WakeCapture {
                     AppLog.add("microWakeWord за последние 20 с: " + micro.diagnostic()
                             + "; разница времени записи и прочитанного звука " + differenceMs + " мс"); lastTiming = now;
                 }
-                if (microHit) {
-                    if (conditioning.candidateAllowed(filter, tuning.wakeMinMs, tuning.wakeRecentMs)) {
-                        AppLog.add("Голосовая активация: кандидат принят; сигнал " + conditioning.activeMillis()
+                if (microHit || personalHit) {
+                    int recentMs = personalHit ? Math.max(tuning.wakeRecentMs, 600) : tuning.wakeRecentMs;
+                    if (conditioning.candidateAllowed(filter, tuning.wakeMinMs, recentMs)) {
+                        AppLog.add("Голосовая активация: кандидат принят (" + (microHit ? "общая модель" : "личный образец") + "); сигнал " + conditioning.activeMillis()
                                 + " мс, пауза " + conditioning.quietMillis() + " мс, RMS " + conditioning.rms()
                                 + ", фон " + conditioning.floor() + ", фильтр " + filter);
                         listener.onTrigger(this);
@@ -117,8 +127,8 @@ final class WakeCapture {
                                 + ", усиление " + conditioning.gainPercent() + "%");
                         lastRejectedLog = now;
                     }
-                    // Retain continuous model state, but clear the rejected signal history.
-                    conditioning.clearSpeech();
+                    // A rejected personal match must not change the general detector's signal history.
+                    if (microHit) conditioning.clearSpeech();
                 }
             }
         } catch (Exception | LinkageError e) {
@@ -144,5 +154,6 @@ final class WakeCapture {
             recorder.release(); recorder = null;
         }
         if (micro != null) { micro.close(); micro = null; }
+        if (personal != null) { personal.close(); personal = null; }
     }
 }

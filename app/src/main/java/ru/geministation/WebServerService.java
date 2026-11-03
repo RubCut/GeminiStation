@@ -181,6 +181,7 @@ public final class WebServerService extends Service {
                             .put("wakeEngine", AppSettings.wakeEngine(context))
                             .put("wakeFilter", AppSettings.wakeFilter(context))
                             .put("wakeVad", AppSettings.wakeVad(context))
+                            .put("wakePersonal", AppSettings.wakePersonal(context))
                             .put("wakeAmplify", AppSettings.wakeAmplify(context))
                             .put("voiceTuning", VoiceTuning.load(context).json())
                             .put("wakeRms", WakeWordController.get(context).rms())
@@ -412,6 +413,44 @@ public final class WebServerService extends Service {
                         return json(Response.Status.BAD_REQUEST, "Не удалось выполнить вход. Яндекс мог запросить капчу или изменить API; попробуйте ещё раз либо импортируйте настройки Studio.");
                     }
                 }
+                if ("/api/wake-samples".equals(path) && session.getMethod() == Method.GET) {
+                    try {
+                        return reply(Response.Status.OK, "application/json; charset=utf-8",
+                                new JSONObject().put("count", PersonalWakeStore.count(context)).put("max", PersonalWakeMatcher.MAX_TEMPLATES).toString());
+                    } catch (Exception e) { return json(Response.Status.INTERNAL_ERROR, "Не удалось прочитать образцы"); }
+                }
+                if (("/api/wake-samples".equals(path) || "/api/wake-samples/clear".equals(path)) && session.getMethod() == Method.POST) {
+                    if (!WebSecurity.permittedWrite(host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station")))
+                        return json(Response.Status.FORBIDDEN, "Запрос отклонён");
+                    String lengthHeader = session.getHeaders().get("content-length");
+                    long length = lengthHeader == null ? -1 : Long.parseLong(lengthHeader);
+                    if (length < 1 || length > PersonalWakeStore.MAX_BYTES || session.getHeaders().containsKey("transfer-encoding"))
+                        return json(Response.Status.BAD_REQUEST, "Недопустимый размер записи");
+                    if ("/api/wake-samples/clear".equals(path)) {
+                        if (length != 2) return json(Response.Status.BAD_REQUEST, "Недопустимый запрос");
+                        Map<String, String> files = new HashMap<>(); session.parseBody(files);
+                        if (!"{}".equals(files.get("postData"))) return json(Response.Status.BAD_REQUEST, "Недопустимый запрос");
+                        PersonalWakeStore.clear(context);
+                        WakeWordController.get(context).personalSamplesChanged();
+                        AppLog.add("Личные образцы произношения удалены");
+                        return json(Response.Status.OK, "Образцы удалены");
+                    }
+                    // Read the bounded binary body directly; do not create NanoHTTPD temporary files for voice recordings.
+                    byte[] wav = new byte[(int) length];
+                    InputStream input = session.getInputStream(); int offset = 0;
+                    while (offset < wav.length) {
+                        int count = input.read(wav, offset, wav.length - offset);
+                        if (count <= 0) return json(Response.Status.BAD_REQUEST, "Запись передана не полностью");
+                        offset += count;
+                    }
+                    try {
+                        int count = PersonalWakeStore.add(context, wav);
+                        WakeWordController.get(context).personalSamplesChanged();
+                        AppLog.add("Добавлен личный образец произношения; всего " + count);
+                        return json(Response.Status.OK, "Образец сохранён");
+                    } catch (java.io.IOException e) { return json(Response.Status.BAD_REQUEST, e.getMessage()); }
+                    catch (Exception e) { return json(Response.Status.INTERNAL_ERROR, "Не удалось сохранить образец"); }
+                }
                 if ("/api/led/animations".equals(path) && session.getMethod() == Method.GET)
                     return reply(Response.Status.OK, "application/json; charset=utf-8", LedAnimations.info(context).toString());
                 if ("/api/led/animations".equals(path) && session.getMethod() == Method.POST) {
@@ -575,11 +614,14 @@ public final class WebServerService extends Service {
                     String wakeSensitivity = data.has("wakeSensitivity") ? data.optString("wakeSensitivity", "") : AppSettings.wakeSensitivity(context);
                     if (data.has("wakeFilter") && !(data.opt("wakeFilter") instanceof Boolean))
                         return json(Response.Status.BAD_REQUEST, "Некорректный фильтр активации");
+                    if (data.has("wakePersonal") && !(data.opt("wakePersonal") instanceof Boolean))
+                        return json(Response.Status.BAD_REQUEST, "Некорректное состояние образцов");
                     if (data.has("wakeVad") && !(data.opt("wakeVad") instanceof Boolean))
                         return json(Response.Status.BAD_REQUEST, "Некорректная проверка речи");
                     if (data.has("wakeAmplify") && !(data.opt("wakeAmplify") instanceof Boolean))
                         return json(Response.Status.BAD_REQUEST, "Некорректное усиление активации");
                     boolean wakeFilter = data.has("wakeFilter") ? data.optBoolean("wakeFilter") : AppSettings.wakeFilter(context);
+                    boolean wakePersonal = data.has("wakePersonal") ? data.optBoolean("wakePersonal") : AppSettings.wakePersonal(context);
                     boolean wakeVad = data.has("wakeVad") ? data.optBoolean("wakeVad") : AppSettings.wakeVad(context);
                     boolean wakeAmplify = data.has("wakeAmplify") ? data.optBoolean("wakeAmplify") : AppSettings.wakeAmplify(context);
                     if (data.has("wakeEngine") && !(data.opt("wakeEngine") instanceof String))
@@ -597,7 +639,7 @@ public final class WebServerService extends Service {
                         try { vault.add(key); }
                         catch (IllegalArgumentException e) { return json(Response.Status.BAD_REQUEST, e.getMessage()); }
                     }
-                    if (!AppSettings.save(context, model, voice, buttonEnabled, wakeEnabled, wakeSensitivity, audioDuckEnabled, wakeFilter, wakeAmplify, wakeEngine, wakeVad)) return json(Response.Status.INTERNAL_ERROR, "Не удалось сохранить настройки");
+                    if (!AppSettings.save(context, model, voice, buttonEnabled, wakeEnabled, wakeSensitivity, audioDuckEnabled, wakeFilter, wakeAmplify, wakeEngine, wakeVad, wakePersonal)) return json(Response.Status.INTERNAL_ERROR, "Не удалось сохранить настройки");
                     WakeWordController.get(context).settingsChanged();
                     AppLog.add(deleteKey ? "API-ключ удалён через веб-интерфейс" : "Настройки сохранены через веб-интерфейс");
                     return json(Response.Status.OK, "Настройки сохранены");
