@@ -16,6 +16,11 @@ final class MicroWakeDetector implements AutoCloseable {
     private static final int FRAME = 160, MEL = 40, STEPS = 3, AVERAGE = 10;
     private final float[] features = new float[MEL], probabilities = new float[AVERAGE];
     private final ByteBuffer input = ByteBuffer.allocateDirect(STEPS * MEL).order(ByteOrder.nativeOrder());
+    private ByteBuffer vadInput, vadOutput;
+    private Interpreter vadInterpreter;
+    private final SpeechVadPolicy vad = new SpeechVadPolicy();
+    private float vadInputScale, vadOutputScale;
+    private int vadInputZero, vadOutputZero, vadRejected;
     private final ByteBuffer output = ByteBuffer.allocateDirect(1).order(ByteOrder.nativeOrder());
     private final float threshold, inputScale, outputScale;
     private final int inputZero, outputZero;
@@ -25,10 +30,10 @@ final class MicroWakeDetector implements AutoCloseable {
     private float probabilitySum, lastAverage, intervalPeak;
     private long samplesProcessed, processingNs, maxChunkNs;
 
-    MicroWakeDetector(Context context, String sensitivity, String engine) throws IOException {
+    MicroWakeDetector(Context context, String sensitivity, String engine, boolean useVad) throws IOException {
         threshold = MicroWakePolicy.threshold(sensitivity);
         try {
-            ByteBuffer model = load(context, engine);
+            ByteBuffer model = load(context, MicroWakePolicy.modelAsset(engine));
             frontend = new MicroFrontend();
             interpreter = new Interpreter(model, new Interpreter.Options().setNumThreads(1));
             Tensor in = interpreter.getInputTensor(0), out = interpreter.getOutputTensor(0);
@@ -39,14 +44,26 @@ final class MicroWakeDetector implements AutoCloseable {
             inputScale = in.quantizationParams().getScale(); inputZero = in.quantizationParams().getZeroPoint();
             outputScale = out.quantizationParams().getScale(); outputZero = out.quantizationParams().getZeroPoint();
             if (inputScale <= 0 || outputScale <= 0) throw new IOException("microWakeWord: invalid quantization");
+            if (useVad) {
+                vadInterpreter = new Interpreter(load(context, "speech/vad.tflite"), new Interpreter.Options().setNumThreads(1));
+                Tensor vi = vadInterpreter.getInputTensor(0), vo = vadInterpreter.getOutputTensor(0);
+                if (!Arrays.equals(vi.shape(), new int[]{1, STEPS, MEL}) || vi.dataType() != DataType.INT8 ||
+                    !Arrays.equals(vo.shape(), new int[]{1, 1}) || vo.dataType() != DataType.UINT8)
+                    throw new IOException("Speech VAD: incompatible model tensors");
+                vadInputScale = vi.quantizationParams().getScale(); vadInputZero = vi.quantizationParams().getZeroPoint();
+                vadOutputScale = vo.quantizationParams().getScale(); vadOutputZero = vo.quantizationParams().getZeroPoint();
+                if (vadInputScale <= 0 || vadOutputScale <= 0) throw new IOException("Speech VAD: invalid quantization");
+                vadInput = ByteBuffer.allocateDirect(STEPS * MEL).order(ByteOrder.nativeOrder());
+                vadOutput = ByteBuffer.allocateDirect(1).order(ByteOrder.nativeOrder());
+            }
         } catch (IOException | RuntimeException | LinkageError e) {
             close();
             if (e instanceof IOException) throw (IOException) e;
             throw new IOException("microWakeWord initialization failed: " + e.getClass().getSimpleName(), e);
         }
     }
-    private static ByteBuffer load(Context context, String engine) throws IOException {
-        try (InputStream stream = context.getAssets().open(MicroWakePolicy.modelAsset(engine));
+    private static ByteBuffer load(Context context, String asset) throws IOException {
+        try (InputStream stream = context.getAssets().open(asset);
              ByteArrayOutputStream bytes = new ByteArrayOutputStream()) {
             byte[] buffer = new byte[8192]; int count;
             while ((count = stream.read(buffer)) != -1) {
@@ -66,16 +83,28 @@ final class MicroWakeDetector implements AutoCloseable {
             for (float feature : features) {
                 int q = Math.round(feature / inputScale) + inputZero;
                 input.put((byte) Math.max(-128, Math.min(127, q)));
+                if (vadInput != null) {
+                    int vq = Math.round(feature / vadInputScale) + vadInputZero;
+                    vadInput.put((byte) Math.max(-128, Math.min(127, vq)));
+                }
             }
             if (++frames == STEPS) {
                 input.rewind(); output.rewind(); interpreter.run(input, output); output.rewind();
                 float score = ((output.get() & 0xff) - outputZero) * outputScale;
+                if (vadInterpreter != null) {
+                    vadInput.rewind(); vadOutput.rewind(); vadInterpreter.run(vadInput, vadOutput); vadOutput.rewind();
+                    vad.add(((vadOutput.get() & 0xff) - vadOutputZero) * vadOutputScale);
+                    vadInput.clear();
+                }
                 if (historyCount == AVERAGE) probabilitySum -= probabilities[historyNext]; else historyCount++;
                 probabilities[historyNext] = score; probabilitySum += score; historyNext = (historyNext + 1) % AVERAGE;
                 if (historyCount == AVERAGE) {
                     lastAverage = probabilitySum / AVERAGE;
                     intervalPeak = Math.max(intervalPeak, lastAverage);
-                    if (lastAverage >= threshold) hit = true;
+                    if (lastAverage >= threshold) {
+                        if (vadInterpreter == null || vad.speechRecently()) hit = true;
+                        else vadRejected++;
+                    }
                 }
                 frames = 0; input.clear();
             }
@@ -85,8 +114,10 @@ final class MicroWakeDetector implements AutoCloseable {
         return hit;
     }
     String diagnostic() {
-        String value = String.format(java.util.Locale.US, "пик %.3f, порог %.3f; %s", intervalPeak, threshold, timing());
-        intervalPeak = 0;
+        String value = String.format(java.util.Locale.US, "пик %.3f, порог %.3f; %s; %s", intervalPeak, threshold,
+                vadInterpreter == null ? "проверка речи выключена" : String.format(java.util.Locale.US,
+                        "речь пик %.3f, отсечено %d окон", vad.takeIntervalPeak(), vadRejected), timing());
+        intervalPeak = 0; vadRejected = 0;
         return value;
     }
     String timing() {
@@ -97,6 +128,7 @@ final class MicroWakeDetector implements AutoCloseable {
     }
     @Override public void close() {
         if (interpreter != null) { interpreter.close(); interpreter = null; }
+        if (vadInterpreter != null) { vadInterpreter.close(); vadInterpreter = null; }
         if (frontend != null) { frontend.close(); frontend = null; }
     }
 }

@@ -38,6 +38,9 @@ final class AppSettings {
     static boolean wakeFilter(Context context) {
         return context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE).getBoolean("wake_filter", true);
     }
+    static boolean wakeVad(Context context) {
+        return context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE).getBoolean("wake_vad", true);
+    }
     static boolean wakeAmplify(Context context) {
         return context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE).getBoolean("wake_amplify", true);
     }
@@ -51,12 +54,16 @@ final class AppSettings {
         return save(context, model, voice, buttonEnabled, wakeEnabled, wakeSensitivity, audioDuckEnabled, wakeFilter, wakeAmplify, wakeEngine(context));
     }
     static boolean save(Context context, String model, String voice, boolean buttonEnabled, boolean wakeEnabled, String wakeSensitivity, boolean audioDuckEnabled, boolean wakeFilter, boolean wakeAmplify, String wakeEngine) {
+        return save(context, model, voice, buttonEnabled, wakeEnabled, wakeSensitivity, audioDuckEnabled, wakeFilter, wakeAmplify, wakeEngine, wakeVad(context));
+    }
+    static boolean save(Context context, String model, String voice, boolean buttonEnabled, boolean wakeEnabled, String wakeSensitivity, boolean audioDuckEnabled, boolean wakeFilter, boolean wakeAmplify, String wakeEngine, boolean wakeVad) {
         if (!validModel(model) || !TtsVoices.valid(voice) || !WakeSensitivity.valid(wakeSensitivity) || !MicroWakePolicy.validEngine(wakeEngine)) return false;
         return context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE).edit()
                 .putString("model", model).putString("voice", voice).putBoolean("button_enabled", buttonEnabled)
                 .putBoolean("wake_enabled", wakeEnabled).putString("wake_sensitivity", WakeSensitivity.normalize(wakeSensitivity))
                 .putBoolean("audio_duck", audioDuckEnabled).putBoolean("wake_filter", wakeFilter)
-                .putBoolean("wake_amplify", wakeAmplify).putString("wake_engine", wakeEngine).commit();
+                .putBoolean("wake_amplify", wakeAmplify).putString("wake_engine", wakeEngine)
+                .putBoolean("wake_vad", wakeVad).commit();
     }
     static String systemPrompt(Context context) {
         return context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE).getString("system_prompt", SystemPrompt.DEFAULT);

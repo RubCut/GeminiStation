@@ -31,6 +31,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public final class MainActivity extends Activity {
+    static final String EXTRA_WAKE_DETECTED_AT = "ru.geministation.WAKE_DETECTED_AT";
+
     private static final int MICROPHONE_REQUEST = 100;
     private static final long FINAL_RESULT_TIMEOUT_MS = 15000;
     private static final long MAX_UTTERANCE_MS = 45000;
@@ -82,6 +84,12 @@ public final class MainActivity extends Activity {
         WakeWordController.get(this).dialogOpening();
         keyVault = ApiKeyVault.get(this);
         soundCuePlayer = new SoundCuePlayer(this);
+        long wakeDetectedAt = getIntent().getLongExtra(EXTRA_WAKE_DETECTED_AT, 0);
+        if (wakeDetectedAt > 0 && wakeDetectedAt <= SystemClock.elapsedRealtime()
+                && SystemClock.elapsedRealtime() - wakeDetectedAt < 30000) {
+            soundCuePlayer.setWakeDetectedAt(wakeDetectedAt);
+            AppLog.add("Голосовая активация: экран создан через " + (SystemClock.elapsedRealtime() - wakeDetectedAt) + " мс после обнаружения");
+        }
         androidTts = new AndroidTtsPlayer(this);
         promptContext = new PromptContextPrefetch(this);
         promptContext.refresh();
@@ -597,8 +605,9 @@ public final class MainActivity extends Activity {
         try { keys = keyVault.attempt(KeyRotationDomains.Domain.LIVE); }
         catch (Exception e) { showErrorAndClose("Не удалось прочитать API-ключи."); return; }
         if (keys.isEmpty()) { showErrorAndClose("Добавьте API-ключ в веб-интерфейсе на порту 6529."); return; }
-        startLiveRecognition(attempt, followUp, keys);
-        // The connection can start in parallel, but audio is captured only after the cue.
+        // Queue the local cue before DNS/client setup. Its worker can start audio
+        // while Live prepares; the completion callback runs on the main thread,
+        // after startLiveRecognition returns. The microphone still waits for the cue.
         Runnable afterCue = () -> {
             if (!listening || attempt != recognitionAttempt || destroyed || !resumed) return;
             cueComplete = true;
@@ -607,7 +616,9 @@ public final class MainActivity extends Activity {
                 liveTranscriber.allowCapture();
             }
         };
-        if (cue == 0) afterCue.run(); else soundCuePlayer.play(cue, cueLabel, afterCue);
+        if (cue != 0) soundCuePlayer.play(cue, cueLabel, afterCue);
+        startLiveRecognition(attempt, followUp, keys);
+        if (cue == 0) afterCue.run();
     }
     private void startLiveRecognition(final int attempt, final boolean followUp, final KeyRotation.Attempt keys) {
         final String key = keys.key();

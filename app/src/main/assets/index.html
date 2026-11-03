@@ -209,6 +209,7 @@ details{border-color:#49454f}summary{font-size:14px;color:#d0bcff}.editor-card t
       <div class="range-labels" aria-hidden="true"><span>1%</span><span>50%</span><span>100%</span></div>
       <p class="field-hint" id="sensitivityHint">Если станция плохо слышит имя, увеличьте чувствительность. Если она реагирует случайно — уменьшите её.</p>
       <p class="range-error" id="sensitivityError" role="status"></p>
+      <div class="toggle-line"><div class="toggle-copy"><strong>Проверка речи</strong><span>Отсекает неречевые звуки, например печать. Может пропускать очень тихую или зашумлённую речь.</span></div><label class="switch"><input type="checkbox" id="wakeVad" aria-label="Проверка речи" disabled><span class="switch-track"></span></label></div>
       <div class="toggle-line"><div class="toggle-copy"><strong>Фильтр коротких звуков</strong><span>Помогает не реагировать на случайные короткие звуки, но может пропускать тихую речь.</span></div><label class="switch"><input type="checkbox" id="wakeFilter" aria-label="Фильтр коротких звуков" disabled><span class="switch-track"></span></label></div>
       <div class="toggle-line"><div class="toggle-copy"><strong>Усиление тихого сигнала</strong><span>Помогает услышать тихую речь, но может усиливать и окружающий шум.</span></div><label class="switch"><input type="checkbox" id="wakeAmplify" aria-label="Усиление тихого сигнала" disabled><span class="switch-track"></span></label></div>
       <div class="status-row"><span class="status-dot" id="wakeDot"></span><span id="wakeStatus" role="status">Проверяем состояние…</span></div>
@@ -441,7 +442,7 @@ async function saveTuning(reset=false){
 el('saveVoiceTuning').addEventListener('click',()=>saveTuning(false));
 el('resetVoiceTuning').addEventListener('click',()=>saveTuning(true));
 
-let settingsLoaded=false, voiceDirty=false, buttonDirty=false, audioDuckDirty=false, wakeDirty=false, wakeEngineDirty=false, wakeSensitivityDirty=false, wakeFilterDirty=false, wakeAmplifyDirty=false, keyBusy=false, keyIds=null;
+let settingsLoaded=false, voiceDirty=false, buttonDirty=false, audioDuckDirty=false, wakeDirty=false, wakeEngineDirty=false, wakeSensitivityDirty=false, wakeFilterDirty=false, wakeVadDirty=false, wakeAmplifyDirty=false, keyBusy=false, keyIds=null;
 function validSensitivity(value){return /^(?:[1-9]|[1-9][0-9]|100)$/.test(value)}
 function sensitivityError(message){
  el('sensitivityError').textContent=message;
@@ -515,8 +516,8 @@ async function refresh(){const current=++logRequest;try{
  if(!settingsLoaded){
   el('model').value=data.model;const select=el('voice');select.textContent='';
   data.voices.forEach(voice=>{const option=document.createElement('option');option.value=voice;option.textContent=voice;select.appendChild(option)});
-  select.value=data.voice;select.disabled=false;el('model').disabled=false;el('key').disabled=false;el('buttonEnabled').checked=data.buttonEnabled;el('buttonEnabled').disabled=false;el('audioDuckEnabled').checked=data.audioDuckEnabled;el('audioDuckEnabled').disabled=false;el('saveDuckSettings').disabled=false;el('wakeEnabled').checked=data.wakeEnabled;el('wakeEnabled').disabled=false;el('wakeEngine').value=data.wakeEngine||'microwakeword_selected_tts';el('wakeEngine').disabled=false;setSensitivity(data.wakeSensitivity);el('wakeSensitivity').disabled=false;el('sensitivityNumber').disabled=false;el('wakeFilter').checked=data.wakeFilter!==false;el('wakeAmplify').checked=data.wakeAmplify!==false;el('wakeFilter').disabled=false;el('wakeAmplify').disabled=false;el('saveWakeSettings').disabled=false;el('saveVoice').disabled=false;el('save').disabled=false;el('saveButtonSettings').disabled=false;el('sampleVoice').disabled=false;settingsLoaded=true;
- }else{if(!voiceDirty)el('voice').value=data.voice;if(!buttonDirty)el('buttonEnabled').checked=data.buttonEnabled;if(!audioDuckDirty)el('audioDuckEnabled').checked=data.audioDuckEnabled;if(!wakeDirty)el('wakeEnabled').checked=data.wakeEnabled;if(!wakeEngineDirty)el('wakeEngine').value=data.wakeEngine||'microwakeword_selected_tts';if(!wakeSensitivityDirty)setSensitivity(data.wakeSensitivity);if(!wakeFilterDirty)el('wakeFilter').checked=data.wakeFilter!==false;if(!wakeAmplifyDirty)el('wakeAmplify').checked=data.wakeAmplify!==false}
+  select.value=data.voice;select.disabled=false;el('model').disabled=false;el('key').disabled=false;el('buttonEnabled').checked=data.buttonEnabled;el('buttonEnabled').disabled=false;el('audioDuckEnabled').checked=data.audioDuckEnabled;el('audioDuckEnabled').disabled=false;el('saveDuckSettings').disabled=false;el('wakeEnabled').checked=data.wakeEnabled;el('wakeEnabled').disabled=false;el('wakeEngine').value=data.wakeEngine||'microwakeword_selected_tts';el('wakeEngine').disabled=false;setSensitivity(data.wakeSensitivity);el('wakeSensitivity').disabled=false;el('sensitivityNumber').disabled=false;el('wakeFilter').checked=data.wakeFilter!==false;el('wakeVad').checked=data.wakeVad!==false;el('wakeVad').disabled=false;el('wakeAmplify').checked=data.wakeAmplify!==false;el('wakeFilter').disabled=false;el('wakeAmplify').disabled=false;el('saveWakeSettings').disabled=false;el('saveVoice').disabled=false;el('save').disabled=false;el('saveButtonSettings').disabled=false;el('sampleVoice').disabled=false;settingsLoaded=true;
+ }else{if(!voiceDirty)el('voice').value=data.voice;if(!buttonDirty)el('buttonEnabled').checked=data.buttonEnabled;if(!audioDuckDirty)el('audioDuckEnabled').checked=data.audioDuckEnabled;if(!wakeDirty)el('wakeEnabled').checked=data.wakeEnabled;if(!wakeEngineDirty)el('wakeEngine').value=data.wakeEngine||'microwakeword_selected_tts';if(!wakeSensitivityDirty)setSensitivity(data.wakeSensitivity);if(!wakeFilterDirty)el('wakeFilter').checked=data.wakeFilter!==false;if(!wakeVadDirty)el('wakeVad').checked=data.wakeVad!==false;if(!wakeAmplifyDirty)el('wakeAmplify').checked=data.wakeAmplify!==false}
  return data;
 }catch(e){setConnection(false);el('message').textContent=e.message;throw e}}
 let sampleUrl='';
@@ -536,9 +537,9 @@ async function sampleVoice(){
 }
 async function save(remove,feedback='message'){
  try{
-  const voice=el('voice').value, buttonEnabled=el('buttonEnabled').checked, audioDuckEnabled=el('audioDuckEnabled').checked, wakeEnabled=el('wakeEnabled').checked, wakeEngine=el('wakeEngine').value, wakeSensitivity=getSensitivity(), wakeFilter=el('wakeFilter').checked, wakeAmplify=el('wakeAmplify').checked;
+  const voice=el('voice').value, buttonEnabled=el('buttonEnabled').checked, audioDuckEnabled=el('audioDuckEnabled').checked, wakeEnabled=el('wakeEnabled').checked, wakeEngine=el('wakeEngine').value, wakeSensitivity=getSensitivity(), wakeFilter=el('wakeFilter').checked, wakeVad=el('wakeVad').checked, wakeAmplify=el('wakeAmplify').checked;
   if(wakeSensitivity===null){sensitivityError('Введите целое число от 1 до 100.');el('sensitivityNumber').focus();return}
-  await request('/api/config',{method:'POST',body:JSON.stringify({model:el('model').value,voice,buttonEnabled,audioDuckEnabled,wakeEnabled,wakeEngine,wakeSensitivity,wakeFilter,wakeAmplify,key:'',deleteKey:remove})});
+  await request('/api/config',{method:'POST',body:JSON.stringify({model:el('model').value,voice,buttonEnabled,audioDuckEnabled,wakeEnabled,wakeEngine,wakeSensitivity,wakeFilter,wakeVad,wakeAmplify,key:'',deleteKey:remove})});
   if(el('voice').value===voice)voiceDirty=false;
   if(el('buttonEnabled').checked===buttonEnabled)buttonDirty=false;
   if(el('audioDuckEnabled').checked===audioDuckEnabled)audioDuckDirty=false;
@@ -546,6 +547,7 @@ async function save(remove,feedback='message'){
   if(el('wakeEngine').value===wakeEngine)wakeEngineDirty=false;
   if(getSensitivity()===wakeSensitivity)wakeSensitivityDirty=false;
   if(el('wakeFilter').checked===wakeFilter)wakeFilterDirty=false;
+  if(el('wakeVad').checked===wakeVad)wakeVadDirty=false;
   if(el('wakeAmplify').checked===wakeAmplify)wakeAmplifyDirty=false;
   el(feedback).textContent=remove?'Ключи удалены':'Настройки сохранены';await refresh();
  }catch(e){el(feedback).textContent=e.message}
@@ -668,6 +670,7 @@ el('saveDuckSettings').addEventListener('click',()=>save(false,'duckMessage'));
 el('wakeEnabled').addEventListener('change',()=>{wakeDirty=true});
 el('wakeEngine').addEventListener('change',()=>{wakeEngineDirty=true});
 el('wakeFilter').addEventListener('change',()=>{wakeFilterDirty=true});
+el('wakeVad').addEventListener('change',()=>{wakeVadDirty=true});
 el('wakeAmplify').addEventListener('change',()=>{wakeAmplifyDirty=true});
 el('wakeSensitivity').addEventListener('input',sliderChanged);
 el('wakeSensitivity').addEventListener('change',sliderChanged);

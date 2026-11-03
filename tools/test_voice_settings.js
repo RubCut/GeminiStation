@@ -40,7 +40,7 @@ function page() {
     window:{getSelection:()=>selection},navigator:{clipboard:{writeText:async(text)=>{if(!clipboardAllowed)throw Error('blocked');copied=text}}},
     fetch:async(path, options)=>{
       if(path==='/api/logs' && pendingLogFetch)return new Promise(resolve=>pendingLogFetch.push(resolve));
-      if(path==='/api/config') {const body=JSON.parse(options.body); writes.push(body); saved.model=body.model; saved.voice=body.voice; saved.buttonEnabled=body.buttonEnabled; saved.audioDuckEnabled=body.audioDuckEnabled; saved.wakeEnabled=body.wakeEnabled; saved.wakeEngine=body.wakeEngine; saved.wakeSensitivity=body.wakeSensitivity; saved.wakeFilter=body.wakeFilter; saved.wakeAmplify=body.wakeAmplify;}
+      if(path==='/api/config') {const body=JSON.parse(options.body); writes.push(body); saved.model=body.model; saved.voice=body.voice; saved.buttonEnabled=body.buttonEnabled; saved.audioDuckEnabled=body.audioDuckEnabled; saved.wakeEnabled=body.wakeEnabled; saved.wakeEngine=body.wakeEngine; saved.wakeSensitivity=body.wakeSensitivity; saved.wakeFilter=body.wakeFilter; saved.wakeVad=body.wakeVad; saved.wakeAmplify=body.wakeAmplify;}
       if(path==='/api/tts' && options.method==='POST') {const body=JSON.parse(options.body); saved.engine=body.engine;return {ok:true,json:async()=>({message:'Источник сохранён'})};}
       if(path==='/api/tts/sample') {ttsSamples.push(JSON.parse(options.body));return {ok:true,json:async()=>({message:'Образец на станции'})};}
       if(path==='/api/voice-config') {const body=JSON.parse(options.body); writes.push({tuning:body}); saved.voiceTuning={...body};}
@@ -102,6 +102,15 @@ function page() {
   p.element('wakeEngine').value='microwakeword_selected_tts';p.element('wakeEngine').handlers.change();
   await p.element('saveWakeSettings').handlers.click();
   assert.equal(saved.wakeEngine,'microwakeword_selected_tts','must be able to switch back to the new model');
+  assert.equal(p.element('wakeVad').checked,true, 'speech verification defaults on');
+  p.element('wakeVad').checked=false;p.element('wakeVad').handlers.change();
+  await vm.runInContext('refresh()',p.context);
+  assert.equal(p.element('wakeVad').checked,false,'poll must preserve unsaved VAD choice');
+  await p.element('saveWakeSettings').handlers.click();
+  assert.equal(saved.wakeVad,false);
+  p.element('wakeVad').checked=true;p.element('wakeVad').handlers.change();
+  await p.element('saveWakeSettings').handlers.click();
+  assert.equal(saved.wakeVad,true);
   assert.equal(p.element('wakeFilter').checked,true);
   p.element('wakeFilter').checked=false;p.element('wakeFilter').handlers.change();
   await vm.runInContext('refresh()',p.context);

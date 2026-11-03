@@ -179,3 +179,15 @@ python3 experiments/microwakeword/run_selected_tts_experiment.py --phase indepen
 Короткая дополнительная проверка живой речи: три WAV с расшифровками из [тестового набора GeorgeFedoseev/DeepSpeech](https://github.com/GeorgeFedoseev/DeepSpeech/tree/master/data/tiny-dataset), всего 29,1 секунды без целевых фраз. На пороге 0,90 потоковый тест обнаружил по одному пересечению у новой модели и исторической модели всех ударений; на 0,70 — четыре у новой и три у исторической. Это слишком мало для оценки качества, записи не из станции, Android-фильтр не учитывается. Данные не использовались для обучения и не включены в репозиторий.
 
 Историческое сравнение с удалённой моделью «все ударения» потребует её извлечения из прежней ревизии Git; в текущий APK она не входит. `compare_synthetic_corpus.py` теперь сравнивает сохранённую первую и новую модель с отдельно переданным кандидатом.
+
+### Speech VAD and keyboard experiment
+
+The optional speech gate is the Apache-2.0 ESPHome v2 VAD (trained languages listed as English). It shares the 10 ms frontend with either wake model and runs a separate stateful TFLite interpreter every 30 ms. Its peak in the previous 1.2 s must be at least 0.2 when a wake candidate occurs; the existing amplitude/recency filter still applies. It is not language or keyword recognition, and may reject quiet or noisy Russian speech. Users can turn it off without changing wake settings. No wake audio is saved or sent out.
+
+`evaluate_vad.py` uses local, separately prepared WAV files, prints only aggregates and is not an end-to-end Android test. `validation-vad.json` is a raw score comparison with two seconds of leading digital silence, excluding warm-up scores. Synthetic validation uses the same Piper voices as training (not independent speakers) and random phrases; the three 90-second keyboard sequences are assembled from key-up/down samples in [Switchtone](https://github.com/gabrimatic/switchtone) `Resources/Sounds` (Sony MIT and Dustin Davis CC0; see its NOTICE), varied in speed and loudness and mixed with synthetic noise. Source audio and generated sounds are not committed. To reproduce using locally downloaded source and the synthetic corpus:
+
+```sh
+python3 experiments/microwakeword/evaluate_vad.py --corpus /path/to/independent_final --keyboard-samples /path/to/switchtone/Resources/Sounds
+```
+
+At wake cutoff 0.9 the three keyboard sequences produced 3 raw score crossings without VAD and none with it; this is not a guaranteed device false-trigger rate. At 0.6, VAD reduced raw full-phrase hits from 322/360 to 305/360 and fragment hits from 183/256 to 141/256; ordinary-speech negatives remained 7/264. Trying 5-frame instead of 10-frame averaging increased ordinary-speech negative clips from 7 to 19/264 at 0.6, so it was **not deployed**. The cue now starts before synchronous Live client setup; 350 ms of output warm-up silence remains because the station previously required it. On-device logs separate detection, mic handoff and cue start, but cannot establish detection latency before the trigger.

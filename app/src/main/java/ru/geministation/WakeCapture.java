@@ -19,20 +19,21 @@ final class WakeCapture {
     private final Listener listener;
     private final String sensitivity, engine;
     private final Context context;
-    private final boolean filter, amplify;
+    private final boolean filter, amplify, vad;
     private final VoiceTuning tuning;
     private final AtomicBoolean stopping = new AtomicBoolean();
     private volatile AudioRecord recorder;
     private MicroWakeDetector micro;
     private Thread thread;
     private String sourceName;
+    private long recordingStarted;
 
-    WakeCapture(Context context, Listener listener, String engine, String sensitivity, boolean filter, boolean amplify, VoiceTuning tuning) {
+    WakeCapture(Context context, Listener listener, String engine, String sensitivity, boolean filter, boolean amplify, boolean vad, VoiceTuning tuning) {
         this.context = context; this.listener = listener; this.engine = engine; this.sensitivity = sensitivity;
-        this.filter = filter; this.amplify = amplify; this.tuning = tuning;
+        this.filter = filter; this.amplify = amplify; this.vad = vad; this.tuning = tuning;
     }
-    boolean sameSettings(String selectedEngine, String value, boolean filterEnabled, boolean amplifyEnabled, VoiceTuning other) {
-        return engine.equals(selectedEngine) && sensitivity.equals(value) && filter == filterEnabled && amplify == amplifyEnabled && tuning.sameWake(other);
+    boolean sameSettings(String selectedEngine, String value, boolean filterEnabled, boolean amplifyEnabled, boolean vadEnabled, VoiceTuning other) {
+        return engine.equals(selectedEngine) && sensitivity.equals(value) && filter == filterEnabled && amplify == amplifyEnabled && vad == vadEnabled && tuning.sameWake(other);
     }
     String sensitivity() { return sensitivity; }
     String sourceName() { return sourceName; }
@@ -40,7 +41,7 @@ final class WakeCapture {
 
     void start() throws IOException {
         try {
-            micro = new MicroWakeDetector(context, sensitivity, engine);
+            micro = new MicroWakeDetector(context, sensitivity, engine, vad);
             int minimum = AudioRecord.getMinBufferSize(RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
             if (minimum <= 0) throw new IOException("16 kHz audio is not supported");
             recorder = create(MediaRecorder.AudioSource.MIC, Math.max(minimum, CHUNK * 4));
@@ -51,6 +52,7 @@ final class WakeCapture {
             }
             if (recorder == null) throw new IOException("Cannot initialize microphone");
             recorder.startRecording();
+            recordingStarted = SystemClock.elapsedRealtime();
             if (recorder.getRecordingState() != AudioRecord.RECORDSTATE_RECORDING) throw new IOException("Cannot start microphone");
             thread = new Thread(this::capture, "GeminiWakeMicrophone");
             thread.start();
@@ -77,12 +79,13 @@ final class WakeCapture {
             long lastRejectedLog = 0;
             long lastLevel = SystemClock.elapsedRealtime(), lastTiming = lastLevel;
             int buffered = 0;
+            long samplesRead = 0;
             while (!stopping.get()) {
                 int count = recorder.read(samples, buffered, samples.length - buffered);
                 if (stopping.get()) break;
                 if (count < 0) throw new IOException("AudioRecord.read=" + count);
                 if (count == 0) { Thread.sleep(20); continue; }
-                buffered += count;
+                buffered += count; samplesRead += count;
                 if (buffered < samples.length) continue;
                 count = buffered; buffered = 0;
                 level.add(samples, count);
@@ -94,7 +97,10 @@ final class WakeCapture {
                     level.reset(); lastLevel = now;
                 }
                 if (micro != null && now - lastTiming >= 20000) {
-                    AppLog.add("microWakeWord за последние 20 с: " + micro.diagnostic()); lastTiming = now;
+                    long elapsedAudioMs = samplesRead * 1000L / RATE;
+                    long differenceMs = Math.max(0, now - recordingStarted - elapsedAudioMs);
+                    AppLog.add("microWakeWord за последние 20 с: " + micro.diagnostic()
+                            + "; разница времени записи и прочитанного звука " + differenceMs + " мс"); lastTiming = now;
                 }
                 if (microHit) {
                     if (conditioning.candidateAllowed(filter, tuning.wakeMinMs, tuning.wakeRecentMs)) {

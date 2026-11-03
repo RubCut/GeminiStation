@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -70,11 +71,11 @@ final class WakeWordController {
             return;
         }
         String sensitivity = AppSettings.wakeSensitivity(context), engine = AppSettings.wakeEngine(context);
-        boolean filter = AppSettings.wakeFilter(context), amplify = AppSettings.wakeAmplify(context);
+        boolean filter = AppSettings.wakeFilter(context), amplify = AppSettings.wakeAmplify(context), vad = AppSettings.wakeVad(context);
         VoiceTuning tuning = VoiceTuning.load(context);
         WakeCapture current = capture;
         if (current != null) {
-            if (current.isAlive() && current.sameSettings(engine, sensitivity, filter, amplify, tuning)) return;
+            if (current.isAlive() && current.sameSettings(engine, sensitivity, filter, amplify, vad, tuning)) return;
             if (!stopCapture()) { status = "Не удалось освободить микрофон"; return; }
         }
         status = "Подготавливаем локальную модель";
@@ -87,10 +88,12 @@ final class WakeWordController {
                 }
                 @Override public void onTrigger(WakeCapture owner) {
                     if (capture != owner || !wanted() || !firing.compareAndSet(false, true)) return;
+                    final long detectedAt = SystemClock.elapsedRealtime();
                     AppLog.add("Голосовая активация: ключевое слово обнаружено");
                     dialogActive = true;
                     worker.execute(() -> {
                         boolean released = stopCapture();
+                        AppLog.add("Голосовая активация: передача микрофона " + (SystemClock.elapsedRealtime() - detectedAt) + " мс после обнаружения");
                         main.post(() -> {
                             firing.set(false);
                             if (!released) {
@@ -101,7 +104,8 @@ final class WakeWordController {
                             if (!serviceRunning || !AppSettings.wakeEnabled(context)) { dialogActive = false; settingsChanged(); return; }
                             try {
                                 Intent intent = new Intent(AssistantInvocations.ASSIST).setClass(context, MainActivity.class)
-                                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        .putExtra(MainActivity.EXTRA_WAKE_DETECTED_AT, detectedAt);
                                 context.startActivity(intent);
                             } catch (RuntimeException e) {
                                 AppLog.add("Голосовая активация: не удалось открыть диалог: " + e.getClass().getSimpleName());
@@ -123,12 +127,12 @@ final class WakeWordController {
                         }
                     });
                 }
-            }, engine, sensitivity, filter, amplify, tuning);
+            }, engine, sensitivity, filter, amplify, vad, tuning);
             capture = next; rms = -1; peak = -1;
             next.start();
             if (!wanted()) { reconcile(); return; }
             status = "Микрофон запущен (" + next.sourceName() + ", " + engine + ")";
-            AppLog.add("Голосовая активация: микрофон запущен (" + next.sourceName() + "), движок " + engine + ", чувствительность " + sensitivity + ", фильтр " + filter + ", усиление " + amplify);
+            AppLog.add("Голосовая активация: микрофон запущен (" + next.sourceName() + "), движок " + engine + ", чувствительность " + sensitivity + ", фильтр " + filter + ", усиление " + amplify + ", проверка речи " + vad);
         } catch (Exception | LinkageError e) {
             stopCapture();
             status = "Ошибка запуска; проверьте журнал";

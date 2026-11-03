@@ -61,6 +61,8 @@ jobs:
           python3 tools/test_microfrontend.py
       - name: Test offline wake-word comparison
         run: python3 experiments/microwakeword/test_evaluate_recordings.py
+      - name: Test speech VAD streaming
+        run: python3 experiments/microwakeword/test_vad_model.py
       - name: Test selected TTS training preparation
         run: python3 experiments/microwakeword/test_selected_tts_experiment.py
       - name: Test streaming negative preparation

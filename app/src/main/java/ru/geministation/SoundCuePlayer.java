@@ -6,6 +6,7 @@ import android.media.AudioAttributes;
 import android.media.MediaPlayer;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.util.concurrent.ExecutorService;
@@ -25,6 +26,8 @@ final class SoundCuePlayer {
     private MediaPlayer player;
     private Runnable timeout;
     private int activeToken;
+    private long wakeDetectedAt;
+    void setWakeDetectedAt(long value) { wakeDetectedAt = value; }
 
     SoundCuePlayer(Context context) { this.context = context.getApplicationContext(); }
 
@@ -60,7 +63,9 @@ final class SoundCuePlayer {
                 }
                 // Some TV audio routes need time to wake from standby; never alter the supplied cue samples.
                 PcmAudio cue = PcmAudio.decode(wav, "audio/wav").withSilence(350, 150);
-                cueVoice.play(cue, active::get, () -> AppLog.add("Звук: активация — AudioTrack запущен"));
+                cueVoice.play(cue, active::get, () -> AppLog.add("Звук: активация — AudioTrack запущен"
+                        + (wakeDetectedAt > 0 ? " через " + (SystemClock.elapsedRealtime() - wakeDetectedAt)
+                                + " мс после обнаружения (плюс 350 мс тишины для прогрева)" : "")));
                 if (active.get()) main.post(() -> complete(token, null));
             } catch (Exception e) {
                 if (active.get()) main.post(() -> {

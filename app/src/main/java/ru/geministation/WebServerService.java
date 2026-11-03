@@ -180,6 +180,7 @@ public final class WebServerService extends Service {
                             .put("wakeSensitivity", AppSettings.wakeSensitivity(context))
                             .put("wakeEngine", AppSettings.wakeEngine(context))
                             .put("wakeFilter", AppSettings.wakeFilter(context))
+                            .put("wakeVad", AppSettings.wakeVad(context))
                             .put("wakeAmplify", AppSettings.wakeAmplify(context))
                             .put("voiceTuning", VoiceTuning.load(context).json())
                             .put("wakeRms", WakeWordController.get(context).rms())
@@ -574,9 +575,12 @@ public final class WebServerService extends Service {
                     String wakeSensitivity = data.has("wakeSensitivity") ? data.optString("wakeSensitivity", "") : AppSettings.wakeSensitivity(context);
                     if (data.has("wakeFilter") && !(data.opt("wakeFilter") instanceof Boolean))
                         return json(Response.Status.BAD_REQUEST, "Некорректный фильтр активации");
+                    if (data.has("wakeVad") && !(data.opt("wakeVad") instanceof Boolean))
+                        return json(Response.Status.BAD_REQUEST, "Некорректная проверка речи");
                     if (data.has("wakeAmplify") && !(data.opt("wakeAmplify") instanceof Boolean))
                         return json(Response.Status.BAD_REQUEST, "Некорректное усиление активации");
                     boolean wakeFilter = data.has("wakeFilter") ? data.optBoolean("wakeFilter") : AppSettings.wakeFilter(context);
+                    boolean wakeVad = data.has("wakeVad") ? data.optBoolean("wakeVad") : AppSettings.wakeVad(context);
                     boolean wakeAmplify = data.has("wakeAmplify") ? data.optBoolean("wakeAmplify") : AppSettings.wakeAmplify(context);
                     if (data.has("wakeEngine") && !(data.opt("wakeEngine") instanceof String))
                         return json(Response.Status.BAD_REQUEST, "Некорректный движок активации");
@@ -593,7 +597,7 @@ public final class WebServerService extends Service {
                         try { vault.add(key); }
                         catch (IllegalArgumentException e) { return json(Response.Status.BAD_REQUEST, e.getMessage()); }
                     }
-                    if (!AppSettings.save(context, model, voice, buttonEnabled, wakeEnabled, wakeSensitivity, audioDuckEnabled, wakeFilter, wakeAmplify, wakeEngine)) return json(Response.Status.INTERNAL_ERROR, "Не удалось сохранить настройки");
+                    if (!AppSettings.save(context, model, voice, buttonEnabled, wakeEnabled, wakeSensitivity, audioDuckEnabled, wakeFilter, wakeAmplify, wakeEngine, wakeVad)) return json(Response.Status.INTERNAL_ERROR, "Не удалось сохранить настройки");
                     WakeWordController.get(context).settingsChanged();
                     AppLog.add(deleteKey ? "API-ключ удалён через веб-интерфейс" : "Настройки сохранены через веб-интерфейс");
                     return json(Response.Status.OK, "Настройки сохранены");
