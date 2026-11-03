@@ -83,6 +83,7 @@ final class WakeCapture {
             short[] samples = new short[CHUNK];
             AudioLevel level = new AudioLevel();
             WakeAudioFilter conditioning = new WakeAudioFilter();
+            WakeTriggerChoice choice = new WakeTriggerChoice();
             long lastRejectedLog = 0;
             long lastLevel = SystemClock.elapsedRealtime(), lastTiming = lastLevel;
             int buffered = 0;
@@ -101,6 +102,10 @@ final class WakeCapture {
                 long now = SystemClock.elapsedRealtime();
                 if (personal != null && conditioning.speechLike() && micro.speechRecently()) personal.offer(now);
                 boolean personalHit = personal != null && personal.takeHit(now);
+                boolean personalPending = personal != null && personal.isPending();
+                // If the worker just finished between the reads, consume its published hit
+                // before falling back to the general model.
+                if (!personalPending && !personalHit && personal != null) personalHit = personal.takeHit(now);
                 if (now - lastLevel >= 2000) {
                     listener.onLevel(this, level.rms(), level.peak());
                     level.reset(); lastLevel = now;
@@ -111,16 +116,20 @@ final class WakeCapture {
                     AppLog.add("microWakeWord за последние 20 с: " + micro.diagnostic()
                             + "; разница времени записи и прочитанного звука " + differenceMs + " мс"); lastTiming = now;
                 }
-                if (microHit || personalHit) {
-                    int recentMs = personalHit ? Math.max(tuning.wakeRecentMs, 600) : tuning.wakeRecentMs;
-                    if (conditioning.candidateAllowed(filter, tuning.wakeMinMs, recentMs)) {
-                        AppLog.add("Голосовая активация: кандидат принят (" + (microHit ? "общая модель" : "личный образец") + "); сигнал " + conditioning.activeMillis()
+                if (microHit || personalHit || choice.waiting()) {
+                    // Prefer a ready or in-flight personal result for a bounded time; capture
+                    // keeps running and the general model remains a fallback for other voices.
+                    boolean personalAllowed = personalHit && conditioning.candidateAllowed(filter, tuning.wakeMinMs, Math.max(tuning.wakeRecentMs, 600));
+                    boolean generalAllowed = microHit && conditioning.candidateAllowed(filter, tuning.wakeMinMs, tuning.wakeRecentMs);
+                    WakeTriggerChoice.Source source = choice.choose(now, personalHit, personalAllowed, microHit, generalAllowed, personalPending);
+                    if (source != WakeTriggerChoice.Source.NONE) {
+                        AppLog.add("Голосовая активация: кандидат принят (" + (source == WakeTriggerChoice.Source.PERSONAL ? "личный образец" : "общая модель") + "); сигнал " + conditioning.activeMillis()
                                 + " мс, пауза " + conditioning.quietMillis() + " мс, RMS " + conditioning.rms()
                                 + ", фон " + conditioning.floor() + ", фильтр " + filter);
                         listener.onTrigger(this);
                         break;
                     }
-                    if (now - lastRejectedLog >= 10000) {
+                    if (!choice.waiting() && (microHit || personalHit) && now - lastRejectedLog >= 10000) {
                         AppLog.add("Голосовая активация: кандидат отклонён; сигнал " + conditioning.activeMillis()
                                 + " мс, пауза " + conditioning.quietMillis() + " мс, RMS " + conditioning.rms()
                                 + ", фон " + conditioning.floor() + ", фильтр " + filter
@@ -128,7 +137,7 @@ final class WakeCapture {
                         lastRejectedLog = now;
                     }
                     // A rejected personal match must not change the general detector's signal history.
-                    if (microHit) conditioning.clearSpeech();
+                    if (microHit && !choice.waiting()) conditioning.clearSpeech();
                 }
             }
         } catch (Exception | LinkageError e) {

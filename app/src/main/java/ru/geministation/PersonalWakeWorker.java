@@ -29,6 +29,7 @@ final class PersonalWakeWorker implements AutoCloseable {
             });
         } catch (java.util.concurrent.RejectedExecutionException e) { pending.set(false); }
     }
+    boolean isPending() { return pending.get(); }
     boolean takeHit(long now) {
         long value = hitAt.getAndSet(0);
         return value > 0 && now >= value && now - value <= 500;

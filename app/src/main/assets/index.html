@@ -215,7 +215,7 @@ details{border-color:#49454f}summary{font-size:14px;color:#d0bcff}.editor-card t
       <div class="divider"></div>
       <div class="field"><label class="field-label" for="wakeSampleFile">Моё произношение</label>
        <p class="field-hint">Добавьте одну или несколько записей, где вы один раз говорите «Гемини». Это экспериментальный дополнительный способ активации: общая модель продолжит работать, возможны пропуски и ложные срабатывания.</p>
-       <div class="toggle-line"><div class="toggle-copy"><strong>Использовать мои образцы</strong><span>Работают дополнительно к выбранной общей модели.</span></div><label class="switch"><input type="checkbox" id="wakePersonal" aria-label="Использовать мои образцы" disabled><span class="switch-track"></span></label></div>
+       <div class="toggle-line"><div class="toggle-copy"><strong>Использовать мои образцы</strong><span>Приоритет у ваших образцов; общая модель остаётся запасной.</span></div><label class="switch"><input type="checkbox" id="wakePersonal" aria-label="Использовать мои образцы" disabled><span class="switch-track"></span></label></div>
        <input id="wakeSampleFile" type="file" accept=".wav,audio/wav,audio/x-wav">
        <p class="field-hint">WAV, 16 бит, до 5 секунд и 1 МБ. Лучше записать несколько вариантов без посторонней речи и музыки.</p>
        <div class="actions"><button id="wakeSampleAdd" class="secondary">Добавить образец</button><button id="wakeSampleClear" class="secondary" disabled>Удалить все образцы</button></div>

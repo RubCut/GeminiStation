@@ -21,6 +21,7 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.view.animation.LinearInterpolator;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -57,6 +58,7 @@ public final class MainActivity extends Activity {
     private LiveTranscriber liveTranscriber;
     private TextView text;
     private ImageView logo, mediaIcon;
+    private ThinkingIndicator thinkingIndicator;
     private boolean closeAfterResponse;
     private ObjectAnimator spin, pulse;
     private LedController led;
@@ -128,35 +130,41 @@ public final class MainActivity extends Activity {
         root.setFocusableInTouchMode(true);
         LinearLayout bubble = new LinearLayout(this);
         bubble.setOrientation(LinearLayout.HORIZONTAL);
-        bubble.setGravity(Gravity.BOTTOM | Gravity.START);
-        bubble.setPadding(dp(8), dp(8), dp(8), dp(8));
+        bubble.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
+        bubble.setPadding(dp(12), dp(8), dp(12), dp(8));
         GradientDrawable background = new GradientDrawable();
-        background.setColor(0xd91b1926);
-        background.setCornerRadius(dp(20));
+        background.setColor(0xf2272530);
+        background.setCornerRadius(dp(28));
+        background.setStroke(dp(1), 0xff4b4655);
         bubble.setBackground(background);
         root.addView(bubble, new LinearLayout.LayoutParams(-2, -2));
         logo = new ImageView(this);
         logo.setImageResource(ru.geministation.R.drawable.gemini_star);
         logo.setContentDescription("Gemini");
-        LinearLayout.LayoutParams logoParams = new LinearLayout.LayoutParams(dp(32), dp(32));
-        logoParams.gravity = Gravity.BOTTOM;
-        bubble.addView(logo, logoParams);
+        FrameLayout logoFrame = new FrameLayout(this);
+        LinearLayout.LayoutParams logoParams = new LinearLayout.LayoutParams(dp(42), dp(42));
+        logoParams.gravity = Gravity.CENTER_VERTICAL;
+        bubble.addView(logoFrame, logoParams);
+        thinkingIndicator = new ThinkingIndicator(this);
+        logoFrame.addView(thinkingIndicator, new FrameLayout.LayoutParams(-1, -1));
+        logoFrame.addView(logo, new FrameLayout.LayoutParams(dp(32), dp(32), Gravity.CENTER));
         text = new TextView(this);
         text.setTypeface(BrandFont.get(this));
         text.setTextColor(Color.WHITE);
         text.setTextSize(16);
         text.setGravity(Gravity.CENTER_VERTICAL);
-        text.setPadding(dp(12), dp(8), dp(12), dp(8));
+        // Preserve the generous space above and below the text.
+        text.setPadding(dp(2), dp(8), dp(4), dp(8));
         text.setMaxWidth(dp(420));
         text.setMaxLines(4);
         text.setEllipsize(TextUtils.TruncateAt.END);
         LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(-2, -2);
-        textParams.gravity = Gravity.BOTTOM;
-        textParams.setMarginStart(dp(10));
+        textParams.gravity = Gravity.CENTER_VERTICAL;
+        textParams.setMarginStart(dp(12));
         mediaIcon = new ImageView(this);
         mediaIcon.setVisibility(View.GONE);
         LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(dp(40), dp(40));
-        iconParams.gravity = Gravity.BOTTOM;
+        iconParams.gravity = Gravity.CENTER_VERTICAL;
         iconParams.setMarginStart(dp(14));
         bubble.addView(mediaIcon, iconParams);
         bubble.addView(text, textParams);
@@ -218,6 +226,7 @@ public final class MainActivity extends Activity {
         stopPulse();
         led.show("thinking");
         if (spin != null && spin.isStarted()) return;
+        thinkingIndicator.start();
         spin = ObjectAnimator.ofFloat(logo, View.ROTATION, 0f, 360f);
         spin.setDuration(1200);
         spin.setInterpolator(new LinearInterpolator());
@@ -226,6 +235,7 @@ public final class MainActivity extends Activity {
     }
     private void stopSpinner() {
         if (spin != null) { spin.cancel(); spin = null; }
+        thinkingIndicator.stop();
         logo.setRotation(0);
     }
     private void showErrorAndClose(String message) {
