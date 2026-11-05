@@ -1,0 +1,14 @@
+{
+  "id": "shell_example",
+  "name": "Пример ADB",
+  "version": "1.0",
+  "permissions": ["adb_shell"],
+  "tools": [
+    {
+      "name": "shell_uid",
+      "handler": "shell_uid",
+      "description": "Проверить числовой UID ADB Helper на станции.",
+      "parameters": {"type": "OBJECT", "properties": {}}
+    }
+  ]
+}

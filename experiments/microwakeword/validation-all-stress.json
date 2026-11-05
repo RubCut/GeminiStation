@@ -1,0 +1,1965 @@
+{
+  "description": "Streaming maximum of a 10-output rolling average. Synthetic held-out clips from the same two Piper voices; not real-world validation. Ambiguous speech contains the requested fragment мини and is separated from clear negatives.",
+  "thresholds": {
+    "installed": {
+      "0.5": {
+        "ambiguous": {
+          "triggered": 25,
+          "total": 96,
+          "phrase": {
+            "мини автобус": {
+              "triggered": 2,
+              "total": 8
+            },
+            "мини бар": {
+              "triggered": 2,
+              "total": 8
+            },
+            "мини компьютер": {
+              "triggered": 1,
+              "total": 8
+            },
+            "мини пекарня": {
+              "triggered": 1,
+              "total": 8
+            },
+            "мини проект": {
+              "triggered": 2,
+              "total": 8
+            },
+            "мини сериал": {
+              "triggered": 2,
+              "total": 8
+            },
+            "мини футбол": {
+              "triggered": 3,
+              "total": 8
+            },
+            "мини юбка": {
+              "triggered": 2,
+              "total": 8
+            },
+            "миниатюра": {
+              "triggered": 3,
+              "total": 8
+            },
+            "минимальный размер": {
+              "triggered": 2,
+              "total": 8
+            },
+            "минимум": {
+              "triggered": 4,
+              "total": 8
+            },
+            "министерство": {
+              "triggered": 1,
+              "total": 8
+            }
+          },
+          "condition": {
+            "normal_low": {
+              "triggered": 1,
+              "total": 24
+            },
+            "normal_moderate": {
+              "triggered": 2,
+              "total": 12
+            },
+            "normal_strong": {
+              "triggered": 3,
+              "total": 12
+            },
+            "quiet_low": {
+              "triggered": 19,
+              "total": 24
+            },
+            "quiet_moderate": {
+              "triggered": 0,
+              "total": 12
+            },
+            "quiet_strong": {
+              "triggered": 0,
+              "total": 12
+            }
+          },
+          "pronunciation_ipa": {}
+        },
+        "fragment": {
+          "triggered": 143,
+          "total": 256,
+          "phrase": {
+            "геми": {
+              "triggered": 38,
+              "total": 64
+            },
+            "джеми": {
+              "triggered": 48,
+              "total": 64
+            },
+            "минай": {
+              "triggered": 19,
+              "total": 64
+            },
+            "мини": {
+              "triggered": 38,
+              "total": 64
+            }
+          },
+          "condition": {
+            "cropped_normal_strong": {
+              "triggered": 43,
+              "total": 64
+            },
+            "cropped_quiet_strong": {
+              "triggered": 37,
+              "total": 64
+            },
+            "standalone_normal_strong": {
+              "triggered": 35,
+              "total": 64
+            },
+            "standalone_quiet_strong": {
+              "triggered": 28,
+              "total": 64
+            }
+          },
+          "pronunciation_ipa": {
+            "automatic": {
+              "triggered": 53,
+              "total": 59
+            },
+            "dʒemʲinʲˈi": {
+              "triggered": 5,
+              "total": 7
+            },
+            "dʒemʲinˈaj": {
+              "triggered": 5,
+              "total": 14
+            },
+            "dʒemʲˈi": {
+              "triggered": 5,
+              "total": 8
+            },
+            "dʒemʲˈinaj": {
+              "triggered": 5,
+              "total": 8
+            },
+            "dʒemʲˈinʲɪ": {
+              "triggered": 6,
+              "total": 8
+            },
+            "dʒˈɛmʲi": {
+              "triggered": 4,
+              "total": 13
+            },
+            "dʒˈɛmʲinaj": {
+              "triggered": 6,
+              "total": 13
+            },
+            "dʒˈɛmʲinʲɪ": {
+              "triggered": 4,
+              "total": 6
+            },
+            "mʲinʲˈi": {
+              "triggered": 2,
+              "total": 7
+            },
+            "mʲinˈaj": {
+              "triggered": 1,
+              "total": 10
+            },
+            "mʲˈinaj": {
+              "triggered": 7,
+              "total": 17
+            },
+            "mʲˈinʲɪ": {
+              "triggered": 10,
+              "total": 19
+            },
+            "ɡʲemʲˈi": {
+              "triggered": 3,
+              "total": 12
+            },
+            "ɡʲimʲinʲˈi": {
+              "triggered": 2,
+              "total": 2
+            },
+            "ɡʲimʲinˈaj": {
+              "triggered": 2,
+              "total": 6
+            },
+            "ɡʲimʲˈinaj": {
+              "triggered": 7,
+              "total": 10
+            },
+            "ɡʲimʲˈinʲɪ": {
+              "triggered": 5,
+              "total": 8
+            },
+            "ɡʲˈemʲi": {
+              "triggered": 4,
+              "total": 14
+            },
+            "ɡʲˈemʲinaj": {
+              "triggered": 4,
+              "total": 8
+            },
+            "ɡʲˈemʲinʲɪ": {
+              "triggered": 3,
+              "total": 7
+            }
+          }
+        },
+        "full": {
+          "triggered": 232,
+          "total": 360,
+          "phrase": {
+            "Геминай": {
+              "triggered": 36,
+              "total": 60
+            },
+            "Гемини": {
+              "triggered": 35,
+              "total": 60
+            },
+            "Гемма": {
+              "triggered": 30,
+              "total": 60
+            },
+            "Джеминай": {
+              "triggered": 41,
+              "total": 60
+            },
+            "Джемини": {
+              "triggered": 46,
+              "total": 60
+            },
+            "Джемма": {
+              "triggered": 44,
+              "total": 60
+            }
+          },
+          "condition": {
+            "normal_low": {
+              "triggered": 29,
+              "total": 60
+            },
+            "normal_moderate": {
+              "triggered": 35,
+              "total": 60
+            },
+            "normal_strong": {
+              "triggered": 33,
+              "total": 60
+            },
+            "quiet_low": {
+              "triggered": 58,
+              "total": 60
+            },
+            "quiet_moderate": {
+              "triggered": 35,
+              "total": 60
+            },
+            "quiet_strong": {
+              "triggered": 42,
+              "total": 60
+            }
+          },
+          "pronunciation_ipa": {
+            "automatic": {
+              "triggered": 89,
+              "total": 90
+            },
+            "dʒemʲinʲˈi": {
+              "triggered": 11,
+              "total": 14
+            },
+            "dʒemʲinˈaj": {
+              "triggered": 3,
+              "total": 12
+            },
+            "dʒemʲˈinaj": {
+              "triggered": 10,
+              "total": 17
+            },
+            "dʒemʲˈinʲɪ": {
+              "triggered": 16,
+              "total": 16
+            },
+            "dʒemˈma": {
+              "triggered": 11,
+              "total": 19
+            },
+            "dʒˈemmə": {
+              "triggered": 18,
+              "total": 26
+            },
+            "dʒˈɛmʲinaj": {
+              "triggered": 7,
+              "total": 10
+            },
+            "dʒˈɛmʲinʲɪ": {
+              "triggered": 7,
+              "total": 18
+            },
+            "ɡʲemˈma": {
+              "triggered": 11,
+              "total": 22
+            },
+            "ɡʲimʲinʲˈi": {
+              "triggered": 3,
+              "total": 8
+            },
+            "ɡʲimʲinˈaj": {
+              "triggered": 4,
+              "total": 12
+            },
+            "ɡʲimʲˈinaj": {
+              "triggered": 15,
+              "total": 23
+            },
+            "ɡʲimʲˈinʲɪ": {
+              "triggered": 11,
+              "total": 17
+            },
+            "ɡʲˈemmə": {
+              "triggered": 6,
+              "total": 25
+            },
+            "ɡʲˈemʲinaj": {
+              "triggered": 4,
+              "total": 11
+            },
+            "ɡʲˈemʲinʲɪ": {
+              "triggered": 6,
+              "total": 20
+            }
+          }
+        },
+        "negative": {
+          "triggered": 70,
+          "total": 264,
+          "phrase": {
+            "временно": {
+              "triggered": 6,
+              "total": 11
+            },
+            "геометрия": {
+              "triggered": 6,
+              "total": 11
+            },
+            "георгий": {
+              "triggered": 4,
+              "total": 10
+            },
+            "гимназия": {
+              "triggered": 2,
+              "total": 10
+            },
+            "давай посмотрим": {
+              "triggered": 2,
+              "total": 10
+            },
+            "димина": {
+              "triggered": 9,
+              "total": 11
+            },
+            "доброе утро": {
+              "triggered": 1,
+              "total": 10
+            },
+            "другими словами": {
+              "triggered": 1,
+              "total": 10
+            },
+            "думай сам": {
+              "triggered": 2,
+              "total": 10
+            },
+            "ещё минуту": {
+              "triggered": 8,
+              "total": 10
+            },
+            "жемчуг": {
+              "triggered": 2,
+              "total": 10
+            },
+            "здесь никого": {
+              "triggered": 3,
+              "total": 10
+            },
+            "иди ко мне": {
+              "triggered": 2,
+              "total": 10
+            },
+            "как именно": {
+              "triggered": 2,
+              "total": 10
+            },
+            "календарь": {
+              "triggered": 1,
+              "total": 10
+            },
+            "книга на столе": {
+              "triggered": 2,
+              "total": 10
+            },
+            "медленно": {
+              "triggered": 2,
+              "total": 10
+            },
+            "мне кажется": {
+              "triggered": 2,
+              "total": 10
+            },
+            "на диване": {
+              "triggered": 0,
+              "total": 10
+            },
+            "перемена": {
+              "triggered": 4,
+              "total": 10
+            },
+            "пожалуйста": {
+              "triggered": 0,
+              "total": 10
+            },
+            "поменяй": {
+              "triggered": 2,
+              "total": 11
+            },
+            "послушай меня": {
+              "triggered": 1,
+              "total": 10
+            },
+            "работает": {
+              "triggered": 2,
+              "total": 10
+            },
+            "сделай громче": {
+              "triggered": 2,
+              "total": 10
+            },
+            "эмма": {
+              "triggered": 2,
+              "total": 10
+            }
+          },
+          "condition": {
+            "normal_low": {
+              "triggered": 5,
+              "total": 52
+            },
+            "normal_moderate": {
+              "triggered": 5,
+              "total": 52
+            },
+            "normal_strong": {
+              "triggered": 7,
+              "total": 26
+            },
+            "quiet_low": {
+              "triggered": 39,
+              "total": 52
+            },
+            "quiet_moderate": {
+              "triggered": 8,
+              "total": 52
+            },
+            "quiet_strong": {
+              "triggered": 6,
+              "total": 30
+            }
+          },
+          "pronunciation_ipa": {}
+        },
+        "noise": {
+          "triggered": 5,
+          "total": 80,
+          "phrase": {
+            "synthetic_noise": {
+              "triggered": 5,
+              "total": 80
+            }
+          },
+          "condition": {
+            "noise_only": {
+              "triggered": 5,
+              "total": 80
+            }
+          },
+          "pronunciation_ipa": {}
+        }
+      },
+      "0.9": {
+        "ambiguous": {
+          "triggered": 2,
+          "total": 96,
+          "phrase": {
+            "мини автобус": {
+              "triggered": 0,
+              "total": 8
+            },
+            "мини бар": {
+              "triggered": 0,
+              "total": 8
+            },
+            "мини компьютер": {
+              "triggered": 0,
+              "total": 8
+            },
+            "мини пекарня": {
+              "triggered": 0,
+              "total": 8
+            },
+            "мини проект": {
+              "triggered": 0,
+              "total": 8
+            },
+            "мини сериал": {
+              "triggered": 0,
+              "total": 8
+            },
+            "мини футбол": {
+              "triggered": 0,
+              "total": 8
+            },
+            "мини юбка": {
+              "triggered": 0,
+              "total": 8
+            },
+            "миниатюра": {
+              "triggered": 0,
+              "total": 8
+            },
+            "минимальный размер": {
+              "triggered": 0,
+              "total": 8
+            },
+            "минимум": {
+              "triggered": 2,
+              "total": 8
+            },
+            "министерство": {
+              "triggered": 0,
+              "total": 8
+            }
+          },
+          "condition": {
+            "normal_low": {
+              "triggered": 0,
+              "total": 24
+            },
+            "normal_moderate": {
+              "triggered": 1,
+              "total": 12
+            },
+            "normal_strong": {
+              "triggered": 1,
+              "total": 12
+            },
+            "quiet_low": {
+              "triggered": 0,
+              "total": 24
+            },
+            "quiet_moderate": {
+              "triggered": 0,
+              "total": 12
+            },
+            "quiet_strong": {
+              "triggered": 0,
+              "total": 12
+            }
+          },
+          "pronunciation_ipa": {}
+        },
+        "fragment": {
+          "triggered": 80,
+          "total": 256,
+          "phrase": {
+            "геми": {
+              "triggered": 21,
+              "total": 64
+            },
+            "джеми": {
+              "triggered": 27,
+              "total": 64
+            },
+            "минай": {
+              "triggered": 12,
+              "total": 64
+            },
+            "мини": {
+              "triggered": 20,
+              "total": 64
+            }
+          },
+          "condition": {
+            "cropped_normal_strong": {
+              "triggered": 28,
+              "total": 64
+            },
+            "cropped_quiet_strong": {
+              "triggered": 22,
+              "total": 64
+            },
+            "standalone_normal_strong": {
+              "triggered": 15,
+              "total": 64
+            },
+            "standalone_quiet_strong": {
+              "triggered": 15,
+              "total": 64
+            }
+          },
+          "pronunciation_ipa": {
+            "automatic": {
+              "triggered": 31,
+              "total": 59
+            },
+            "dʒemʲinʲˈi": {
+              "triggered": 3,
+              "total": 7
+            },
+            "dʒemʲinˈaj": {
+              "triggered": 2,
+              "total": 14
+            },
+            "dʒemʲˈi": {
+              "triggered": 2,
+              "total": 8
+            },
+            "dʒemʲˈinaj": {
+              "triggered": 4,
+              "total": 8
+            },
+            "dʒemʲˈinʲɪ": {
+              "triggered": 5,
+              "total": 8
+            },
+            "dʒˈɛmʲi": {
+              "triggered": 2,
+              "total": 13
+            },
+            "dʒˈɛmʲinaj": {
+              "triggered": 1,
+              "total": 13
+            },
+            "dʒˈɛmʲinʲɪ": {
+              "triggered": 2,
+              "total": 6
+            },
+            "mʲinʲˈi": {
+              "triggered": 0,
+              "total": 7
+            },
+            "mʲinˈaj": {
+              "triggered": 0,
+              "total": 10
+            },
+            "mʲˈinaj": {
+              "triggered": 3,
+              "total": 17
+            },
+            "mʲˈinʲɪ": {
+              "triggered": 6,
+              "total": 19
+            },
+            "ɡʲemʲˈi": {
+              "triggered": 2,
+              "total": 12
+            },
+            "ɡʲimʲinʲˈi": {
+              "triggered": 2,
+              "total": 2
+            },
+            "ɡʲimʲinˈaj": {
+              "triggered": 1,
+              "total": 6
+            },
+            "ɡʲimʲˈinaj": {
+              "triggered": 5,
+              "total": 10
+            },
+            "ɡʲimʲˈinʲɪ": {
+              "triggered": 5,
+              "total": 8
+            },
+            "ɡʲˈemʲi": {
+              "triggered": 1,
+              "total": 14
+            },
+            "ɡʲˈemʲinaj": {
+              "triggered": 2,
+              "total": 8
+            },
+            "ɡʲˈemʲinʲɪ": {
+              "triggered": 1,
+              "total": 7
+            }
+          }
+        },
+        "full": {
+          "triggered": 135,
+          "total": 360,
+          "phrase": {
+            "Геминай": {
+              "triggered": 22,
+              "total": 60
+            },
+            "Гемини": {
+              "triggered": 11,
+              "total": 60
+            },
+            "Гемма": {
+              "triggered": 16,
+              "total": 60
+            },
+            "Джеминай": {
+              "triggered": 31,
+              "total": 60
+            },
+            "Джемини": {
+              "triggered": 29,
+              "total": 60
+            },
+            "Джемма": {
+              "triggered": 26,
+              "total": 60
+            }
+          },
+          "condition": {
+            "normal_low": {
+              "triggered": 19,
+              "total": 60
+            },
+            "normal_moderate": {
+              "triggered": 22,
+              "total": 60
+            },
+            "normal_strong": {
+              "triggered": 17,
+              "total": 60
+            },
+            "quiet_low": {
+              "triggered": 30,
+              "total": 60
+            },
+            "quiet_moderate": {
+              "triggered": 24,
+              "total": 60
+            },
+            "quiet_strong": {
+              "triggered": 23,
+              "total": 60
+            }
+          },
+          "pronunciation_ipa": {
+            "automatic": {
+              "triggered": 78,
+              "total": 90
+            },
+            "dʒemʲinʲˈi": {
+              "triggered": 5,
+              "total": 14
+            },
+            "dʒemʲinˈaj": {
+              "triggered": 1,
+              "total": 12
+            },
+            "dʒemʲˈinaj": {
+              "triggered": 7,
+              "total": 17
+            },
+            "dʒemʲˈinʲɪ": {
+              "triggered": 11,
+              "total": 16
+            },
+            "dʒemˈma": {
+              "triggered": 3,
+              "total": 19
+            },
+            "dʒˈemmə": {
+              "triggered": 9,
+              "total": 26
+            },
+            "dʒˈɛmʲinaj": {
+              "triggered": 3,
+              "total": 10
+            },
+            "dʒˈɛmʲinʲɪ": {
+              "triggered": 1,
+              "total": 18
+            },
+            "ɡʲemˈma": {
+              "triggered": 5,
+              "total": 22
+            },
+            "ɡʲimʲinʲˈi": {
+              "triggered": 0,
+              "total": 8
+            },
+            "ɡʲimʲinˈaj": {
+              "triggered": 0,
+              "total": 12
+            },
+            "ɡʲimʲˈinaj": {
+              "triggered": 9,
+              "total": 23
+            },
+            "ɡʲimʲˈinʲɪ": {
+              "triggered": 2,
+              "total": 17
+            },
+            "ɡʲˈemmə": {
+              "triggered": 0,
+              "total": 25
+            },
+            "ɡʲˈemʲinaj": {
+              "triggered": 1,
+              "total": 11
+            },
+            "ɡʲˈemʲinʲɪ": {
+              "triggered": 0,
+              "total": 20
+            }
+          }
+        },
+        "negative": {
+          "triggered": 13,
+          "total": 264,
+          "phrase": {
+            "временно": {
+              "triggered": 0,
+              "total": 11
+            },
+            "геометрия": {
+              "triggered": 1,
+              "total": 11
+            },
+            "георгий": {
+              "triggered": 0,
+              "total": 10
+            },
+            "гимназия": {
+              "triggered": 1,
+              "total": 10
+            },
+            "давай посмотрим": {
+              "triggered": 0,
+              "total": 10
+            },
+            "димина": {
+              "triggered": 4,
+              "total": 11
+            },
+            "доброе утро": {
+              "triggered": 1,
+              "total": 10
+            },
+            "другими словами": {
+              "triggered": 1,
+              "total": 10
+            },
+            "думай сам": {
+              "triggered": 0,
+              "total": 10
+            },
+            "ещё минуту": {
+              "triggered": 3,
+              "total": 10
+            },
+            "жемчуг": {
+              "triggered": 0,
+              "total": 10
+            },
+            "здесь никого": {
+              "triggered": 0,
+              "total": 10
+            },
+            "иди ко мне": {
+              "triggered": 1,
+              "total": 10
+            },
+            "как именно": {
+              "triggered": 0,
+              "total": 10
+            },
+            "календарь": {
+              "triggered": 0,
+              "total": 10
+            },
+            "книга на столе": {
+              "triggered": 0,
+              "total": 10
+            },
+            "медленно": {
+              "triggered": 1,
+              "total": 10
+            },
+            "мне кажется": {
+              "triggered": 0,
+              "total": 10
+            },
+            "на диване": {
+              "triggered": 0,
+              "total": 10
+            },
+            "перемена": {
+              "triggered": 0,
+              "total": 10
+            },
+            "пожалуйста": {
+              "triggered": 0,
+              "total": 10
+            },
+            "поменяй": {
+              "triggered": 0,
+              "total": 11
+            },
+            "послушай меня": {
+              "triggered": 0,
+              "total": 10
+            },
+            "работает": {
+              "triggered": 0,
+              "total": 10
+            },
+            "сделай громче": {
+              "triggered": 0,
+              "total": 10
+            },
+            "эмма": {
+              "triggered": 0,
+              "total": 10
+            }
+          },
+          "condition": {
+            "normal_low": {
+              "triggered": 2,
+              "total": 52
+            },
+            "normal_moderate": {
+              "triggered": 0,
+              "total": 52
+            },
+            "normal_strong": {
+              "triggered": 2,
+              "total": 26
+            },
+            "quiet_low": {
+              "triggered": 6,
+              "total": 52
+            },
+            "quiet_moderate": {
+              "triggered": 1,
+              "total": 52
+            },
+            "quiet_strong": {
+              "triggered": 2,
+              "total": 30
+            }
+          },
+          "pronunciation_ipa": {}
+        },
+        "noise": {
+          "triggered": 0,
+          "total": 80,
+          "phrase": {
+            "synthetic_noise": {
+              "triggered": 0,
+              "total": 80
+            }
+          },
+          "condition": {
+            "noise_only": {
+              "triggered": 0,
+              "total": 80
+            }
+          },
+          "pronunciation_ipa": {}
+        }
+      }
+    },
+    "all_stress": {
+      "0.5": {
+        "ambiguous": {
+          "triggered": 56,
+          "total": 96,
+          "phrase": {
+            "мини автобус": {
+              "triggered": 3,
+              "total": 8
+            },
+            "мини бар": {
+              "triggered": 6,
+              "total": 8
+            },
+            "мини компьютер": {
+              "triggered": 6,
+              "total": 8
+            },
+            "мини пекарня": {
+              "triggered": 3,
+              "total": 8
+            },
+            "мини проект": {
+              "triggered": 8,
+              "total": 8
+            },
+            "мини сериал": {
+              "triggered": 2,
+              "total": 8
+            },
+            "мини футбол": {
+              "triggered": 5,
+              "total": 8
+            },
+            "мини юбка": {
+              "triggered": 6,
+              "total": 8
+            },
+            "миниатюра": {
+              "triggered": 4,
+              "total": 8
+            },
+            "минимальный размер": {
+              "triggered": 6,
+              "total": 8
+            },
+            "минимум": {
+              "triggered": 5,
+              "total": 8
+            },
+            "министерство": {
+              "triggered": 2,
+              "total": 8
+            }
+          },
+          "condition": {
+            "normal_low": {
+              "triggered": 10,
+              "total": 24
+            },
+            "normal_moderate": {
+              "triggered": 8,
+              "total": 12
+            },
+            "normal_strong": {
+              "triggered": 7,
+              "total": 12
+            },
+            "quiet_low": {
+              "triggered": 13,
+              "total": 24
+            },
+            "quiet_moderate": {
+              "triggered": 10,
+              "total": 12
+            },
+            "quiet_strong": {
+              "triggered": 8,
+              "total": 12
+            }
+          },
+          "pronunciation_ipa": {}
+        },
+        "fragment": {
+          "triggered": 245,
+          "total": 256,
+          "phrase": {
+            "геми": {
+              "triggered": 60,
+              "total": 64
+            },
+            "джеми": {
+              "triggered": 59,
+              "total": 64
+            },
+            "минай": {
+              "triggered": 63,
+              "total": 64
+            },
+            "мини": {
+              "triggered": 63,
+              "total": 64
+            }
+          },
+          "condition": {
+            "cropped_normal_strong": {
+              "triggered": 59,
+              "total": 64
+            },
+            "cropped_quiet_strong": {
+              "triggered": 62,
+              "total": 64
+            },
+            "standalone_normal_strong": {
+              "triggered": 61,
+              "total": 64
+            },
+            "standalone_quiet_strong": {
+              "triggered": 63,
+              "total": 64
+            }
+          },
+          "pronunciation_ipa": {
+            "automatic": {
+              "triggered": 52,
+              "total": 59
+            },
+            "dʒemʲinʲˈi": {
+              "triggered": 7,
+              "total": 7
+            },
+            "dʒemʲinˈaj": {
+              "triggered": 14,
+              "total": 14
+            },
+            "dʒemʲˈi": {
+              "triggered": 8,
+              "total": 8
+            },
+            "dʒemʲˈinaj": {
+              "triggered": 8,
+              "total": 8
+            },
+            "dʒemʲˈinʲɪ": {
+              "triggered": 8,
+              "total": 8
+            },
+            "dʒˈɛmʲi": {
+              "triggered": 13,
+              "total": 13
+            },
+            "dʒˈɛmʲinaj": {
+              "triggered": 12,
+              "total": 13
+            },
+            "dʒˈɛmʲinʲɪ": {
+              "triggered": 6,
+              "total": 6
+            },
+            "mʲinʲˈi": {
+              "triggered": 7,
+              "total": 7
+            },
+            "mʲinˈaj": {
+              "triggered": 10,
+              "total": 10
+            },
+            "mʲˈinaj": {
+              "triggered": 16,
+              "total": 17
+            },
+            "mʲˈinʲɪ": {
+              "triggered": 19,
+              "total": 19
+            },
+            "ɡʲemʲˈi": {
+              "triggered": 12,
+              "total": 12
+            },
+            "ɡʲimʲinʲˈi": {
+              "triggered": 2,
+              "total": 2
+            },
+            "ɡʲimʲinˈaj": {
+              "triggered": 6,
+              "total": 6
+            },
+            "ɡʲimʲˈinaj": {
+              "triggered": 10,
+              "total": 10
+            },
+            "ɡʲimʲˈinʲɪ": {
+              "triggered": 8,
+              "total": 8
+            },
+            "ɡʲˈemʲi": {
+              "triggered": 14,
+              "total": 14
+            },
+            "ɡʲˈemʲinaj": {
+              "triggered": 7,
+              "total": 8
+            },
+            "ɡʲˈemʲinʲɪ": {
+              "triggered": 6,
+              "total": 7
+            }
+          }
+        },
+        "full": {
+          "triggered": 356,
+          "total": 360,
+          "phrase": {
+            "Геминай": {
+              "triggered": 60,
+              "total": 60
+            },
+            "Гемини": {
+              "triggered": 58,
+              "total": 60
+            },
+            "Гемма": {
+              "triggered": 59,
+              "total": 60
+            },
+            "Джеминай": {
+              "triggered": 60,
+              "total": 60
+            },
+            "Джемини": {
+              "triggered": 60,
+              "total": 60
+            },
+            "Джемма": {
+              "triggered": 59,
+              "total": 60
+            }
+          },
+          "condition": {
+            "normal_low": {
+              "triggered": 60,
+              "total": 60
+            },
+            "normal_moderate": {
+              "triggered": 60,
+              "total": 60
+            },
+            "normal_strong": {
+              "triggered": 59,
+              "total": 60
+            },
+            "quiet_low": {
+              "triggered": 60,
+              "total": 60
+            },
+            "quiet_moderate": {
+              "triggered": 59,
+              "total": 60
+            },
+            "quiet_strong": {
+              "triggered": 58,
+              "total": 60
+            }
+          },
+          "pronunciation_ipa": {
+            "automatic": {
+              "triggered": 88,
+              "total": 90
+            },
+            "dʒemʲinʲˈi": {
+              "triggered": 14,
+              "total": 14
+            },
+            "dʒemʲinˈaj": {
+              "triggered": 12,
+              "total": 12
+            },
+            "dʒemʲˈinaj": {
+              "triggered": 17,
+              "total": 17
+            },
+            "dʒemʲˈinʲɪ": {
+              "triggered": 16,
+              "total": 16
+            },
+            "dʒemˈma": {
+              "triggered": 19,
+              "total": 19
+            },
+            "dʒˈemmə": {
+              "triggered": 26,
+              "total": 26
+            },
+            "dʒˈɛmʲinaj": {
+              "triggered": 10,
+              "total": 10
+            },
+            "dʒˈɛmʲinʲɪ": {
+              "triggered": 18,
+              "total": 18
+            },
+            "ɡʲemˈma": {
+              "triggered": 21,
+              "total": 22
+            },
+            "ɡʲimʲinʲˈi": {
+              "triggered": 8,
+              "total": 8
+            },
+            "ɡʲimʲinˈaj": {
+              "triggered": 12,
+              "total": 12
+            },
+            "ɡʲimʲˈinaj": {
+              "triggered": 23,
+              "total": 23
+            },
+            "ɡʲimʲˈinʲɪ": {
+              "triggered": 17,
+              "total": 17
+            },
+            "ɡʲˈemmə": {
+              "triggered": 25,
+              "total": 25
+            },
+            "ɡʲˈemʲinaj": {
+              "triggered": 11,
+              "total": 11
+            },
+            "ɡʲˈemʲinʲɪ": {
+              "triggered": 19,
+              "total": 20
+            }
+          }
+        },
+        "negative": {
+          "triggered": 106,
+          "total": 264,
+          "phrase": {
+            "временно": {
+              "triggered": 7,
+              "total": 11
+            },
+            "геометрия": {
+              "triggered": 8,
+              "total": 11
+            },
+            "георгий": {
+              "triggered": 7,
+              "total": 10
+            },
+            "гимназия": {
+              "triggered": 4,
+              "total": 10
+            },
+            "давай посмотрим": {
+              "triggered": 3,
+              "total": 10
+            },
+            "димина": {
+              "triggered": 9,
+              "total": 11
+            },
+            "доброе утро": {
+              "triggered": 2,
+              "total": 10
+            },
+            "другими словами": {
+              "triggered": 3,
+              "total": 10
+            },
+            "думай сам": {
+              "triggered": 3,
+              "total": 10
+            },
+            "ещё минуту": {
+              "triggered": 7,
+              "total": 10
+            },
+            "жемчуг": {
+              "triggered": 1,
+              "total": 10
+            },
+            "здесь никого": {
+              "triggered": 4,
+              "total": 10
+            },
+            "иди ко мне": {
+              "triggered": 2,
+              "total": 10
+            },
+            "как именно": {
+              "triggered": 3,
+              "total": 10
+            },
+            "календарь": {
+              "triggered": 3,
+              "total": 10
+            },
+            "книга на столе": {
+              "triggered": 4,
+              "total": 10
+            },
+            "медленно": {
+              "triggered": 3,
+              "total": 10
+            },
+            "мне кажется": {
+              "triggered": 4,
+              "total": 10
+            },
+            "на диване": {
+              "triggered": 2,
+              "total": 10
+            },
+            "перемена": {
+              "triggered": 7,
+              "total": 10
+            },
+            "пожалуйста": {
+              "triggered": 1,
+              "total": 10
+            },
+            "поменяй": {
+              "triggered": 8,
+              "total": 11
+            },
+            "послушай меня": {
+              "triggered": 1,
+              "total": 10
+            },
+            "работает": {
+              "triggered": 1,
+              "total": 10
+            },
+            "сделай громче": {
+              "triggered": 3,
+              "total": 10
+            },
+            "эмма": {
+              "triggered": 6,
+              "total": 10
+            }
+          },
+          "condition": {
+            "normal_low": {
+              "triggered": 15,
+              "total": 52
+            },
+            "normal_moderate": {
+              "triggered": 18,
+              "total": 52
+            },
+            "normal_strong": {
+              "triggered": 10,
+              "total": 26
+            },
+            "quiet_low": {
+              "triggered": 20,
+              "total": 52
+            },
+            "quiet_moderate": {
+              "triggered": 27,
+              "total": 52
+            },
+            "quiet_strong": {
+              "triggered": 16,
+              "total": 30
+            }
+          },
+          "pronunciation_ipa": {}
+        },
+        "noise": {
+          "triggered": 25,
+          "total": 80,
+          "phrase": {
+            "synthetic_noise": {
+              "triggered": 25,
+              "total": 80
+            }
+          },
+          "condition": {
+            "noise_only": {
+              "triggered": 25,
+              "total": 80
+            }
+          },
+          "pronunciation_ipa": {}
+        }
+      },
+      "0.9": {
+        "ambiguous": {
+          "triggered": 19,
+          "total": 96,
+          "phrase": {
+            "мини автобус": {
+              "triggered": 1,
+              "total": 8
+            },
+            "мини бар": {
+              "triggered": 3,
+              "total": 8
+            },
+            "мини компьютер": {
+              "triggered": 2,
+              "total": 8
+            },
+            "мини пекарня": {
+              "triggered": 0,
+              "total": 8
+            },
+            "мини проект": {
+              "triggered": 3,
+              "total": 8
+            },
+            "мини сериал": {
+              "triggered": 0,
+              "total": 8
+            },
+            "мини футбол": {
+              "triggered": 2,
+              "total": 8
+            },
+            "мини юбка": {
+              "triggered": 5,
+              "total": 8
+            },
+            "миниатюра": {
+              "triggered": 1,
+              "total": 8
+            },
+            "минимальный размер": {
+              "triggered": 1,
+              "total": 8
+            },
+            "минимум": {
+              "triggered": 1,
+              "total": 8
+            },
+            "министерство": {
+              "triggered": 0,
+              "total": 8
+            }
+          },
+          "condition": {
+            "normal_low": {
+              "triggered": 4,
+              "total": 24
+            },
+            "normal_moderate": {
+              "triggered": 2,
+              "total": 12
+            },
+            "normal_strong": {
+              "triggered": 2,
+              "total": 12
+            },
+            "quiet_low": {
+              "triggered": 2,
+              "total": 24
+            },
+            "quiet_moderate": {
+              "triggered": 5,
+              "total": 12
+            },
+            "quiet_strong": {
+              "triggered": 4,
+              "total": 12
+            }
+          },
+          "pronunciation_ipa": {}
+        },
+        "fragment": {
+          "triggered": 193,
+          "total": 256,
+          "phrase": {
+            "геми": {
+              "triggered": 43,
+              "total": 64
+            },
+            "джеми": {
+              "triggered": 45,
+              "total": 64
+            },
+            "минай": {
+              "triggered": 52,
+              "total": 64
+            },
+            "мини": {
+              "triggered": 53,
+              "total": 64
+            }
+          },
+          "condition": {
+            "cropped_normal_strong": {
+              "triggered": 47,
+              "total": 64
+            },
+            "cropped_quiet_strong": {
+              "triggered": 42,
+              "total": 64
+            },
+            "standalone_normal_strong": {
+              "triggered": 50,
+              "total": 64
+            },
+            "standalone_quiet_strong": {
+              "triggered": 54,
+              "total": 64
+            }
+          },
+          "pronunciation_ipa": {
+            "automatic": {
+              "triggered": 29,
+              "total": 59
+            },
+            "dʒemʲinʲˈi": {
+              "triggered": 5,
+              "total": 7
+            },
+            "dʒemʲinˈaj": {
+              "triggered": 12,
+              "total": 14
+            },
+            "dʒemʲˈi": {
+              "triggered": 8,
+              "total": 8
+            },
+            "dʒemʲˈinaj": {
+              "triggered": 7,
+              "total": 8
+            },
+            "dʒemʲˈinʲɪ": {
+              "triggered": 8,
+              "total": 8
+            },
+            "dʒˈɛmʲi": {
+              "triggered": 10,
+              "total": 13
+            },
+            "dʒˈɛmʲinaj": {
+              "triggered": 9,
+              "total": 13
+            },
+            "dʒˈɛmʲinʲɪ": {
+              "triggered": 5,
+              "total": 6
+            },
+            "mʲinʲˈi": {
+              "triggered": 7,
+              "total": 7
+            },
+            "mʲinˈaj": {
+              "triggered": 9,
+              "total": 10
+            },
+            "mʲˈinaj": {
+              "triggered": 16,
+              "total": 17
+            },
+            "mʲˈinʲɪ": {
+              "triggered": 18,
+              "total": 19
+            },
+            "ɡʲemʲˈi": {
+              "triggered": 10,
+              "total": 12
+            },
+            "ɡʲimʲinʲˈi": {
+              "triggered": 2,
+              "total": 2
+            },
+            "ɡʲimʲinˈaj": {
+              "triggered": 5,
+              "total": 6
+            },
+            "ɡʲimʲˈinaj": {
+              "triggered": 6,
+              "total": 10
+            },
+            "ɡʲimʲˈinʲɪ": {
+              "triggered": 5,
+              "total": 8
+            },
+            "ɡʲˈemʲi": {
+              "triggered": 13,
+              "total": 14
+            },
+            "ɡʲˈemʲinaj": {
+              "triggered": 5,
+              "total": 8
+            },
+            "ɡʲˈemʲinʲɪ": {
+              "triggered": 4,
+              "total": 7
+            }
+          }
+        },
+        "full": {
+          "triggered": 332,
+          "total": 360,
+          "phrase": {
+            "Геминай": {
+              "triggered": 56,
+              "total": 60
+            },
+            "Гемини": {
+              "triggered": 51,
+              "total": 60
+            },
+            "Гемма": {
+              "triggered": 55,
+              "total": 60
+            },
+            "Джеминай": {
+              "triggered": 56,
+              "total": 60
+            },
+            "Джемини": {
+              "triggered": 58,
+              "total": 60
+            },
+            "Джемма": {
+              "triggered": 56,
+              "total": 60
+            }
+          },
+          "condition": {
+            "normal_low": {
+              "triggered": 57,
+              "total": 60
+            },
+            "normal_moderate": {
+              "triggered": 57,
+              "total": 60
+            },
+            "normal_strong": {
+              "triggered": 52,
+              "total": 60
+            },
+            "quiet_low": {
+              "triggered": 59,
+              "total": 60
+            },
+            "quiet_moderate": {
+              "triggered": 57,
+              "total": 60
+            },
+            "quiet_strong": {
+              "triggered": 50,
+              "total": 60
+            }
+          },
+          "pronunciation_ipa": {
+            "automatic": {
+              "triggered": 76,
+              "total": 90
+            },
+            "dʒemʲinʲˈi": {
+              "triggered": 14,
+              "total": 14
+            },
+            "dʒemʲinˈaj": {
+              "triggered": 12,
+              "total": 12
+            },
+            "dʒemʲˈinaj": {
+              "triggered": 17,
+              "total": 17
+            },
+            "dʒemʲˈinʲɪ": {
+              "triggered": 16,
+              "total": 16
+            },
+            "dʒemˈma": {
+              "triggered": 19,
+              "total": 19
+            },
+            "dʒˈemmə": {
+              "triggered": 23,
+              "total": 26
+            },
+            "dʒˈɛmʲinaj": {
+              "triggered": 8,
+              "total": 10
+            },
+            "dʒˈɛmʲinʲɪ": {
+              "triggered": 17,
+              "total": 18
+            },
+            "ɡʲemˈma": {
+              "triggered": 21,
+              "total": 22
+            },
+            "ɡʲimʲinʲˈi": {
+              "triggered": 6,
+              "total": 8
+            },
+            "ɡʲimʲinˈaj": {
+              "triggered": 12,
+              "total": 12
+            },
+            "ɡʲimʲˈinaj": {
+              "triggered": 22,
+              "total": 23
+            },
+            "ɡʲimʲˈinʲɪ": {
+              "triggered": 16,
+              "total": 17
+            },
+            "ɡʲˈemmə": {
+              "triggered": 25,
+              "total": 25
+            },
+            "ɡʲˈemʲinaj": {
+              "triggered": 10,
+              "total": 11
+            },
+            "ɡʲˈemʲinʲɪ": {
+              "triggered": 18,
+              "total": 20
+            }
+          }
+        },
+        "negative": {
+          "triggered": 36,
+          "total": 264,
+          "phrase": {
+            "временно": {
+              "triggered": 2,
+              "total": 11
+            },
+            "геометрия": {
+              "triggered": 3,
+              "total": 11
+            },
+            "георгий": {
+              "triggered": 2,
+              "total": 10
+            },
+            "гимназия": {
+              "triggered": 2,
+              "total": 10
+            },
+            "давай посмотрим": {
+              "triggered": 1,
+              "total": 10
+            },
+            "димина": {
+              "triggered": 6,
+              "total": 11
+            },
+            "доброе утро": {
+              "triggered": 0,
+              "total": 10
+            },
+            "другими словами": {
+              "triggered": 1,
+              "total": 10
+            },
+            "думай сам": {
+              "triggered": 1,
+              "total": 10
+            },
+            "ещё минуту": {
+              "triggered": 3,
+              "total": 10
+            },
+            "жемчуг": {
+              "triggered": 0,
+              "total": 10
+            },
+            "здесь никого": {
+              "triggered": 1,
+              "total": 10
+            },
+            "иди ко мне": {
+              "triggered": 0,
+              "total": 10
+            },
+            "как именно": {
+              "triggered": 1,
+              "total": 10
+            },
+            "календарь": {
+              "triggered": 0,
+              "total": 10
+            },
+            "книга на столе": {
+              "triggered": 0,
+              "total": 10
+            },
+            "медленно": {
+              "triggered": 1,
+              "total": 10
+            },
+            "мне кажется": {
+              "triggered": 1,
+              "total": 10
+            },
+            "на диване": {
+              "triggered": 0,
+              "total": 10
+            },
+            "перемена": {
+              "triggered": 4,
+              "total": 10
+            },
+            "пожалуйста": {
+              "triggered": 0,
+              "total": 10
+            },
+            "поменяй": {
+              "triggered": 2,
+              "total": 11
+            },
+            "послушай меня": {
+              "triggered": 0,
+              "total": 10
+            },
+            "работает": {
+              "triggered": 0,
+              "total": 10
+            },
+            "сделай громче": {
+              "triggered": 2,
+              "total": 10
+            },
+            "эмма": {
+              "triggered": 3,
+              "total": 10
+            }
+          },
+          "condition": {
+            "normal_low": {
+              "triggered": 7,
+              "total": 52
+            },
+            "normal_moderate": {
+              "triggered": 3,
+              "total": 52
+            },
+            "normal_strong": {
+              "triggered": 2,
+              "total": 26
+            },
+            "quiet_low": {
+              "triggered": 9,
+              "total": 52
+            },
+            "quiet_moderate": {
+              "triggered": 7,
+              "total": 52
+            },
+            "quiet_strong": {
+              "triggered": 8,
+              "total": 30
+            }
+          },
+          "pronunciation_ipa": {}
+        },
+        "noise": {
+          "triggered": 5,
+          "total": 80,
+          "phrase": {
+            "synthetic_noise": {
+              "triggered": 5,
+              "total": 80
+            }
+          },
+          "condition": {
+            "noise_only": {
+              "triggered": 5,
+              "total": 80
+            }
+          },
+          "pronunciation_ipa": {}
+        }
+      }
+    }
+  }
+}

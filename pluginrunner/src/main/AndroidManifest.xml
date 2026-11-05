@@ -1,0 +1,7 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <permission android:name="ru.geministation.permission.RUN_PLUGIN" android:protectionLevel="signature" />
+    <application android:allowBackup="false" android:label="Gemini Python Plugin Runner">
+        <service android:name=".PluginService" android:exported="true" android:permission="ru.geministation.permission.RUN_PLUGIN" />
+    </application>
+</manifest>

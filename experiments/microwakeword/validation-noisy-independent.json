@@ -1,0 +1,1329 @@
+{
+  "description": "Streaming maximum of a 10-output rolling average. Synthetic held-out clips from the same two Piper voices; not real-world validation. Ambiguous speech contains the requested fragment мини and is separated from clear negatives.",
+  "thresholds": {
+    "old": {
+      "0.5": {
+        "ambiguous": {
+          "triggered": 62,
+          "total": 96,
+          "phrase": {
+            "мини автобус": {
+              "triggered": 4,
+              "total": 8
+            },
+            "мини бар": {
+              "triggered": 3,
+              "total": 8
+            },
+            "мини компьютер": {
+              "triggered": 4,
+              "total": 8
+            },
+            "мини пекарня": {
+              "triggered": 7,
+              "total": 8
+            },
+            "мини проект": {
+              "triggered": 5,
+              "total": 8
+            },
+            "мини сериал": {
+              "triggered": 6,
+              "total": 8
+            },
+            "мини футбол": {
+              "triggered": 6,
+              "total": 8
+            },
+            "мини юбка": {
+              "triggered": 5,
+              "total": 8
+            },
+            "миниатюра": {
+              "triggered": 6,
+              "total": 8
+            },
+            "минимальный размер": {
+              "triggered": 4,
+              "total": 8
+            },
+            "минимум": {
+              "triggered": 6,
+              "total": 8
+            },
+            "министерство": {
+              "triggered": 6,
+              "total": 8
+            }
+          },
+          "condition": {
+            "normal_low": {
+              "triggered": 18,
+              "total": 24
+            },
+            "normal_moderate": {
+              "triggered": 5,
+              "total": 12
+            },
+            "normal_strong": {
+              "triggered": 9,
+              "total": 12
+            },
+            "quiet_low": {
+              "triggered": 12,
+              "total": 24
+            },
+            "quiet_moderate": {
+              "triggered": 9,
+              "total": 12
+            },
+            "quiet_strong": {
+              "triggered": 9,
+              "total": 12
+            }
+          }
+        },
+        "fragment": {
+          "triggered": 174,
+          "total": 256,
+          "phrase": {
+            "геми": {
+              "triggered": 47,
+              "total": 64
+            },
+            "джеми": {
+              "triggered": 41,
+              "total": 64
+            },
+            "минай": {
+              "triggered": 40,
+              "total": 64
+            },
+            "мини": {
+              "triggered": 46,
+              "total": 64
+            }
+          },
+          "condition": {
+            "cropped_normal_strong": {
+              "triggered": 42,
+              "total": 64
+            },
+            "cropped_quiet_strong": {
+              "triggered": 40,
+              "total": 64
+            },
+            "standalone_normal_strong": {
+              "triggered": 46,
+              "total": 64
+            },
+            "standalone_quiet_strong": {
+              "triggered": 46,
+              "total": 64
+            }
+          }
+        },
+        "full": {
+          "triggered": 313,
+          "total": 360,
+          "phrase": {
+            "Геминай": {
+              "triggered": 49,
+              "total": 60
+            },
+            "Гемини": {
+              "triggered": 49,
+              "total": 60
+            },
+            "Гемма": {
+              "triggered": 51,
+              "total": 60
+            },
+            "Джеминай": {
+              "triggered": 57,
+              "total": 60
+            },
+            "Джемини": {
+              "triggered": 55,
+              "total": 60
+            },
+            "Джемма": {
+              "triggered": 52,
+              "total": 60
+            }
+          },
+          "condition": {
+            "normal_low": {
+              "triggered": 60,
+              "total": 60
+            },
+            "normal_moderate": {
+              "triggered": 56,
+              "total": 60
+            },
+            "normal_strong": {
+              "triggered": 47,
+              "total": 60
+            },
+            "quiet_low": {
+              "triggered": 60,
+              "total": 60
+            },
+            "quiet_moderate": {
+              "triggered": 52,
+              "total": 60
+            },
+            "quiet_strong": {
+              "triggered": 38,
+              "total": 60
+            }
+          }
+        },
+        "negative": {
+          "triggered": 176,
+          "total": 264,
+          "phrase": {
+            "временно": {
+              "triggered": 5,
+              "total": 11
+            },
+            "геометрия": {
+              "triggered": 8,
+              "total": 11
+            },
+            "георгий": {
+              "triggered": 6,
+              "total": 10
+            },
+            "гимназия": {
+              "triggered": 8,
+              "total": 10
+            },
+            "давай посмотрим": {
+              "triggered": 7,
+              "total": 10
+            },
+            "димина": {
+              "triggered": 11,
+              "total": 11
+            },
+            "доброе утро": {
+              "triggered": 4,
+              "total": 10
+            },
+            "другими словами": {
+              "triggered": 9,
+              "total": 10
+            },
+            "думай сам": {
+              "triggered": 7,
+              "total": 10
+            },
+            "ещё минуту": {
+              "triggered": 7,
+              "total": 10
+            },
+            "жемчуг": {
+              "triggered": 8,
+              "total": 10
+            },
+            "здесь никого": {
+              "triggered": 7,
+              "total": 10
+            },
+            "иди ко мне": {
+              "triggered": 6,
+              "total": 10
+            },
+            "как именно": {
+              "triggered": 8,
+              "total": 10
+            },
+            "календарь": {
+              "triggered": 8,
+              "total": 10
+            },
+            "книга на столе": {
+              "triggered": 6,
+              "total": 10
+            },
+            "медленно": {
+              "triggered": 7,
+              "total": 10
+            },
+            "мне кажется": {
+              "triggered": 6,
+              "total": 10
+            },
+            "на диване": {
+              "triggered": 7,
+              "total": 10
+            },
+            "перемена": {
+              "triggered": 7,
+              "total": 10
+            },
+            "пожалуйста": {
+              "triggered": 6,
+              "total": 10
+            },
+            "поменяй": {
+              "triggered": 6,
+              "total": 11
+            },
+            "послушай меня": {
+              "triggered": 5,
+              "total": 10
+            },
+            "работает": {
+              "triggered": 7,
+              "total": 10
+            },
+            "сделай громче": {
+              "triggered": 7,
+              "total": 10
+            },
+            "эмма": {
+              "triggered": 3,
+              "total": 10
+            }
+          },
+          "condition": {
+            "normal_low": {
+              "triggered": 33,
+              "total": 52
+            },
+            "normal_moderate": {
+              "triggered": 38,
+              "total": 52
+            },
+            "normal_strong": {
+              "triggered": 21,
+              "total": 26
+            },
+            "quiet_low": {
+              "triggered": 27,
+              "total": 52
+            },
+            "quiet_moderate": {
+              "triggered": 35,
+              "total": 52
+            },
+            "quiet_strong": {
+              "triggered": 22,
+              "total": 30
+            }
+          }
+        },
+        "noise": {
+          "triggered": 51,
+          "total": 80,
+          "phrase": {
+            "synthetic_noise": {
+              "triggered": 51,
+              "total": 80
+            }
+          },
+          "condition": {
+            "noise_only": {
+              "triggered": 51,
+              "total": 80
+            }
+          }
+        }
+      },
+      "0.9": {
+        "ambiguous": {
+          "triggered": 0,
+          "total": 96,
+          "phrase": {
+            "мини автобус": {
+              "triggered": 0,
+              "total": 8
+            },
+            "мини бар": {
+              "triggered": 0,
+              "total": 8
+            },
+            "мини компьютер": {
+              "triggered": 0,
+              "total": 8
+            },
+            "мини пекарня": {
+              "triggered": 0,
+              "total": 8
+            },
+            "мини проект": {
+              "triggered": 0,
+              "total": 8
+            },
+            "мини сериал": {
+              "triggered": 0,
+              "total": 8
+            },
+            "мини футбол": {
+              "triggered": 0,
+              "total": 8
+            },
+            "мини юбка": {
+              "triggered": 0,
+              "total": 8
+            },
+            "миниатюра": {
+              "triggered": 0,
+              "total": 8
+            },
+            "минимальный размер": {
+              "triggered": 0,
+              "total": 8
+            },
+            "минимум": {
+              "triggered": 0,
+              "total": 8
+            },
+            "министерство": {
+              "triggered": 0,
+              "total": 8
+            }
+          },
+          "condition": {
+            "normal_low": {
+              "triggered": 0,
+              "total": 24
+            },
+            "normal_moderate": {
+              "triggered": 0,
+              "total": 12
+            },
+            "normal_strong": {
+              "triggered": 0,
+              "total": 12
+            },
+            "quiet_low": {
+              "triggered": 0,
+              "total": 24
+            },
+            "quiet_moderate": {
+              "triggered": 0,
+              "total": 12
+            },
+            "quiet_strong": {
+              "triggered": 0,
+              "total": 12
+            }
+          }
+        },
+        "fragment": {
+          "triggered": 2,
+          "total": 256,
+          "phrase": {
+            "геми": {
+              "triggered": 0,
+              "total": 64
+            },
+            "джеми": {
+              "triggered": 2,
+              "total": 64
+            },
+            "минай": {
+              "triggered": 0,
+              "total": 64
+            },
+            "мини": {
+              "triggered": 0,
+              "total": 64
+            }
+          },
+          "condition": {
+            "cropped_normal_strong": {
+              "triggered": 1,
+              "total": 64
+            },
+            "cropped_quiet_strong": {
+              "triggered": 1,
+              "total": 64
+            },
+            "standalone_normal_strong": {
+              "triggered": 0,
+              "total": 64
+            },
+            "standalone_quiet_strong": {
+              "triggered": 0,
+              "total": 64
+            }
+          }
+        },
+        "full": {
+          "triggered": 185,
+          "total": 360,
+          "phrase": {
+            "Геминай": {
+              "triggered": 27,
+              "total": 60
+            },
+            "Гемини": {
+              "triggered": 29,
+              "total": 60
+            },
+            "Гемма": {
+              "triggered": 24,
+              "total": 60
+            },
+            "Джеминай": {
+              "triggered": 39,
+              "total": 60
+            },
+            "Джемини": {
+              "triggered": 39,
+              "total": 60
+            },
+            "Джемма": {
+              "triggered": 27,
+              "total": 60
+            }
+          },
+          "condition": {
+            "normal_low": {
+              "triggered": 51,
+              "total": 60
+            },
+            "normal_moderate": {
+              "triggered": 38,
+              "total": 60
+            },
+            "normal_strong": {
+              "triggered": 5,
+              "total": 60
+            },
+            "quiet_low": {
+              "triggered": 58,
+              "total": 60
+            },
+            "quiet_moderate": {
+              "triggered": 32,
+              "total": 60
+            },
+            "quiet_strong": {
+              "triggered": 1,
+              "total": 60
+            }
+          }
+        },
+        "negative": {
+          "triggered": 10,
+          "total": 264,
+          "phrase": {
+            "временно": {
+              "triggered": 0,
+              "total": 11
+            },
+            "геометрия": {
+              "triggered": 0,
+              "total": 11
+            },
+            "георгий": {
+              "triggered": 0,
+              "total": 10
+            },
+            "гимназия": {
+              "triggered": 0,
+              "total": 10
+            },
+            "давай посмотрим": {
+              "triggered": 0,
+              "total": 10
+            },
+            "димина": {
+              "triggered": 6,
+              "total": 11
+            },
+            "доброе утро": {
+              "triggered": 0,
+              "total": 10
+            },
+            "другими словами": {
+              "triggered": 0,
+              "total": 10
+            },
+            "думай сам": {
+              "triggered": 0,
+              "total": 10
+            },
+            "ещё минуту": {
+              "triggered": 3,
+              "total": 10
+            },
+            "жемчуг": {
+              "triggered": 0,
+              "total": 10
+            },
+            "здесь никого": {
+              "triggered": 0,
+              "total": 10
+            },
+            "иди ко мне": {
+              "triggered": 0,
+              "total": 10
+            },
+            "как именно": {
+              "triggered": 0,
+              "total": 10
+            },
+            "календарь": {
+              "triggered": 0,
+              "total": 10
+            },
+            "книга на столе": {
+              "triggered": 0,
+              "total": 10
+            },
+            "медленно": {
+              "triggered": 0,
+              "total": 10
+            },
+            "мне кажется": {
+              "triggered": 0,
+              "total": 10
+            },
+            "на диване": {
+              "triggered": 0,
+              "total": 10
+            },
+            "перемена": {
+              "triggered": 1,
+              "total": 10
+            },
+            "пожалуйста": {
+              "triggered": 0,
+              "total": 10
+            },
+            "поменяй": {
+              "triggered": 0,
+              "total": 11
+            },
+            "послушай меня": {
+              "triggered": 0,
+              "total": 10
+            },
+            "работает": {
+              "triggered": 0,
+              "total": 10
+            },
+            "сделай громче": {
+              "triggered": 0,
+              "total": 10
+            },
+            "эмма": {
+              "triggered": 0,
+              "total": 10
+            }
+          },
+          "condition": {
+            "normal_low": {
+              "triggered": 4,
+              "total": 52
+            },
+            "normal_moderate": {
+              "triggered": 1,
+              "total": 52
+            },
+            "normal_strong": {
+              "triggered": 0,
+              "total": 26
+            },
+            "quiet_low": {
+              "triggered": 3,
+              "total": 52
+            },
+            "quiet_moderate": {
+              "triggered": 2,
+              "total": 52
+            },
+            "quiet_strong": {
+              "triggered": 0,
+              "total": 30
+            }
+          }
+        },
+        "noise": {
+          "triggered": 0,
+          "total": 80,
+          "phrase": {
+            "synthetic_noise": {
+              "triggered": 0,
+              "total": 80
+            }
+          },
+          "condition": {
+            "noise_only": {
+              "triggered": 0,
+              "total": 80
+            }
+          }
+        }
+      }
+    },
+    "noisy_fragments": {
+      "0.5": {
+        "ambiguous": {
+          "triggered": 25,
+          "total": 96,
+          "phrase": {
+            "мини автобус": {
+              "triggered": 2,
+              "total": 8
+            },
+            "мини бар": {
+              "triggered": 2,
+              "total": 8
+            },
+            "мини компьютер": {
+              "triggered": 1,
+              "total": 8
+            },
+            "мини пекарня": {
+              "triggered": 1,
+              "total": 8
+            },
+            "мини проект": {
+              "triggered": 2,
+              "total": 8
+            },
+            "мини сериал": {
+              "triggered": 2,
+              "total": 8
+            },
+            "мини футбол": {
+              "triggered": 3,
+              "total": 8
+            },
+            "мини юбка": {
+              "triggered": 2,
+              "total": 8
+            },
+            "миниатюра": {
+              "triggered": 3,
+              "total": 8
+            },
+            "минимальный размер": {
+              "triggered": 2,
+              "total": 8
+            },
+            "минимум": {
+              "triggered": 4,
+              "total": 8
+            },
+            "министерство": {
+              "triggered": 1,
+              "total": 8
+            }
+          },
+          "condition": {
+            "normal_low": {
+              "triggered": 1,
+              "total": 24
+            },
+            "normal_moderate": {
+              "triggered": 2,
+              "total": 12
+            },
+            "normal_strong": {
+              "triggered": 3,
+              "total": 12
+            },
+            "quiet_low": {
+              "triggered": 19,
+              "total": 24
+            },
+            "quiet_moderate": {
+              "triggered": 0,
+              "total": 12
+            },
+            "quiet_strong": {
+              "triggered": 0,
+              "total": 12
+            }
+          }
+        },
+        "fragment": {
+          "triggered": 239,
+          "total": 256,
+          "phrase": {
+            "геми": {
+              "triggered": 61,
+              "total": 64
+            },
+            "джеми": {
+              "triggered": 60,
+              "total": 64
+            },
+            "минай": {
+              "triggered": 55,
+              "total": 64
+            },
+            "мини": {
+              "triggered": 63,
+              "total": 64
+            }
+          },
+          "condition": {
+            "cropped_normal_strong": {
+              "triggered": 62,
+              "total": 64
+            },
+            "cropped_quiet_strong": {
+              "triggered": 60,
+              "total": 64
+            },
+            "standalone_normal_strong": {
+              "triggered": 59,
+              "total": 64
+            },
+            "standalone_quiet_strong": {
+              "triggered": 58,
+              "total": 64
+            }
+          }
+        },
+        "full": {
+          "triggered": 354,
+          "total": 360,
+          "phrase": {
+            "Геминай": {
+              "triggered": 58,
+              "total": 60
+            },
+            "Гемини": {
+              "triggered": 60,
+              "total": 60
+            },
+            "Гемма": {
+              "triggered": 56,
+              "total": 60
+            },
+            "Джеминай": {
+              "triggered": 60,
+              "total": 60
+            },
+            "Джемини": {
+              "triggered": 60,
+              "total": 60
+            },
+            "Джемма": {
+              "triggered": 60,
+              "total": 60
+            }
+          },
+          "condition": {
+            "normal_low": {
+              "triggered": 58,
+              "total": 60
+            },
+            "normal_moderate": {
+              "triggered": 59,
+              "total": 60
+            },
+            "normal_strong": {
+              "triggered": 59,
+              "total": 60
+            },
+            "quiet_low": {
+              "triggered": 60,
+              "total": 60
+            },
+            "quiet_moderate": {
+              "triggered": 60,
+              "total": 60
+            },
+            "quiet_strong": {
+              "triggered": 58,
+              "total": 60
+            }
+          }
+        },
+        "negative": {
+          "triggered": 70,
+          "total": 264,
+          "phrase": {
+            "временно": {
+              "triggered": 6,
+              "total": 11
+            },
+            "геометрия": {
+              "triggered": 6,
+              "total": 11
+            },
+            "георгий": {
+              "triggered": 4,
+              "total": 10
+            },
+            "гимназия": {
+              "triggered": 2,
+              "total": 10
+            },
+            "давай посмотрим": {
+              "triggered": 2,
+              "total": 10
+            },
+            "димина": {
+              "triggered": 9,
+              "total": 11
+            },
+            "доброе утро": {
+              "triggered": 1,
+              "total": 10
+            },
+            "другими словами": {
+              "triggered": 1,
+              "total": 10
+            },
+            "думай сам": {
+              "triggered": 2,
+              "total": 10
+            },
+            "ещё минуту": {
+              "triggered": 8,
+              "total": 10
+            },
+            "жемчуг": {
+              "triggered": 2,
+              "total": 10
+            },
+            "здесь никого": {
+              "triggered": 3,
+              "total": 10
+            },
+            "иди ко мне": {
+              "triggered": 2,
+              "total": 10
+            },
+            "как именно": {
+              "triggered": 2,
+              "total": 10
+            },
+            "календарь": {
+              "triggered": 1,
+              "total": 10
+            },
+            "книга на столе": {
+              "triggered": 2,
+              "total": 10
+            },
+            "медленно": {
+              "triggered": 2,
+              "total": 10
+            },
+            "мне кажется": {
+              "triggered": 2,
+              "total": 10
+            },
+            "на диване": {
+              "triggered": 0,
+              "total": 10
+            },
+            "перемена": {
+              "triggered": 4,
+              "total": 10
+            },
+            "пожалуйста": {
+              "triggered": 0,
+              "total": 10
+            },
+            "поменяй": {
+              "triggered": 2,
+              "total": 11
+            },
+            "послушай меня": {
+              "triggered": 1,
+              "total": 10
+            },
+            "работает": {
+              "triggered": 2,
+              "total": 10
+            },
+            "сделай громче": {
+              "triggered": 2,
+              "total": 10
+            },
+            "эмма": {
+              "triggered": 2,
+              "total": 10
+            }
+          },
+          "condition": {
+            "normal_low": {
+              "triggered": 5,
+              "total": 52
+            },
+            "normal_moderate": {
+              "triggered": 5,
+              "total": 52
+            },
+            "normal_strong": {
+              "triggered": 7,
+              "total": 26
+            },
+            "quiet_low": {
+              "triggered": 39,
+              "total": 52
+            },
+            "quiet_moderate": {
+              "triggered": 8,
+              "total": 52
+            },
+            "quiet_strong": {
+              "triggered": 6,
+              "total": 30
+            }
+          }
+        },
+        "noise": {
+          "triggered": 5,
+          "total": 80,
+          "phrase": {
+            "synthetic_noise": {
+              "triggered": 5,
+              "total": 80
+            }
+          },
+          "condition": {
+            "noise_only": {
+              "triggered": 5,
+              "total": 80
+            }
+          }
+        }
+      },
+      "0.9": {
+        "ambiguous": {
+          "triggered": 2,
+          "total": 96,
+          "phrase": {
+            "мини автобус": {
+              "triggered": 0,
+              "total": 8
+            },
+            "мини бар": {
+              "triggered": 0,
+              "total": 8
+            },
+            "мини компьютер": {
+              "triggered": 0,
+              "total": 8
+            },
+            "мини пекарня": {
+              "triggered": 0,
+              "total": 8
+            },
+            "мини проект": {
+              "triggered": 0,
+              "total": 8
+            },
+            "мини сериал": {
+              "triggered": 0,
+              "total": 8
+            },
+            "мини футбол": {
+              "triggered": 0,
+              "total": 8
+            },
+            "мини юбка": {
+              "triggered": 0,
+              "total": 8
+            },
+            "миниатюра": {
+              "triggered": 0,
+              "total": 8
+            },
+            "минимальный размер": {
+              "triggered": 0,
+              "total": 8
+            },
+            "минимум": {
+              "triggered": 2,
+              "total": 8
+            },
+            "министерство": {
+              "triggered": 0,
+              "total": 8
+            }
+          },
+          "condition": {
+            "normal_low": {
+              "triggered": 0,
+              "total": 24
+            },
+            "normal_moderate": {
+              "triggered": 1,
+              "total": 12
+            },
+            "normal_strong": {
+              "triggered": 1,
+              "total": 12
+            },
+            "quiet_low": {
+              "triggered": 0,
+              "total": 24
+            },
+            "quiet_moderate": {
+              "triggered": 0,
+              "total": 12
+            },
+            "quiet_strong": {
+              "triggered": 0,
+              "total": 12
+            }
+          }
+        },
+        "fragment": {
+          "triggered": 148,
+          "total": 256,
+          "phrase": {
+            "геми": {
+              "triggered": 42,
+              "total": 64
+            },
+            "джеми": {
+              "triggered": 32,
+              "total": 64
+            },
+            "минай": {
+              "triggered": 34,
+              "total": 64
+            },
+            "мини": {
+              "triggered": 40,
+              "total": 64
+            }
+          },
+          "condition": {
+            "cropped_normal_strong": {
+              "triggered": 43,
+              "total": 64
+            },
+            "cropped_quiet_strong": {
+              "triggered": 47,
+              "total": 64
+            },
+            "standalone_normal_strong": {
+              "triggered": 30,
+              "total": 64
+            },
+            "standalone_quiet_strong": {
+              "triggered": 28,
+              "total": 64
+            }
+          }
+        },
+        "full": {
+          "triggered": 311,
+          "total": 360,
+          "phrase": {
+            "Геминай": {
+              "triggered": 52,
+              "total": 60
+            },
+            "Гемини": {
+              "triggered": 53,
+              "total": 60
+            },
+            "Гемма": {
+              "triggered": 43,
+              "total": 60
+            },
+            "Джеминай": {
+              "triggered": 59,
+              "total": 60
+            },
+            "Джемини": {
+              "triggered": 57,
+              "total": 60
+            },
+            "Джемма": {
+              "triggered": 47,
+              "total": 60
+            }
+          },
+          "condition": {
+            "normal_low": {
+              "triggered": 54,
+              "total": 60
+            },
+            "normal_moderate": {
+              "triggered": 54,
+              "total": 60
+            },
+            "normal_strong": {
+              "triggered": 43,
+              "total": 60
+            },
+            "quiet_low": {
+              "triggered": 57,
+              "total": 60
+            },
+            "quiet_moderate": {
+              "triggered": 54,
+              "total": 60
+            },
+            "quiet_strong": {
+              "triggered": 49,
+              "total": 60
+            }
+          }
+        },
+        "negative": {
+          "triggered": 13,
+          "total": 264,
+          "phrase": {
+            "временно": {
+              "triggered": 0,
+              "total": 11
+            },
+            "геометрия": {
+              "triggered": 1,
+              "total": 11
+            },
+            "георгий": {
+              "triggered": 0,
+              "total": 10
+            },
+            "гимназия": {
+              "triggered": 1,
+              "total": 10
+            },
+            "давай посмотрим": {
+              "triggered": 0,
+              "total": 10
+            },
+            "димина": {
+              "triggered": 4,
+              "total": 11
+            },
+            "доброе утро": {
+              "triggered": 1,
+              "total": 10
+            },
+            "другими словами": {
+              "triggered": 1,
+              "total": 10
+            },
+            "думай сам": {
+              "triggered": 0,
+              "total": 10
+            },
+            "ещё минуту": {
+              "triggered": 3,
+              "total": 10
+            },
+            "жемчуг": {
+              "triggered": 0,
+              "total": 10
+            },
+            "здесь никого": {
+              "triggered": 0,
+              "total": 10
+            },
+            "иди ко мне": {
+              "triggered": 1,
+              "total": 10
+            },
+            "как именно": {
+              "triggered": 0,
+              "total": 10
+            },
+            "календарь": {
+              "triggered": 0,
+              "total": 10
+            },
+            "книга на столе": {
+              "triggered": 0,
+              "total": 10
+            },
+            "медленно": {
+              "triggered": 1,
+              "total": 10
+            },
+            "мне кажется": {
+              "triggered": 0,
+              "total": 10
+            },
+            "на диване": {
+              "triggered": 0,
+              "total": 10
+            },
+            "перемена": {
+              "triggered": 0,
+              "total": 10
+            },
+            "пожалуйста": {
+              "triggered": 0,
+              "total": 10
+            },
+            "поменяй": {
+              "triggered": 0,
+              "total": 11
+            },
+            "послушай меня": {
+              "triggered": 0,
+              "total": 10
+            },
+            "работает": {
+              "triggered": 0,
+              "total": 10
+            },
+            "сделай громче": {
+              "triggered": 0,
+              "total": 10
+            },
+            "эмма": {
+              "triggered": 0,
+              "total": 10
+            }
+          },
+          "condition": {
+            "normal_low": {
+              "triggered": 2,
+              "total": 52
+            },
+            "normal_moderate": {
+              "triggered": 0,
+              "total": 52
+            },
+            "normal_strong": {
+              "triggered": 2,
+              "total": 26
+            },
+            "quiet_low": {
+              "triggered": 6,
+              "total": 52
+            },
+            "quiet_moderate": {
+              "triggered": 1,
+              "total": 52
+            },
+            "quiet_strong": {
+              "triggered": 2,
+              "total": 30
+            }
+          }
+        },
+        "noise": {
+          "triggered": 0,
+          "total": 80,
+          "phrase": {
+            "synthetic_noise": {
+              "triggered": 0,
+              "total": 80
+            }
+          },
+          "condition": {
+            "noise_only": {
+              "triggered": 0,
+              "total": 80
+            }
+          }
+        }
+      }
+    }
+  }
+}

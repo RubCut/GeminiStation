@@ -1,0 +1,4 @@
+<resources>
+    <string name="button_service_label">Gemini Station — кнопка ассистента</string>
+    <string name="button_service_description">Необязательно: позволяет вызывать Gemini кнопкой голосового помощника. Служба получает события клавиш, обрабатывает только кнопку голосового ассистента и не читает содержимое экрана.</string>
+</resources>

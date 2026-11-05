@@ -1,0 +1,22 @@
+plugins {
+    id 'com.android.application'
+    id 'com.chaquo.python'
+}
+android {
+    namespace 'ru.geministation.pluginrunner'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'ru.geministation.pluginrunner'
+        minSdk 28
+        targetSdk 28
+        versionCode 1
+        versionName '1.0'
+        ndk { abiFilters 'armeabi-v7a', 'arm64-v8a' }
+    }
+    buildFeatures { aidl true }
+    sourceSets.main.aidl.srcDir '../shared/src/main/aidl'
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+}
+chaquopy { defaultConfig { version = '3.11' } }
+dependencies { testImplementation 'junit:junit:4.13.2' }
+apply from: rootProject.file('gradle/signing.gradle')

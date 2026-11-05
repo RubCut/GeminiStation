@@ -1,0 +1,158 @@
+name: Build Android APK
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      HAS_STABLE_SIGNING: ${{ secrets.GEMINI_SIGNING_KEYSTORE_B64 != '' && secrets.GEMINI_SIGNING_PASSWORD != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Prepare signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.GEMINI_SIGNING_KEYSTORE_B64 }}
+          GEMINI_SIGNING_PASSWORD: ${{ secrets.GEMINI_SIGNING_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          keyfile="$RUNNER_TEMP/gemini-signing.p12"
+          umask 077
+          if [[ "$HAS_STABLE_SIGNING" == 'true' ]]; then
+            printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$keyfile"
+          else
+            # Fork PRs and first-time setup can test signing without accessing secrets.
+            # APKs produced with this throwaway key are NEVER uploaded as artifacts.
+            export GEMINI_SIGNING_PASSWORD='ci-test-key-not-for-distribution'
+            keytool -genkeypair -alias geministation -keyalg RSA -keysize 2048 -validity 30 \
+              -dname 'CN=Temporary CI Test' -storetype PKCS12 -keystore "$keyfile" \
+              -storepass:env GEMINI_SIGNING_PASSWORD -keypass:env GEMINI_SIGNING_PASSWORD >/dev/null 2>&1
+            echo '::warning::Stable signing secrets are unavailable; tests use a temporary key and no APK artifacts will be published.'
+          fi
+          chmod 600 "$keyfile"
+          keytool -list -alias geministation -storetype PKCS12 -keystore "$keyfile" \
+            -storepass:env GEMINI_SIGNING_PASSWORD >/dev/null
+          echo "GEMINI_SIGNING_KEYSTORE=$keyfile" >> "$GITHUB_ENV"
+      - name: Test signing setup safety
+        run: ./tools/test_signing_setup.sh
+      - name: Test web voice settings
+        run: node tools/test_voice_settings.js
+      - name: Test smart home room selection
+        run: node tools/test_home_rooms.js
+      - name: Test animation editor
+        run: node tools/test_led_editor.js
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify microWakeWord frontend parity
+        run: |
+          python3 -m pip install 'numpy<2' scipy==1.12.0 tflite-runtime==2.14.0 pymicro-features==2.0.2 piper-tts==1.3.0 Pillow==11.3.0 fonttools==4.60.1
+          python3 tools/test_microfrontend.py
+      - name: Test offline wake-word comparison
+        run: python3 experiments/microwakeword/test_evaluate_recordings.py
+      - name: Test speech VAD streaming
+        run: python3 experiments/microwakeword/test_vad_model.py
+      - name: Test selected TTS training preparation
+        run: python3 experiments/microwakeword/test_selected_tts_experiment.py
+      - name: Test streaming negative preparation
+        run: python3 experiments/microwakeword/test_stream_negatives.py
+      - name: Check LED animation assets
+        run: python3 tools/test_led_animations.py
+      - name: Check bundled typography and icons
+        run: python3 tools/test_brand_assets.py
+      - name: Check wake-word stress coverage
+        run: python3 experiments/microwakeword/test_pronunciations.py
+      - name: Check supplied sound cues
+        run: python3 tools/test_sound_assets.py
+      - name: Test Python plugin host
+        run: python3 tools/test_plugin_host.py
+      - name: Test meme sound plugin
+        run: python3 tools/test_meme_plugin.py
+      - name: Check ADB helper command surface
+        run: python3 tools/test_helper_surface.py
+      - name: Build and test signed APKs
+        env:
+          SIGNING_PASSWORD_SECRET: ${{ secrets.GEMINI_SIGNING_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$HAS_STABLE_SIGNING" == 'true' ]]; then
+            export GEMINI_SIGNING_PASSWORD="$SIGNING_PASSWORD_SECRET"
+          else
+            export GEMINI_SIGNING_PASSWORD='ci-test-key-not-for-distribution'
+          fi
+          if ! ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleDebug :keytester:testDebugUnitTest :keytester:assembleDebug :buttonhelper:testDebugUnitTest :buttonhelper:assembleDebug :pluginrunner:testDebugUnitTest :pluginrunner:assembleDebug > build-output.txt 2>&1; then
+            tail -n 80 build-output.txt
+            while IFS= read -r line; do printf '::error::%s\n' "$line"; done < <(tail -n 35 build-output.txt)
+            exit 1
+          fi
+          cat build-output.txt
+      - name: Verify sound cues in APK
+        run: python3 tools/test_sound_assets.py app/build/outputs/apk/debug/app-debug.apk
+      - name: Verify microWakeWord APK assets
+        run: python3 tools/test_micro_apk.py app/build/outputs/apk/debug/app-debug.apk
+      - name: Verify APK signatures
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk_dir="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          if [[ -z "$apk_dir" || ! -d "$apk_dir/build-tools" ]]; then
+            echo '::error::Android SDK build-tools not found' >&2; exit 1
+          fi
+          apksigner=$(find "$apk_dir/build-tools" -name apksigner -type f | sort -V | tail -n 1)
+          if [[ -z "$apksigner" ]]; then echo '::error::apksigner not found' >&2; exit 1; fi
+          expected=''
+          for apk in app/build/outputs/apk/debug/app-debug.apk keytester/build/outputs/apk/debug/keytester-debug.apk buttonhelper/build/outputs/apk/debug/buttonhelper-debug.apk pluginrunner/build/outputs/apk/debug/pluginrunner-debug.apk; do
+            if ! details=$("$apksigner" verify --verbose --print-certs "$apk" 2>&1); then
+              echo "::error::Signature verification failed for $apk: $details" >&2; exit 1
+            fi
+            echo "$details"
+            hash=$(printf '%s\n' "$details" | sed -nE 's/^(Signer #1|V[0-9.]+ Signer): certificate SHA-256 digest: ([0-9a-fA-F]+)$/\2/p' | head -n 1)
+            if [[ -z "$hash" ]]; then summary=$(printf '%s' "$details" | tr '\n' '|'); echo "::error::No signing certificate hash for $apk; output: $summary" >&2; exit 1; fi
+            if [[ -z "$expected" ]]; then expected="$hash"; fi
+            if [[ "$expected" != "$hash" ]]; then echo "::error::APK signing certificates differ: $apk" >&2; exit 1; fi
+          done
+      - name: Upload APK
+        if: env.HAS_STABLE_SIGNING == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: GeminiStation-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload button tester APK
+        if: env.HAS_STABLE_SIGNING == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ButtonTester-debug
+          path: keytester/build/outputs/apk/debug/keytester-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload button helper APK
+        if: env.HAS_STABLE_SIGNING == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ButtonHelper-debug
+          path: buttonhelper/build/outputs/apk/debug/buttonhelper-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Python plugin runner APK
+        if: env.HAS_STABLE_SIGNING == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: PluginRunner-debug
+          path: pluginrunner/build/outputs/apk/debug/pluginrunner-debug.apk
+          if-no-files-found: error
+          retention-days: 14

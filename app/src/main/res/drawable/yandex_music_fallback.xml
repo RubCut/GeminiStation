@@ -1,0 +1,5 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="40dp" android:height="40dp" android:viewportWidth="40" android:viewportHeight="40">
+    <!-- Recognisable service mark for devices without the Yandex Music app installed. -->
+    <path android:fillColor="#101010" android:pathData="M9,0 L31,0 Q40,0 40,9 L40,31 Q40,40 31,40 L9,40 Q0,40 0,31 L0,9 Q0,0 9,0"/>
+    <path android:fillColor="#FFDD3C" android:pathData="M22,4 L23,13 L29,6 L26,14 L34,11 L28,16 L36,18 L28,19 L35,23 L27,22 L32,29 L25,24 L26,34 L22,25 L19,36 L19,24 L10,31 L17,22 L5,25 L16,20 L3,18 L16,17 L7,12 L18,15 L13,7 L20,13 Z"/>
+</vector>

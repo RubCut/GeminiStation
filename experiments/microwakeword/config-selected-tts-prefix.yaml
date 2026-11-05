@@ -1,0 +1,25 @@
+# Experimental mixed training: previous Piper data + selected synthetic voices.
+model_name: gemini_selected_tts_prefix
+wake_word: "Гемини / Геминай / Джемини / Джеминай / Гемма / Джемма"
+trained_languages: [ru]
+version: 3
+target_phrases: [Гемини, Геминай, Джемини, Джеминай, Гемма, Джемма]
+training:
+  n_samples: 2440
+  n_samples_val: 616
+microwakeword:
+  architecture: mixednet
+  pointwise_filters: '32,32,32,32'
+  repeat_in_block: '1,1,1,1'
+  mixconv_kernel_sizes: '[5], [7,11], [9,15], [23]'
+  first_conv_filters: 16
+  first_conv_kernel_size: 5
+  stride: 3
+  spectrogram_length: 204
+  training_steps: 3000
+  batch_size: 32
+  learning_rate: 0.001
+  positive_class_weight: 1.5
+  negative_class_weight: 1.5
+  probability_cutoff: 0.9
+  sliding_window_size: 10

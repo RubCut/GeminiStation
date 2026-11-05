@@ -33,3 +33,10 @@ google-services.json
 
 # Android Profiling
 *.hprof
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# Optional personal wake-word recordings; prefer a directory outside the repository.
+/private-recordings/

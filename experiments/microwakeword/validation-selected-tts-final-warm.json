@@ -1,0 +1,4805 @@
+{
+  "description": "Synthetic clip maxima, no real speech, no Android signal filtering, same Piper voices as training; not false activations/hour.",
+  "warmup_seconds_of_digital_silence": 2,
+  "models_sha256": {
+    "previous": "4f9b112f7382cc136e8ce0f8f3e8bc7581219d54e3813b7f06672ed547b6e401",
+    "all_stress": "efe3d45a6b366b2f70425be07a5ff666a7f9d0bc75b4eb2b751837bc705ae42e",
+    "candidate": "542922f2f9393dc8a73524b2c1d5f2b7f6cb53f02ff459bd5af02dbd19d4ac0d"
+  },
+  "thresholds": {
+    "previous": {
+      "0.50": {
+        "full": {
+          "triggered": 212,
+          "total": 360,
+          "phrases": {
+            "Гемини": {
+              "total": 60,
+              "triggered": 36
+            },
+            "Геминай": {
+              "total": 60,
+              "triggered": 35
+            },
+            "Джемини": {
+              "total": 60,
+              "triggered": 41
+            },
+            "Джеминай": {
+              "total": 60,
+              "triggered": 38
+            },
+            "Гемма": {
+              "total": 60,
+              "triggered": 31
+            },
+            "Джемма": {
+              "total": 60,
+              "triggered": 31
+            }
+          }
+        },
+        "fragment": {
+          "triggered": 144,
+          "total": 256,
+          "phrases": {
+            "геми": {
+              "total": 64,
+              "triggered": 41
+            },
+            "джеми": {
+              "total": 64,
+              "triggered": 51
+            },
+            "мини": {
+              "total": 64,
+              "triggered": 30
+            },
+            "минай": {
+              "total": 64,
+              "triggered": 22
+            }
+          }
+        },
+        "noise": {
+          "triggered": 6,
+          "total": 80,
+          "phrases": {
+            "synthetic_noise": {
+              "total": 80,
+              "triggered": 6
+            }
+          }
+        },
+        "negative": {
+          "triggered": 46,
+          "total": 264,
+          "phrases": {
+            "геометрия": {
+              "total": 11,
+              "triggered": 3
+            },
+            "димина": {
+              "total": 11,
+              "triggered": 9
+            },
+            "временно": {
+              "total": 11,
+              "triggered": 2
+            },
+            "поменяй": {
+              "total": 11,
+              "triggered": 1
+            },
+            "георгий": {
+              "total": 10,
+              "triggered": 5
+            },
+            "мне кажется": {
+              "total": 10,
+              "triggered": 1
+            },
+            "ещё минуту": {
+              "total": 10,
+              "triggered": 5
+            },
+            "как именно": {
+              "total": 10,
+              "triggered": 0
+            },
+            "на диване": {
+              "total": 10,
+              "triggered": 0
+            },
+            "здесь никого": {
+              "total": 10,
+              "triggered": 1
+            },
+            "пожалуйста": {
+              "total": 10,
+              "triggered": 1
+            },
+            "доброе утро": {
+              "total": 10,
+              "triggered": 1
+            },
+            "работает": {
+              "total": 10,
+              "triggered": 0
+            },
+            "календарь": {
+              "total": 10,
+              "triggered": 2
+            },
+            "сделай громче": {
+              "total": 10,
+              "triggered": 2
+            },
+            "другими словами": {
+              "total": 10,
+              "triggered": 1
+            },
+            "иди ко мне": {
+              "total": 10,
+              "triggered": 0
+            },
+            "давай посмотрим": {
+              "total": 10,
+              "triggered": 0
+            },
+            "жемчуг": {
+              "total": 10,
+              "triggered": 0
+            },
+            "гимназия": {
+              "total": 10,
+              "triggered": 4
+            },
+            "перемена": {
+              "total": 10,
+              "triggered": 2
+            },
+            "послушай меня": {
+              "total": 10,
+              "triggered": 0
+            },
+            "эмма": {
+              "total": 10,
+              "triggered": 3
+            },
+            "медленно": {
+              "total": 10,
+              "triggered": 1
+            },
+            "думай сам": {
+              "total": 10,
+              "triggered": 1
+            },
+            "книга на столе": {
+              "total": 10,
+              "triggered": 1
+            }
+          }
+        },
+        "ambiguous": {
+          "triggered": 11,
+          "total": 96,
+          "phrases": {
+            "мини бар": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини юбка": {
+              "total": 8,
+              "triggered": 2
+            },
+            "мини футбол": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини пекарня": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини сериал": {
+              "total": 8,
+              "triggered": 0
+            },
+            "министерство": {
+              "total": 8,
+              "triggered": 1
+            },
+            "минимум": {
+              "total": 8,
+              "triggered": 6
+            },
+            "минимальный размер": {
+              "total": 8,
+              "triggered": 0
+            },
+            "миниатюра": {
+              "total": 8,
+              "triggered": 1
+            },
+            "мини автобус": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини компьютер": {
+              "total": 8,
+              "triggered": 1
+            },
+            "мини проект": {
+              "total": 8,
+              "triggered": 0
+            }
+          }
+        }
+      },
+      "0.60": {
+        "full": {
+          "triggered": 201,
+          "total": 360,
+          "phrases": {
+            "Гемини": {
+              "total": 60,
+              "triggered": 32
+            },
+            "Геминай": {
+              "total": 60,
+              "triggered": 35
+            },
+            "Джемини": {
+              "total": 60,
+              "triggered": 40
+            },
+            "Джеминай": {
+              "total": 60,
+              "triggered": 36
+            },
+            "Гемма": {
+              "total": 60,
+              "triggered": 28
+            },
+            "Джемма": {
+              "total": 60,
+              "triggered": 30
+            }
+          }
+        },
+        "fragment": {
+          "triggered": 134,
+          "total": 256,
+          "phrases": {
+            "геми": {
+              "total": 64,
+              "triggered": 38
+            },
+            "джеми": {
+              "total": 64,
+              "triggered": 49
+            },
+            "мини": {
+              "total": 64,
+              "triggered": 29
+            },
+            "минай": {
+              "total": 64,
+              "triggered": 18
+            }
+          }
+        },
+        "noise": {
+          "triggered": 3,
+          "total": 80,
+          "phrases": {
+            "synthetic_noise": {
+              "total": 80,
+              "triggered": 3
+            }
+          }
+        },
+        "negative": {
+          "triggered": 33,
+          "total": 264,
+          "phrases": {
+            "геометрия": {
+              "total": 11,
+              "triggered": 2
+            },
+            "димина": {
+              "total": 11,
+              "triggered": 8
+            },
+            "временно": {
+              "total": 11,
+              "triggered": 2
+            },
+            "поменяй": {
+              "total": 11,
+              "triggered": 1
+            },
+            "георгий": {
+              "total": 10,
+              "triggered": 3
+            },
+            "мне кажется": {
+              "total": 10,
+              "triggered": 1
+            },
+            "ещё минуту": {
+              "total": 10,
+              "triggered": 4
+            },
+            "как именно": {
+              "total": 10,
+              "triggered": 0
+            },
+            "на диване": {
+              "total": 10,
+              "triggered": 0
+            },
+            "здесь никого": {
+              "total": 10,
+              "triggered": 0
+            },
+            "пожалуйста": {
+              "total": 10,
+              "triggered": 1
+            },
+            "доброе утро": {
+              "total": 10,
+              "triggered": 1
+            },
+            "работает": {
+              "total": 10,
+              "triggered": 0
+            },
+            "календарь": {
+              "total": 10,
+              "triggered": 2
+            },
+            "сделай громче": {
+              "total": 10,
+              "triggered": 2
+            },
+            "другими словами": {
+              "total": 10,
+              "triggered": 0
+            },
+            "иди ко мне": {
+              "total": 10,
+              "triggered": 0
+            },
+            "давай посмотрим": {
+              "total": 10,
+              "triggered": 0
+            },
+            "жемчуг": {
+              "total": 10,
+              "triggered": 0
+            },
+            "гимназия": {
+              "total": 10,
+              "triggered": 3
+            },
+            "перемена": {
+              "total": 10,
+              "triggered": 1
+            },
+            "послушай меня": {
+              "total": 10,
+              "triggered": 0
+            },
+            "эмма": {
+              "total": 10,
+              "triggered": 2
+            },
+            "медленно": {
+              "total": 10,
+              "triggered": 0
+            },
+            "думай сам": {
+              "total": 10,
+              "triggered": 0
+            },
+            "книга на столе": {
+              "total": 10,
+              "triggered": 0
+            }
+          }
+        },
+        "ambiguous": {
+          "triggered": 8,
+          "total": 96,
+          "phrases": {
+            "мини бар": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини юбка": {
+              "total": 8,
+              "triggered": 1
+            },
+            "мини футбол": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини пекарня": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини сериал": {
+              "total": 8,
+              "triggered": 0
+            },
+            "министерство": {
+              "total": 8,
+              "triggered": 1
+            },
+            "минимум": {
+              "total": 8,
+              "triggered": 5
+            },
+            "минимальный размер": {
+              "total": 8,
+              "triggered": 0
+            },
+            "миниатюра": {
+              "total": 8,
+              "triggered": 1
+            },
+            "мини автобус": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини компьютер": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини проект": {
+              "total": 8,
+              "triggered": 0
+            }
+          }
+        }
+      },
+      "0.70": {
+        "full": {
+          "triggered": 176,
+          "total": 360,
+          "phrases": {
+            "Гемини": {
+              "total": 60,
+              "triggered": 24
+            },
+            "Геминай": {
+              "total": 60,
+              "triggered": 29
+            },
+            "Джемини": {
+              "total": 60,
+              "triggered": 37
+            },
+            "Джеминай": {
+              "total": 60,
+              "triggered": 35
+            },
+            "Гемма": {
+              "total": 60,
+              "triggered": 24
+            },
+            "Джемма": {
+              "total": 60,
+              "triggered": 27
+            }
+          }
+        },
+        "fragment": {
+          "triggered": 123,
+          "total": 256,
+          "phrases": {
+            "геми": {
+              "total": 64,
+              "triggered": 37
+            },
+            "джеми": {
+              "total": 64,
+              "triggered": 42
+            },
+            "мини": {
+              "total": 64,
+              "triggered": 29
+            },
+            "минай": {
+              "total": 64,
+              "triggered": 15
+            }
+          }
+        },
+        "noise": {
+          "triggered": 1,
+          "total": 80,
+          "phrases": {
+            "synthetic_noise": {
+              "total": 80,
+              "triggered": 1
+            }
+          }
+        },
+        "negative": {
+          "triggered": 23,
+          "total": 264,
+          "phrases": {
+            "геометрия": {
+              "total": 11,
+              "triggered": 1
+            },
+            "димина": {
+              "total": 11,
+              "triggered": 7
+            },
+            "временно": {
+              "total": 11,
+              "triggered": 1
+            },
+            "поменяй": {
+              "total": 11,
+              "triggered": 1
+            },
+            "георгий": {
+              "total": 10,
+              "triggered": 1
+            },
+            "мне кажется": {
+              "total": 10,
+              "triggered": 0
+            },
+            "ещё минуту": {
+              "total": 10,
+              "triggered": 4
+            },
+            "как именно": {
+              "total": 10,
+              "triggered": 0
+            },
+            "на диване": {
+              "total": 10,
+              "triggered": 0
+            },
+            "здесь никого": {
+              "total": 10,
+              "triggered": 0
+            },
+            "пожалуйста": {
+              "total": 10,
+              "triggered": 0
+            },
+            "доброе утро": {
+              "total": 10,
+              "triggered": 1
+            },
+            "работает": {
+              "total": 10,
+              "triggered": 0
+            },
+            "календарь": {
+              "total": 10,
+              "triggered": 0
+            },
+            "сделай громче": {
+              "total": 10,
+              "triggered": 1
+            },
+            "другими словами": {
+              "total": 10,
+              "triggered": 0
+            },
+            "иди ко мне": {
+              "total": 10,
+              "triggered": 0
+            },
+            "давай посмотрим": {
+              "total": 10,
+              "triggered": 0
+            },
+            "жемчуг": {
+              "total": 10,
+              "triggered": 0
+            },
+            "гимназия": {
+              "total": 10,
+              "triggered": 3
+            },
+            "перемена": {
+              "total": 10,
+              "triggered": 1
+            },
+            "послушай меня": {
+              "total": 10,
+              "triggered": 0
+            },
+            "эмма": {
+              "total": 10,
+              "triggered": 2
+            },
+            "медленно": {
+              "total": 10,
+              "triggered": 0
+            },
+            "думай сам": {
+              "total": 10,
+              "triggered": 0
+            },
+            "книга на столе": {
+              "total": 10,
+              "triggered": 0
+            }
+          }
+        },
+        "ambiguous": {
+          "triggered": 6,
+          "total": 96,
+          "phrases": {
+            "мини бар": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини юбка": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини футбол": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини пекарня": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини сериал": {
+              "total": 8,
+              "triggered": 0
+            },
+            "министерство": {
+              "total": 8,
+              "triggered": 1
+            },
+            "минимум": {
+              "total": 8,
+              "triggered": 5
+            },
+            "минимальный размер": {
+              "total": 8,
+              "triggered": 0
+            },
+            "миниатюра": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини автобус": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини компьютер": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини проект": {
+              "total": 8,
+              "triggered": 0
+            }
+          }
+        }
+      },
+      "0.80": {
+        "full": {
+          "triggered": 152,
+          "total": 360,
+          "phrases": {
+            "Гемини": {
+              "total": 60,
+              "triggered": 20
+            },
+            "Геминай": {
+              "total": 60,
+              "triggered": 25
+            },
+            "Джемини": {
+              "total": 60,
+              "triggered": 36
+            },
+            "Джеминай": {
+              "total": 60,
+              "triggered": 25
+            },
+            "Гемма": {
+              "total": 60,
+              "triggered": 20
+            },
+            "Джемма": {
+              "total": 60,
+              "triggered": 26
+            }
+          }
+        },
+        "fragment": {
+          "triggered": 105,
+          "total": 256,
+          "phrases": {
+            "геми": {
+              "total": 64,
+              "triggered": 32
+            },
+            "джеми": {
+              "total": 64,
+              "triggered": 37
+            },
+            "мини": {
+              "total": 64,
+              "triggered": 24
+            },
+            "минай": {
+              "total": 64,
+              "triggered": 12
+            }
+          }
+        },
+        "noise": {
+          "triggered": 0,
+          "total": 80,
+          "phrases": {
+            "synthetic_noise": {
+              "total": 80,
+              "triggered": 0
+            }
+          }
+        },
+        "negative": {
+          "triggered": 15,
+          "total": 264,
+          "phrases": {
+            "геометрия": {
+              "total": 11,
+              "triggered": 1
+            },
+            "димина": {
+              "total": 11,
+              "triggered": 4
+            },
+            "временно": {
+              "total": 11,
+              "triggered": 0
+            },
+            "поменяй": {
+              "total": 11,
+              "triggered": 0
+            },
+            "георгий": {
+              "total": 10,
+              "triggered": 1
+            },
+            "мне кажется": {
+              "total": 10,
+              "triggered": 0
+            },
+            "ещё минуту": {
+              "total": 10,
+              "triggered": 3
+            },
+            "как именно": {
+              "total": 10,
+              "triggered": 0
+            },
+            "на диване": {
+              "total": 10,
+              "triggered": 0
+            },
+            "здесь никого": {
+              "total": 10,
+              "triggered": 0
+            },
+            "пожалуйста": {
+              "total": 10,
+              "triggered": 0
+            },
+            "доброе утро": {
+              "total": 10,
+              "triggered": 1
+            },
+            "работает": {
+              "total": 10,
+              "triggered": 0
+            },
+            "календарь": {
+              "total": 10,
+              "triggered": 0
+            },
+            "сделай громче": {
+              "total": 10,
+              "triggered": 1
+            },
+            "другими словами": {
+              "total": 10,
+              "triggered": 0
+            },
+            "иди ко мне": {
+              "total": 10,
+              "triggered": 0
+            },
+            "давай посмотрим": {
+              "total": 10,
+              "triggered": 0
+            },
+            "жемчуг": {
+              "total": 10,
+              "triggered": 0
+            },
+            "гимназия": {
+              "total": 10,
+              "triggered": 1
+            },
+            "перемена": {
+              "total": 10,
+              "triggered": 1
+            },
+            "послушай меня": {
+              "total": 10,
+              "triggered": 0
+            },
+            "эмма": {
+              "total": 10,
+              "triggered": 2
+            },
+            "медленно": {
+              "total": 10,
+              "triggered": 0
+            },
+            "думай сам": {
+              "total": 10,
+              "triggered": 0
+            },
+            "книга на столе": {
+              "total": 10,
+              "triggered": 0
+            }
+          }
+        },
+        "ambiguous": {
+          "triggered": 4,
+          "total": 96,
+          "phrases": {
+            "мини бар": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини юбка": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини футбол": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини пекарня": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини сериал": {
+              "total": 8,
+              "triggered": 0
+            },
+            "министерство": {
+              "total": 8,
+              "triggered": 0
+            },
+            "минимум": {
+              "total": 8,
+              "triggered": 4
+            },
+            "минимальный размер": {
+              "total": 8,
+              "triggered": 0
+            },
+            "миниатюра": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини автобус": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини компьютер": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини проект": {
+              "total": 8,
+              "triggered": 0
+            }
+          }
+        }
+      },
+      "0.90": {
+        "full": {
+          "triggered": 112,
+          "total": 360,
+          "phrases": {
+            "Гемини": {
+              "total": 60,
+              "triggered": 12
+            },
+            "Геминай": {
+              "total": 60,
+              "triggered": 20
+            },
+            "Джемини": {
+              "total": 60,
+              "triggered": 27
+            },
+            "Джеминай": {
+              "total": 60,
+              "triggered": 17
+            },
+            "Гемма": {
+              "total": 60,
+              "triggered": 14
+            },
+            "Джемма": {
+              "total": 60,
+              "triggered": 22
+            }
+          }
+        },
+        "fragment": {
+          "triggered": 75,
+          "total": 256,
+          "phrases": {
+            "геми": {
+              "total": 64,
+              "triggered": 20
+            },
+            "джеми": {
+              "total": 64,
+              "triggered": 24
+            },
+            "мини": {
+              "total": 64,
+              "triggered": 21
+            },
+            "минай": {
+              "total": 64,
+              "triggered": 10
+            }
+          }
+        },
+        "noise": {
+          "triggered": 0,
+          "total": 80,
+          "phrases": {
+            "synthetic_noise": {
+              "total": 80,
+              "triggered": 0
+            }
+          }
+        },
+        "negative": {
+          "triggered": 9,
+          "total": 264,
+          "phrases": {
+            "геометрия": {
+              "total": 11,
+              "triggered": 1
+            },
+            "димина": {
+              "total": 11,
+              "triggered": 3
+            },
+            "временно": {
+              "total": 11,
+              "triggered": 0
+            },
+            "поменяй": {
+              "total": 11,
+              "triggered": 0
+            },
+            "георгий": {
+              "total": 10,
+              "triggered": 1
+            },
+            "мне кажется": {
+              "total": 10,
+              "triggered": 0
+            },
+            "ещё минуту": {
+              "total": 10,
+              "triggered": 3
+            },
+            "как именно": {
+              "total": 10,
+              "triggered": 0
+            },
+            "на диване": {
+              "total": 10,
+              "triggered": 0
+            },
+            "здесь никого": {
+              "total": 10,
+              "triggered": 0
+            },
+            "пожалуйста": {
+              "total": 10,
+              "triggered": 0
+            },
+            "доброе утро": {
+              "total": 10,
+              "triggered": 0
+            },
+            "работает": {
+              "total": 10,
+              "triggered": 0
+            },
+            "календарь": {
+              "total": 10,
+              "triggered": 0
+            },
+            "сделай громче": {
+              "total": 10,
+              "triggered": 0
+            },
+            "другими словами": {
+              "total": 10,
+              "triggered": 0
+            },
+            "иди ко мне": {
+              "total": 10,
+              "triggered": 0
+            },
+            "давай посмотрим": {
+              "total": 10,
+              "triggered": 0
+            },
+            "жемчуг": {
+              "total": 10,
+              "triggered": 0
+            },
+            "гимназия": {
+              "total": 10,
+              "triggered": 0
+            },
+            "перемена": {
+              "total": 10,
+              "triggered": 0
+            },
+            "послушай меня": {
+              "total": 10,
+              "triggered": 0
+            },
+            "эмма": {
+              "total": 10,
+              "triggered": 1
+            },
+            "медленно": {
+              "total": 10,
+              "triggered": 0
+            },
+            "думай сам": {
+              "total": 10,
+              "triggered": 0
+            },
+            "книга на столе": {
+              "total": 10,
+              "triggered": 0
+            }
+          }
+        },
+        "ambiguous": {
+          "triggered": 3,
+          "total": 96,
+          "phrases": {
+            "мини бар": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини юбка": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини футбол": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини пекарня": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини сериал": {
+              "total": 8,
+              "triggered": 0
+            },
+            "министерство": {
+              "total": 8,
+              "triggered": 0
+            },
+            "минимум": {
+              "total": 8,
+              "triggered": 3
+            },
+            "минимальный размер": {
+              "total": 8,
+              "triggered": 0
+            },
+            "миниатюра": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини автобус": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини компьютер": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини проект": {
+              "total": 8,
+              "triggered": 0
+            }
+          }
+        }
+      },
+      "0.95": {
+        "full": {
+          "triggered": 96,
+          "total": 360,
+          "phrases": {
+            "Гемини": {
+              "total": 60,
+              "triggered": 9
+            },
+            "Геминай": {
+              "total": 60,
+              "triggered": 20
+            },
+            "Джемини": {
+              "total": 60,
+              "triggered": 24
+            },
+            "Джеминай": {
+              "total": 60,
+              "triggered": 15
+            },
+            "Гемма": {
+              "total": 60,
+              "triggered": 9
+            },
+            "Джемма": {
+              "total": 60,
+              "triggered": 19
+            }
+          }
+        },
+        "fragment": {
+          "triggered": 60,
+          "total": 256,
+          "phrases": {
+            "геми": {
+              "total": 64,
+              "triggered": 14
+            },
+            "джеми": {
+              "total": 64,
+              "triggered": 18
+            },
+            "мини": {
+              "total": 64,
+              "triggered": 20
+            },
+            "минай": {
+              "total": 64,
+              "triggered": 8
+            }
+          }
+        },
+        "noise": {
+          "triggered": 0,
+          "total": 80,
+          "phrases": {
+            "synthetic_noise": {
+              "total": 80,
+              "triggered": 0
+            }
+          }
+        },
+        "negative": {
+          "triggered": 3,
+          "total": 264,
+          "phrases": {
+            "геометрия": {
+              "total": 11,
+              "triggered": 1
+            },
+            "димина": {
+              "total": 11,
+              "triggered": 2
+            },
+            "временно": {
+              "total": 11,
+              "triggered": 0
+            },
+            "поменяй": {
+              "total": 11,
+              "triggered": 0
+            },
+            "георгий": {
+              "total": 10,
+              "triggered": 0
+            },
+            "мне кажется": {
+              "total": 10,
+              "triggered": 0
+            },
+            "ещё минуту": {
+              "total": 10,
+              "triggered": 0
+            },
+            "как именно": {
+              "total": 10,
+              "triggered": 0
+            },
+            "на диване": {
+              "total": 10,
+              "triggered": 0
+            },
+            "здесь никого": {
+              "total": 10,
+              "triggered": 0
+            },
+            "пожалуйста": {
+              "total": 10,
+              "triggered": 0
+            },
+            "доброе утро": {
+              "total": 10,
+              "triggered": 0
+            },
+            "работает": {
+              "total": 10,
+              "triggered": 0
+            },
+            "календарь": {
+              "total": 10,
+              "triggered": 0
+            },
+            "сделай громче": {
+              "total": 10,
+              "triggered": 0
+            },
+            "другими словами": {
+              "total": 10,
+              "triggered": 0
+            },
+            "иди ко мне": {
+              "total": 10,
+              "triggered": 0
+            },
+            "давай посмотрим": {
+              "total": 10,
+              "triggered": 0
+            },
+            "жемчуг": {
+              "total": 10,
+              "triggered": 0
+            },
+            "гимназия": {
+              "total": 10,
+              "triggered": 0
+            },
+            "перемена": {
+              "total": 10,
+              "triggered": 0
+            },
+            "послушай меня": {
+              "total": 10,
+              "triggered": 0
+            },
+            "эмма": {
+              "total": 10,
+              "triggered": 0
+            },
+            "медленно": {
+              "total": 10,
+              "triggered": 0
+            },
+            "думай сам": {
+              "total": 10,
+              "triggered": 0
+            },
+            "книга на столе": {
+              "total": 10,
+              "triggered": 0
+            }
+          }
+        },
+        "ambiguous": {
+          "triggered": 1,
+          "total": 96,
+          "phrases": {
+            "мини бар": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини юбка": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини футбол": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини пекарня": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини сериал": {
+              "total": 8,
+              "triggered": 0
+            },
+            "министерство": {
+              "total": 8,
+              "triggered": 0
+            },
+            "минимум": {
+              "total": 8,
+              "triggered": 1
+            },
+            "минимальный размер": {
+              "total": 8,
+              "triggered": 0
+            },
+            "миниатюра": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини автобус": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини компьютер": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини проект": {
+              "total": 8,
+              "triggered": 0
+            }
+          }
+        }
+      },
+      "0.99": {
+        "full": {
+          "triggered": 50,
+          "total": 360,
+          "phrases": {
+            "Гемини": {
+              "total": 60,
+              "triggered": 7
+            },
+            "Геминай": {
+              "total": 60,
+              "triggered": 10
+            },
+            "Джемини": {
+              "total": 60,
+              "triggered": 12
+            },
+            "Джеминай": {
+              "total": 60,
+              "triggered": 9
+            },
+            "Гемма": {
+              "total": 60,
+              "triggered": 1
+            },
+            "Джемма": {
+              "total": 60,
+              "triggered": 11
+            }
+          }
+        },
+        "fragment": {
+          "triggered": 21,
+          "total": 256,
+          "phrases": {
+            "геми": {
+              "total": 64,
+              "triggered": 3
+            },
+            "джеми": {
+              "total": 64,
+              "triggered": 8
+            },
+            "мини": {
+              "total": 64,
+              "triggered": 8
+            },
+            "минай": {
+              "total": 64,
+              "triggered": 2
+            }
+          }
+        },
+        "noise": {
+          "triggered": 0,
+          "total": 80,
+          "phrases": {
+            "synthetic_noise": {
+              "total": 80,
+              "triggered": 0
+            }
+          }
+        },
+        "negative": {
+          "triggered": 0,
+          "total": 264,
+          "phrases": {
+            "геометрия": {
+              "total": 11,
+              "triggered": 0
+            },
+            "димина": {
+              "total": 11,
+              "triggered": 0
+            },
+            "временно": {
+              "total": 11,
+              "triggered": 0
+            },
+            "поменяй": {
+              "total": 11,
+              "triggered": 0
+            },
+            "георгий": {
+              "total": 10,
+              "triggered": 0
+            },
+            "мне кажется": {
+              "total": 10,
+              "triggered": 0
+            },
+            "ещё минуту": {
+              "total": 10,
+              "triggered": 0
+            },
+            "как именно": {
+              "total": 10,
+              "triggered": 0
+            },
+            "на диване": {
+              "total": 10,
+              "triggered": 0
+            },
+            "здесь никого": {
+              "total": 10,
+              "triggered": 0
+            },
+            "пожалуйста": {
+              "total": 10,
+              "triggered": 0
+            },
+            "доброе утро": {
+              "total": 10,
+              "triggered": 0
+            },
+            "работает": {
+              "total": 10,
+              "triggered": 0
+            },
+            "календарь": {
+              "total": 10,
+              "triggered": 0
+            },
+            "сделай громче": {
+              "total": 10,
+              "triggered": 0
+            },
+            "другими словами": {
+              "total": 10,
+              "triggered": 0
+            },
+            "иди ко мне": {
+              "total": 10,
+              "triggered": 0
+            },
+            "давай посмотрим": {
+              "total": 10,
+              "triggered": 0
+            },
+            "жемчуг": {
+              "total": 10,
+              "triggered": 0
+            },
+            "гимназия": {
+              "total": 10,
+              "triggered": 0
+            },
+            "перемена": {
+              "total": 10,
+              "triggered": 0
+            },
+            "послушай меня": {
+              "total": 10,
+              "triggered": 0
+            },
+            "эмма": {
+              "total": 10,
+              "triggered": 0
+            },
+            "медленно": {
+              "total": 10,
+              "triggered": 0
+            },
+            "думай сам": {
+              "total": 10,
+              "triggered": 0
+            },
+            "книга на столе": {
+              "total": 10,
+              "triggered": 0
+            }
+          }
+        },
+        "ambiguous": {
+          "triggered": 1,
+          "total": 96,
+          "phrases": {
+            "мини бар": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини юбка": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини футбол": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини пекарня": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини сериал": {
+              "total": 8,
+              "triggered": 0
+            },
+            "министерство": {
+              "total": 8,
+              "triggered": 0
+            },
+            "минимум": {
+              "total": 8,
+              "triggered": 1
+            },
+            "минимальный размер": {
+              "total": 8,
+              "triggered": 0
+            },
+            "миниатюра": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини автобус": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини компьютер": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини проект": {
+              "total": 8,
+              "triggered": 0
+            }
+          }
+        }
+      }
+    },
+    "all_stress": {
+      "0.50": {
+        "full": {
+          "triggered": 358,
+          "total": 360,
+          "phrases": {
+            "Гемини": {
+              "total": 60,
+              "triggered": 60
+            },
+            "Геминай": {
+              "total": 60,
+              "triggered": 59
+            },
+            "Джемини": {
+              "total": 60,
+              "triggered": 60
+            },
+            "Джеминай": {
+              "total": 60,
+              "triggered": 60
+            },
+            "Гемма": {
+              "total": 60,
+              "triggered": 60
+            },
+            "Джемма": {
+              "total": 60,
+              "triggered": 59
+            }
+          }
+        },
+        "fragment": {
+          "triggered": 246,
+          "total": 256,
+          "phrases": {
+            "геми": {
+              "total": 64,
+              "triggered": 59
+            },
+            "джеми": {
+              "total": 64,
+              "triggered": 60
+            },
+            "мини": {
+              "total": 64,
+              "triggered": 64
+            },
+            "минай": {
+              "total": 64,
+              "triggered": 63
+            }
+          }
+        },
+        "noise": {
+          "triggered": 55,
+          "total": 80,
+          "phrases": {
+            "synthetic_noise": {
+              "total": 80,
+              "triggered": 55
+            }
+          }
+        },
+        "negative": {
+          "triggered": 158,
+          "total": 264,
+          "phrases": {
+            "геометрия": {
+              "total": 11,
+              "triggered": 7
+            },
+            "димина": {
+              "total": 11,
+              "triggered": 11
+            },
+            "временно": {
+              "total": 11,
+              "triggered": 8
+            },
+            "поменяй": {
+              "total": 11,
+              "triggered": 9
+            },
+            "георгий": {
+              "total": 10,
+              "triggered": 7
+            },
+            "мне кажется": {
+              "total": 10,
+              "triggered": 6
+            },
+            "ещё минуту": {
+              "total": 10,
+              "triggered": 9
+            },
+            "как именно": {
+              "total": 10,
+              "triggered": 7
+            },
+            "на диване": {
+              "total": 10,
+              "triggered": 6
+            },
+            "здесь никого": {
+              "total": 10,
+              "triggered": 3
+            },
+            "пожалуйста": {
+              "total": 10,
+              "triggered": 5
+            },
+            "доброе утро": {
+              "total": 10,
+              "triggered": 4
+            },
+            "работает": {
+              "total": 10,
+              "triggered": 5
+            },
+            "календарь": {
+              "total": 10,
+              "triggered": 6
+            },
+            "сделай громче": {
+              "total": 10,
+              "triggered": 7
+            },
+            "другими словами": {
+              "total": 10,
+              "triggered": 3
+            },
+            "иди ко мне": {
+              "total": 10,
+              "triggered": 3
+            },
+            "давай посмотрим": {
+              "total": 10,
+              "triggered": 4
+            },
+            "жемчуг": {
+              "total": 10,
+              "triggered": 4
+            },
+            "гимназия": {
+              "total": 10,
+              "triggered": 7
+            },
+            "перемена": {
+              "total": 10,
+              "triggered": 9
+            },
+            "послушай меня": {
+              "total": 10,
+              "triggered": 4
+            },
+            "эмма": {
+              "total": 10,
+              "triggered": 7
+            },
+            "медленно": {
+              "total": 10,
+              "triggered": 5
+            },
+            "думай сам": {
+              "total": 10,
+              "triggered": 7
+            },
+            "книга на столе": {
+              "total": 10,
+              "triggered": 5
+            }
+          }
+        },
+        "ambiguous": {
+          "triggered": 70,
+          "total": 96,
+          "phrases": {
+            "мини бар": {
+              "total": 8,
+              "triggered": 8
+            },
+            "мини юбка": {
+              "total": 8,
+              "triggered": 7
+            },
+            "мини футбол": {
+              "total": 8,
+              "triggered": 5
+            },
+            "мини пекарня": {
+              "total": 8,
+              "triggered": 6
+            },
+            "мини сериал": {
+              "total": 8,
+              "triggered": 3
+            },
+            "министерство": {
+              "total": 8,
+              "triggered": 3
+            },
+            "минимум": {
+              "total": 8,
+              "triggered": 6
+            },
+            "минимальный размер": {
+              "total": 8,
+              "triggered": 7
+            },
+            "миниатюра": {
+              "total": 8,
+              "triggered": 3
+            },
+            "мини автобус": {
+              "total": 8,
+              "triggered": 7
+            },
+            "мини компьютер": {
+              "total": 8,
+              "triggered": 7
+            },
+            "мини проект": {
+              "total": 8,
+              "triggered": 8
+            }
+          }
+        }
+      },
+      "0.60": {
+        "full": {
+          "triggered": 355,
+          "total": 360,
+          "phrases": {
+            "Гемини": {
+              "total": 60,
+              "triggered": 60
+            },
+            "Геминай": {
+              "total": 60,
+              "triggered": 58
+            },
+            "Джемини": {
+              "total": 60,
+              "triggered": 60
+            },
+            "Джеминай": {
+              "total": 60,
+              "triggered": 59
+            },
+            "Гемма": {
+              "total": 60,
+              "triggered": 59
+            },
+            "Джемма": {
+              "total": 60,
+              "triggered": 59
+            }
+          }
+        },
+        "fragment": {
+          "triggered": 241,
+          "total": 256,
+          "phrases": {
+            "геми": {
+              "total": 64,
+              "triggered": 59
+            },
+            "джеми": {
+              "total": 64,
+              "triggered": 59
+            },
+            "мини": {
+              "total": 64,
+              "triggered": 62
+            },
+            "минай": {
+              "total": 64,
+              "triggered": 61
+            }
+          }
+        },
+        "noise": {
+          "triggered": 47,
+          "total": 80,
+          "phrases": {
+            "synthetic_noise": {
+              "total": 80,
+              "triggered": 47
+            }
+          }
+        },
+        "negative": {
+          "triggered": 147,
+          "total": 264,
+          "phrases": {
+            "геометрия": {
+              "total": 11,
+              "triggered": 6
+            },
+            "димина": {
+              "total": 11,
+              "triggered": 10
+            },
+            "временно": {
+              "total": 11,
+              "triggered": 6
+            },
+            "поменяй": {
+              "total": 11,
+              "triggered": 9
+            },
+            "георгий": {
+              "total": 10,
+              "triggered": 7
+            },
+            "мне кажется": {
+              "total": 10,
+              "triggered": 6
+            },
+            "ещё минуту": {
+              "total": 10,
+              "triggered": 9
+            },
+            "как именно": {
+              "total": 10,
+              "triggered": 6
+            },
+            "на диване": {
+              "total": 10,
+              "triggered": 5
+            },
+            "здесь никого": {
+              "total": 10,
+              "triggered": 3
+            },
+            "пожалуйста": {
+              "total": 10,
+              "triggered": 5
+            },
+            "доброе утро": {
+              "total": 10,
+              "triggered": 4
+            },
+            "работает": {
+              "total": 10,
+              "triggered": 3
+            },
+            "календарь": {
+              "total": 10,
+              "triggered": 6
+            },
+            "сделай громче": {
+              "total": 10,
+              "triggered": 7
+            },
+            "другими словами": {
+              "total": 10,
+              "triggered": 3
+            },
+            "иди ко мне": {
+              "total": 10,
+              "triggered": 3
+            },
+            "давай посмотрим": {
+              "total": 10,
+              "triggered": 3
+            },
+            "жемчуг": {
+              "total": 10,
+              "triggered": 4
+            },
+            "гимназия": {
+              "total": 10,
+              "triggered": 7
+            },
+            "перемена": {
+              "total": 10,
+              "triggered": 9
+            },
+            "послушай меня": {
+              "total": 10,
+              "triggered": 3
+            },
+            "эмма": {
+              "total": 10,
+              "triggered": 7
+            },
+            "медленно": {
+              "total": 10,
+              "triggered": 5
+            },
+            "думай сам": {
+              "total": 10,
+              "triggered": 7
+            },
+            "книга на столе": {
+              "total": 10,
+              "triggered": 4
+            }
+          }
+        },
+        "ambiguous": {
+          "triggered": 66,
+          "total": 96,
+          "phrases": {
+            "мини бар": {
+              "total": 8,
+              "triggered": 7
+            },
+            "мини юбка": {
+              "total": 8,
+              "triggered": 6
+            },
+            "мини футбол": {
+              "total": 8,
+              "triggered": 5
+            },
+            "мини пекарня": {
+              "total": 8,
+              "triggered": 6
+            },
+            "мини сериал": {
+              "total": 8,
+              "triggered": 3
+            },
+            "министерство": {
+              "total": 8,
+              "triggered": 3
+            },
+            "минимум": {
+              "total": 8,
+              "triggered": 6
+            },
+            "минимальный размер": {
+              "total": 8,
+              "triggered": 7
+            },
+            "миниатюра": {
+              "total": 8,
+              "triggered": 3
+            },
+            "мини автобус": {
+              "total": 8,
+              "triggered": 6
+            },
+            "мини компьютер": {
+              "total": 8,
+              "triggered": 6
+            },
+            "мини проект": {
+              "total": 8,
+              "triggered": 8
+            }
+          }
+        }
+      },
+      "0.70": {
+        "full": {
+          "triggered": 354,
+          "total": 360,
+          "phrases": {
+            "Гемини": {
+              "total": 60,
+              "triggered": 60
+            },
+            "Геминай": {
+              "total": 60,
+              "triggered": 58
+            },
+            "Джемини": {
+              "total": 60,
+              "triggered": 60
+            },
+            "Джеминай": {
+              "total": 60,
+              "triggered": 59
+            },
+            "Гемма": {
+              "total": 60,
+              "triggered": 58
+            },
+            "Джемма": {
+              "total": 60,
+              "triggered": 59
+            }
+          }
+        },
+        "fragment": {
+          "triggered": 235,
+          "total": 256,
+          "phrases": {
+            "геми": {
+              "total": 64,
+              "triggered": 56
+            },
+            "джеми": {
+              "total": 64,
+              "triggered": 59
+            },
+            "мини": {
+              "total": 64,
+              "triggered": 62
+            },
+            "минай": {
+              "total": 64,
+              "triggered": 58
+            }
+          }
+        },
+        "noise": {
+          "triggered": 41,
+          "total": 80,
+          "phrases": {
+            "synthetic_noise": {
+              "total": 80,
+              "triggered": 41
+            }
+          }
+        },
+        "negative": {
+          "triggered": 131,
+          "total": 264,
+          "phrases": {
+            "геометрия": {
+              "total": 11,
+              "triggered": 6
+            },
+            "димина": {
+              "total": 11,
+              "triggered": 10
+            },
+            "временно": {
+              "total": 11,
+              "triggered": 5
+            },
+            "поменяй": {
+              "total": 11,
+              "triggered": 8
+            },
+            "георгий": {
+              "total": 10,
+              "triggered": 7
+            },
+            "мне кажется": {
+              "total": 10,
+              "triggered": 5
+            },
+            "ещё минуту": {
+              "total": 10,
+              "triggered": 9
+            },
+            "как именно": {
+              "total": 10,
+              "triggered": 6
+            },
+            "на диване": {
+              "total": 10,
+              "triggered": 4
+            },
+            "здесь никого": {
+              "total": 10,
+              "triggered": 2
+            },
+            "пожалуйста": {
+              "total": 10,
+              "triggered": 5
+            },
+            "доброе утро": {
+              "total": 10,
+              "triggered": 3
+            },
+            "работает": {
+              "total": 10,
+              "triggered": 3
+            },
+            "календарь": {
+              "total": 10,
+              "triggered": 6
+            },
+            "сделай громче": {
+              "total": 10,
+              "triggered": 6
+            },
+            "другими словами": {
+              "total": 10,
+              "triggered": 2
+            },
+            "иди ко мне": {
+              "total": 10,
+              "triggered": 3
+            },
+            "давай посмотрим": {
+              "total": 10,
+              "triggered": 3
+            },
+            "жемчуг": {
+              "total": 10,
+              "triggered": 2
+            },
+            "гимназия": {
+              "total": 10,
+              "triggered": 7
+            },
+            "перемена": {
+              "total": 10,
+              "triggered": 8
+            },
+            "послушай меня": {
+              "total": 10,
+              "triggered": 2
+            },
+            "эмма": {
+              "total": 10,
+              "triggered": 5
+            },
+            "медленно": {
+              "total": 10,
+              "triggered": 5
+            },
+            "думай сам": {
+              "total": 10,
+              "triggered": 5
+            },
+            "книга на столе": {
+              "total": 10,
+              "triggered": 4
+            }
+          }
+        },
+        "ambiguous": {
+          "triggered": 60,
+          "total": 96,
+          "phrases": {
+            "мини бар": {
+              "total": 8,
+              "triggered": 7
+            },
+            "мини юбка": {
+              "total": 8,
+              "triggered": 5
+            },
+            "мини футбол": {
+              "total": 8,
+              "triggered": 5
+            },
+            "мини пекарня": {
+              "total": 8,
+              "triggered": 6
+            },
+            "мини сериал": {
+              "total": 8,
+              "triggered": 2
+            },
+            "министерство": {
+              "total": 8,
+              "triggered": 3
+            },
+            "минимум": {
+              "total": 8,
+              "triggered": 6
+            },
+            "минимальный размер": {
+              "total": 8,
+              "triggered": 6
+            },
+            "миниатюра": {
+              "total": 8,
+              "triggered": 3
+            },
+            "мини автобус": {
+              "total": 8,
+              "triggered": 4
+            },
+            "мини компьютер": {
+              "total": 8,
+              "triggered": 5
+            },
+            "мини проект": {
+              "total": 8,
+              "triggered": 8
+            }
+          }
+        }
+      },
+      "0.80": {
+        "full": {
+          "triggered": 346,
+          "total": 360,
+          "phrases": {
+            "Гемини": {
+              "total": 60,
+              "triggered": 58
+            },
+            "Геминай": {
+              "total": 60,
+              "triggered": 58
+            },
+            "Джемини": {
+              "total": 60,
+              "triggered": 60
+            },
+            "Джеминай": {
+              "total": 60,
+              "triggered": 58
+            },
+            "Гемма": {
+              "total": 60,
+              "triggered": 56
+            },
+            "Джемма": {
+              "total": 60,
+              "triggered": 56
+            }
+          }
+        },
+        "fragment": {
+          "triggered": 225,
+          "total": 256,
+          "phrases": {
+            "геми": {
+              "total": 64,
+              "triggered": 53
+            },
+            "джеми": {
+              "total": 64,
+              "triggered": 57
+            },
+            "мини": {
+              "total": 64,
+              "triggered": 59
+            },
+            "минай": {
+              "total": 64,
+              "triggered": 56
+            }
+          }
+        },
+        "noise": {
+          "triggered": 28,
+          "total": 80,
+          "phrases": {
+            "synthetic_noise": {
+              "total": 80,
+              "triggered": 28
+            }
+          }
+        },
+        "negative": {
+          "triggered": 105,
+          "total": 264,
+          "phrases": {
+            "геометрия": {
+              "total": 11,
+              "triggered": 5
+            },
+            "димина": {
+              "total": 11,
+              "triggered": 10
+            },
+            "временно": {
+              "total": 11,
+              "triggered": 4
+            },
+            "поменяй": {
+              "total": 11,
+              "triggered": 8
+            },
+            "георгий": {
+              "total": 10,
+              "triggered": 5
+            },
+            "мне кажется": {
+              "total": 10,
+              "triggered": 4
+            },
+            "ещё минуту": {
+              "total": 10,
+              "triggered": 6
+            },
+            "как именно": {
+              "total": 10,
+              "triggered": 6
+            },
+            "на диване": {
+              "total": 10,
+              "triggered": 3
+            },
+            "здесь никого": {
+              "total": 10,
+              "triggered": 2
+            },
+            "пожалуйста": {
+              "total": 10,
+              "triggered": 3
+            },
+            "доброе утро": {
+              "total": 10,
+              "triggered": 0
+            },
+            "работает": {
+              "total": 10,
+              "triggered": 2
+            },
+            "календарь": {
+              "total": 10,
+              "triggered": 6
+            },
+            "сделай громче": {
+              "total": 10,
+              "triggered": 5
+            },
+            "другими словами": {
+              "total": 10,
+              "triggered": 2
+            },
+            "иди ко мне": {
+              "total": 10,
+              "triggered": 3
+            },
+            "давай посмотрим": {
+              "total": 10,
+              "triggered": 1
+            },
+            "жемчуг": {
+              "total": 10,
+              "triggered": 1
+            },
+            "гимназия": {
+              "total": 10,
+              "triggered": 4
+            },
+            "перемена": {
+              "total": 10,
+              "triggered": 6
+            },
+            "послушай меня": {
+              "total": 10,
+              "triggered": 2
+            },
+            "эмма": {
+              "total": 10,
+              "triggered": 5
+            },
+            "медленно": {
+              "total": 10,
+              "triggered": 5
+            },
+            "думай сам": {
+              "total": 10,
+              "triggered": 3
+            },
+            "книга на столе": {
+              "total": 10,
+              "triggered": 4
+            }
+          }
+        },
+        "ambiguous": {
+          "triggered": 54,
+          "total": 96,
+          "phrases": {
+            "мини бар": {
+              "total": 8,
+              "triggered": 6
+            },
+            "мини юбка": {
+              "total": 8,
+              "triggered": 5
+            },
+            "мини футбол": {
+              "total": 8,
+              "triggered": 5
+            },
+            "мини пекарня": {
+              "total": 8,
+              "triggered": 5
+            },
+            "мини сериал": {
+              "total": 8,
+              "triggered": 2
+            },
+            "министерство": {
+              "total": 8,
+              "triggered": 3
+            },
+            "минимум": {
+              "total": 8,
+              "triggered": 5
+            },
+            "минимальный размер": {
+              "total": 8,
+              "triggered": 6
+            },
+            "миниатюра": {
+              "total": 8,
+              "triggered": 2
+            },
+            "мини автобус": {
+              "total": 8,
+              "triggered": 4
+            },
+            "мини компьютер": {
+              "total": 8,
+              "triggered": 5
+            },
+            "мини проект": {
+              "total": 8,
+              "triggered": 6
+            }
+          }
+        }
+      },
+      "0.90": {
+        "full": {
+          "triggered": 332,
+          "total": 360,
+          "phrases": {
+            "Гемини": {
+              "total": 60,
+              "triggered": 55
+            },
+            "Геминай": {
+              "total": 60,
+              "triggered": 55
+            },
+            "Джемини": {
+              "total": 60,
+              "triggered": 59
+            },
+            "Джеминай": {
+              "total": 60,
+              "triggered": 57
+            },
+            "Гемма": {
+              "total": 60,
+              "triggered": 55
+            },
+            "Джемма": {
+              "total": 60,
+              "triggered": 51
+            }
+          }
+        },
+        "fragment": {
+          "triggered": 209,
+          "total": 256,
+          "phrases": {
+            "геми": {
+              "total": 64,
+              "triggered": 51
+            },
+            "джеми": {
+              "total": 64,
+              "triggered": 54
+            },
+            "мини": {
+              "total": 64,
+              "triggered": 54
+            },
+            "минай": {
+              "total": 64,
+              "triggered": 50
+            }
+          }
+        },
+        "noise": {
+          "triggered": 12,
+          "total": 80,
+          "phrases": {
+            "synthetic_noise": {
+              "total": 80,
+              "triggered": 12
+            }
+          }
+        },
+        "negative": {
+          "triggered": 76,
+          "total": 264,
+          "phrases": {
+            "геометрия": {
+              "total": 11,
+              "triggered": 3
+            },
+            "димина": {
+              "total": 11,
+              "triggered": 10
+            },
+            "временно": {
+              "total": 11,
+              "triggered": 3
+            },
+            "поменяй": {
+              "total": 11,
+              "triggered": 7
+            },
+            "георгий": {
+              "total": 10,
+              "triggered": 5
+            },
+            "мне кажется": {
+              "total": 10,
+              "triggered": 4
+            },
+            "ещё минуту": {
+              "total": 10,
+              "triggered": 4
+            },
+            "как именно": {
+              "total": 10,
+              "triggered": 3
+            },
+            "на диване": {
+              "total": 10,
+              "triggered": 2
+            },
+            "здесь никого": {
+              "total": 10,
+              "triggered": 0
+            },
+            "пожалуйста": {
+              "total": 10,
+              "triggered": 1
+            },
+            "доброе утро": {
+              "total": 10,
+              "triggered": 0
+            },
+            "работает": {
+              "total": 10,
+              "triggered": 1
+            },
+            "календарь": {
+              "total": 10,
+              "triggered": 4
+            },
+            "сделай громче": {
+              "total": 10,
+              "triggered": 3
+            },
+            "другими словами": {
+              "total": 10,
+              "triggered": 1
+            },
+            "иди ко мне": {
+              "total": 10,
+              "triggered": 2
+            },
+            "давай посмотрим": {
+              "total": 10,
+              "triggered": 1
+            },
+            "жемчуг": {
+              "total": 10,
+              "triggered": 1
+            },
+            "гимназия": {
+              "total": 10,
+              "triggered": 4
+            },
+            "перемена": {
+              "total": 10,
+              "triggered": 5
+            },
+            "послушай меня": {
+              "total": 10,
+              "triggered": 1
+            },
+            "эмма": {
+              "total": 10,
+              "triggered": 2
+            },
+            "медленно": {
+              "total": 10,
+              "triggered": 3
+            },
+            "думай сам": {
+              "total": 10,
+              "triggered": 2
+            },
+            "книга на столе": {
+              "total": 10,
+              "triggered": 4
+            }
+          }
+        },
+        "ambiguous": {
+          "triggered": 36,
+          "total": 96,
+          "phrases": {
+            "мини бар": {
+              "total": 8,
+              "triggered": 4
+            },
+            "мини юбка": {
+              "total": 8,
+              "triggered": 2
+            },
+            "мини футбол": {
+              "total": 8,
+              "triggered": 3
+            },
+            "мини пекарня": {
+              "total": 8,
+              "triggered": 5
+            },
+            "мини сериал": {
+              "total": 8,
+              "triggered": 0
+            },
+            "министерство": {
+              "total": 8,
+              "triggered": 3
+            },
+            "минимум": {
+              "total": 8,
+              "triggered": 3
+            },
+            "минимальный размер": {
+              "total": 8,
+              "triggered": 4
+            },
+            "миниатюра": {
+              "total": 8,
+              "triggered": 2
+            },
+            "мини автобус": {
+              "total": 8,
+              "triggered": 3
+            },
+            "мини компьютер": {
+              "total": 8,
+              "triggered": 3
+            },
+            "мини проект": {
+              "total": 8,
+              "triggered": 4
+            }
+          }
+        }
+      },
+      "0.95": {
+        "full": {
+          "triggered": 320,
+          "total": 360,
+          "phrases": {
+            "Гемини": {
+              "total": 60,
+              "triggered": 54
+            },
+            "Геминай": {
+              "total": 60,
+              "triggered": 54
+            },
+            "Джемини": {
+              "total": 60,
+              "triggered": 57
+            },
+            "Джеминай": {
+              "total": 60,
+              "triggered": 56
+            },
+            "Гемма": {
+              "total": 60,
+              "triggered": 52
+            },
+            "Джемма": {
+              "total": 60,
+              "triggered": 47
+            }
+          }
+        },
+        "fragment": {
+          "triggered": 186,
+          "total": 256,
+          "phrases": {
+            "геми": {
+              "total": 64,
+              "triggered": 43
+            },
+            "джеми": {
+              "total": 64,
+              "triggered": 46
+            },
+            "мини": {
+              "total": 64,
+              "triggered": 51
+            },
+            "минай": {
+              "total": 64,
+              "triggered": 46
+            }
+          }
+        },
+        "noise": {
+          "triggered": 4,
+          "total": 80,
+          "phrases": {
+            "synthetic_noise": {
+              "total": 80,
+              "triggered": 4
+            }
+          }
+        },
+        "negative": {
+          "triggered": 52,
+          "total": 264,
+          "phrases": {
+            "геометрия": {
+              "total": 11,
+              "triggered": 2
+            },
+            "димина": {
+              "total": 11,
+              "triggered": 8
+            },
+            "временно": {
+              "total": 11,
+              "triggered": 3
+            },
+            "поменяй": {
+              "total": 11,
+              "triggered": 5
+            },
+            "георгий": {
+              "total": 10,
+              "triggered": 2
+            },
+            "мне кажется": {
+              "total": 10,
+              "triggered": 3
+            },
+            "ещё минуту": {
+              "total": 10,
+              "triggered": 2
+            },
+            "как именно": {
+              "total": 10,
+              "triggered": 3
+            },
+            "на диване": {
+              "total": 10,
+              "triggered": 1
+            },
+            "здесь никого": {
+              "total": 10,
+              "triggered": 0
+            },
+            "пожалуйста": {
+              "total": 10,
+              "triggered": 0
+            },
+            "доброе утро": {
+              "total": 10,
+              "triggered": 0
+            },
+            "работает": {
+              "total": 10,
+              "triggered": 0
+            },
+            "календарь": {
+              "total": 10,
+              "triggered": 4
+            },
+            "сделай громче": {
+              "total": 10,
+              "triggered": 3
+            },
+            "другими словами": {
+              "total": 10,
+              "triggered": 1
+            },
+            "иди ко мне": {
+              "total": 10,
+              "triggered": 1
+            },
+            "давай посмотрим": {
+              "total": 10,
+              "triggered": 0
+            },
+            "жемчуг": {
+              "total": 10,
+              "triggered": 1
+            },
+            "гимназия": {
+              "total": 10,
+              "triggered": 4
+            },
+            "перемена": {
+              "total": 10,
+              "triggered": 4
+            },
+            "послушай меня": {
+              "total": 10,
+              "triggered": 0
+            },
+            "эмма": {
+              "total": 10,
+              "triggered": 2
+            },
+            "медленно": {
+              "total": 10,
+              "triggered": 2
+            },
+            "думай сам": {
+              "total": 10,
+              "triggered": 0
+            },
+            "книга на столе": {
+              "total": 10,
+              "triggered": 1
+            }
+          }
+        },
+        "ambiguous": {
+          "triggered": 27,
+          "total": 96,
+          "phrases": {
+            "мини бар": {
+              "total": 8,
+              "triggered": 3
+            },
+            "мини юбка": {
+              "total": 8,
+              "triggered": 2
+            },
+            "мини футбол": {
+              "total": 8,
+              "triggered": 2
+            },
+            "мини пекарня": {
+              "total": 8,
+              "triggered": 4
+            },
+            "мини сериал": {
+              "total": 8,
+              "triggered": 0
+            },
+            "министерство": {
+              "total": 8,
+              "triggered": 2
+            },
+            "минимум": {
+              "total": 8,
+              "triggered": 2
+            },
+            "минимальный размер": {
+              "total": 8,
+              "triggered": 3
+            },
+            "миниатюра": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини автобус": {
+              "total": 8,
+              "triggered": 2
+            },
+            "мини компьютер": {
+              "total": 8,
+              "triggered": 3
+            },
+            "мини проект": {
+              "total": 8,
+              "triggered": 4
+            }
+          }
+        }
+      },
+      "0.99": {
+        "full": {
+          "triggered": 272,
+          "total": 360,
+          "phrases": {
+            "Гемини": {
+              "total": 60,
+              "triggered": 47
+            },
+            "Геминай": {
+              "total": 60,
+              "triggered": 49
+            },
+            "Джемини": {
+              "total": 60,
+              "triggered": 54
+            },
+            "Джеминай": {
+              "total": 60,
+              "triggered": 46
+            },
+            "Гемма": {
+              "total": 60,
+              "triggered": 40
+            },
+            "Джемма": {
+              "total": 60,
+              "triggered": 36
+            }
+          }
+        },
+        "fragment": {
+          "triggered": 140,
+          "total": 256,
+          "phrases": {
+            "геми": {
+              "total": 64,
+              "triggered": 27
+            },
+            "джеми": {
+              "total": 64,
+              "triggered": 34
+            },
+            "мини": {
+              "total": 64,
+              "triggered": 43
+            },
+            "минай": {
+              "total": 64,
+              "triggered": 36
+            }
+          }
+        },
+        "noise": {
+          "triggered": 1,
+          "total": 80,
+          "phrases": {
+            "synthetic_noise": {
+              "total": 80,
+              "triggered": 1
+            }
+          }
+        },
+        "negative": {
+          "triggered": 10,
+          "total": 264,
+          "phrases": {
+            "геометрия": {
+              "total": 11,
+              "triggered": 1
+            },
+            "димина": {
+              "total": 11,
+              "triggered": 5
+            },
+            "временно": {
+              "total": 11,
+              "triggered": 0
+            },
+            "поменяй": {
+              "total": 11,
+              "triggered": 0
+            },
+            "георгий": {
+              "total": 10,
+              "triggered": 0
+            },
+            "мне кажется": {
+              "total": 10,
+              "triggered": 0
+            },
+            "ещё минуту": {
+              "total": 10,
+              "triggered": 0
+            },
+            "как именно": {
+              "total": 10,
+              "triggered": 1
+            },
+            "на диване": {
+              "total": 10,
+              "triggered": 0
+            },
+            "здесь никого": {
+              "total": 10,
+              "triggered": 0
+            },
+            "пожалуйста": {
+              "total": 10,
+              "triggered": 0
+            },
+            "доброе утро": {
+              "total": 10,
+              "triggered": 0
+            },
+            "работает": {
+              "total": 10,
+              "triggered": 0
+            },
+            "календарь": {
+              "total": 10,
+              "triggered": 1
+            },
+            "сделай громче": {
+              "total": 10,
+              "triggered": 0
+            },
+            "другими словами": {
+              "total": 10,
+              "triggered": 0
+            },
+            "иди ко мне": {
+              "total": 10,
+              "triggered": 0
+            },
+            "давай посмотрим": {
+              "total": 10,
+              "triggered": 0
+            },
+            "жемчуг": {
+              "total": 10,
+              "triggered": 0
+            },
+            "гимназия": {
+              "total": 10,
+              "triggered": 1
+            },
+            "перемена": {
+              "total": 10,
+              "triggered": 1
+            },
+            "послушай меня": {
+              "total": 10,
+              "triggered": 0
+            },
+            "эмма": {
+              "total": 10,
+              "triggered": 0
+            },
+            "медленно": {
+              "total": 10,
+              "triggered": 0
+            },
+            "думай сам": {
+              "total": 10,
+              "triggered": 0
+            },
+            "книга на столе": {
+              "total": 10,
+              "triggered": 0
+            }
+          }
+        },
+        "ambiguous": {
+          "triggered": 2,
+          "total": 96,
+          "phrases": {
+            "мини бар": {
+              "total": 8,
+              "triggered": 1
+            },
+            "мини юбка": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини футбол": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини пекарня": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини сериал": {
+              "total": 8,
+              "triggered": 0
+            },
+            "министерство": {
+              "total": 8,
+              "triggered": 0
+            },
+            "минимум": {
+              "total": 8,
+              "triggered": 0
+            },
+            "минимальный размер": {
+              "total": 8,
+              "triggered": 1
+            },
+            "миниатюра": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини автобус": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини компьютер": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини проект": {
+              "total": 8,
+              "triggered": 0
+            }
+          }
+        }
+      }
+    },
+    "candidate": {
+      "0.50": {
+        "full": {
+          "triggered": 338,
+          "total": 360,
+          "phrases": {
+            "Гемини": {
+              "total": 60,
+              "triggered": 58
+            },
+            "Геминай": {
+              "total": 60,
+              "triggered": 54
+            },
+            "Джемини": {
+              "total": 60,
+              "triggered": 56
+            },
+            "Джеминай": {
+              "total": 60,
+              "triggered": 59
+            },
+            "Гемма": {
+              "total": 60,
+              "triggered": 56
+            },
+            "Джемма": {
+              "total": 60,
+              "triggered": 55
+            }
+          }
+        },
+        "fragment": {
+          "triggered": 214,
+          "total": 256,
+          "phrases": {
+            "геми": {
+              "total": 64,
+              "triggered": 52
+            },
+            "джеми": {
+              "total": 64,
+              "triggered": 54
+            },
+            "мини": {
+              "total": 64,
+              "triggered": 53
+            },
+            "минай": {
+              "total": 64,
+              "triggered": 55
+            }
+          }
+        },
+        "noise": {
+          "triggered": 6,
+          "total": 80,
+          "phrases": {
+            "synthetic_noise": {
+              "total": 80,
+              "triggered": 6
+            }
+          }
+        },
+        "negative": {
+          "triggered": 12,
+          "total": 264,
+          "phrases": {
+            "геометрия": {
+              "total": 11,
+              "triggered": 0
+            },
+            "димина": {
+              "total": 11,
+              "triggered": 8
+            },
+            "временно": {
+              "total": 11,
+              "triggered": 0
+            },
+            "поменяй": {
+              "total": 11,
+              "triggered": 0
+            },
+            "георгий": {
+              "total": 10,
+              "triggered": 0
+            },
+            "мне кажется": {
+              "total": 10,
+              "triggered": 0
+            },
+            "ещё минуту": {
+              "total": 10,
+              "triggered": 1
+            },
+            "как именно": {
+              "total": 10,
+              "triggered": 0
+            },
+            "на диване": {
+              "total": 10,
+              "triggered": 0
+            },
+            "здесь никого": {
+              "total": 10,
+              "triggered": 0
+            },
+            "пожалуйста": {
+              "total": 10,
+              "triggered": 0
+            },
+            "доброе утро": {
+              "total": 10,
+              "triggered": 0
+            },
+            "работает": {
+              "total": 10,
+              "triggered": 0
+            },
+            "календарь": {
+              "total": 10,
+              "triggered": 0
+            },
+            "сделай громче": {
+              "total": 10,
+              "triggered": 0
+            },
+            "другими словами": {
+              "total": 10,
+              "triggered": 0
+            },
+            "иди ко мне": {
+              "total": 10,
+              "triggered": 0
+            },
+            "давай посмотрим": {
+              "total": 10,
+              "triggered": 0
+            },
+            "жемчуг": {
+              "total": 10,
+              "triggered": 0
+            },
+            "гимназия": {
+              "total": 10,
+              "triggered": 0
+            },
+            "перемена": {
+              "total": 10,
+              "triggered": 2
+            },
+            "послушай меня": {
+              "total": 10,
+              "triggered": 0
+            },
+            "эмма": {
+              "total": 10,
+              "triggered": 0
+            },
+            "медленно": {
+              "total": 10,
+              "triggered": 0
+            },
+            "думай сам": {
+              "total": 10,
+              "triggered": 0
+            },
+            "книга на столе": {
+              "total": 10,
+              "triggered": 1
+            }
+          }
+        },
+        "ambiguous": {
+          "triggered": 8,
+          "total": 96,
+          "phrases": {
+            "мини бар": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини юбка": {
+              "total": 8,
+              "triggered": 4
+            },
+            "мини футбол": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини пекарня": {
+              "total": 8,
+              "triggered": 1
+            },
+            "мини сериал": {
+              "total": 8,
+              "triggered": 0
+            },
+            "министерство": {
+              "total": 8,
+              "triggered": 0
+            },
+            "минимум": {
+              "total": 8,
+              "triggered": 2
+            },
+            "минимальный размер": {
+              "total": 8,
+              "triggered": 0
+            },
+            "миниатюра": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини автобус": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини компьютер": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини проект": {
+              "total": 8,
+              "triggered": 1
+            }
+          }
+        }
+      },
+      "0.60": {
+        "full": {
+          "triggered": 322,
+          "total": 360,
+          "phrases": {
+            "Гемини": {
+              "total": 60,
+              "triggered": 55
+            },
+            "Геминай": {
+              "total": 60,
+              "triggered": 54
+            },
+            "Джемини": {
+              "total": 60,
+              "triggered": 55
+            },
+            "Джеминай": {
+              "total": 60,
+              "triggered": 55
+            },
+            "Гемма": {
+              "total": 60,
+              "triggered": 52
+            },
+            "Джемма": {
+              "total": 60,
+              "triggered": 51
+            }
+          }
+        },
+        "fragment": {
+          "triggered": 183,
+          "total": 256,
+          "phrases": {
+            "геми": {
+              "total": 64,
+              "triggered": 41
+            },
+            "джеми": {
+              "total": 64,
+              "triggered": 46
+            },
+            "мини": {
+              "total": 64,
+              "triggered": 46
+            },
+            "минай": {
+              "total": 64,
+              "triggered": 50
+            }
+          }
+        },
+        "noise": {
+          "triggered": 1,
+          "total": 80,
+          "phrases": {
+            "synthetic_noise": {
+              "total": 80,
+              "triggered": 1
+            }
+          }
+        },
+        "negative": {
+          "triggered": 7,
+          "total": 264,
+          "phrases": {
+            "геометрия": {
+              "total": 11,
+              "triggered": 0
+            },
+            "димина": {
+              "total": 11,
+              "triggered": 5
+            },
+            "временно": {
+              "total": 11,
+              "triggered": 0
+            },
+            "поменяй": {
+              "total": 11,
+              "triggered": 0
+            },
+            "георгий": {
+              "total": 10,
+              "triggered": 0
+            },
+            "мне кажется": {
+              "total": 10,
+              "triggered": 0
+            },
+            "ещё минуту": {
+              "total": 10,
+              "triggered": 0
+            },
+            "как именно": {
+              "total": 10,
+              "triggered": 0
+            },
+            "на диване": {
+              "total": 10,
+              "triggered": 0
+            },
+            "здесь никого": {
+              "total": 10,
+              "triggered": 0
+            },
+            "пожалуйста": {
+              "total": 10,
+              "triggered": 0
+            },
+            "доброе утро": {
+              "total": 10,
+              "triggered": 0
+            },
+            "работает": {
+              "total": 10,
+              "triggered": 0
+            },
+            "календарь": {
+              "total": 10,
+              "triggered": 0
+            },
+            "сделай громче": {
+              "total": 10,
+              "triggered": 0
+            },
+            "другими словами": {
+              "total": 10,
+              "triggered": 0
+            },
+            "иди ко мне": {
+              "total": 10,
+              "triggered": 0
+            },
+            "давай посмотрим": {
+              "total": 10,
+              "triggered": 0
+            },
+            "жемчуг": {
+              "total": 10,
+              "triggered": 0
+            },
+            "гимназия": {
+              "total": 10,
+              "triggered": 0
+            },
+            "перемена": {
+              "total": 10,
+              "triggered": 2
+            },
+            "послушай меня": {
+              "total": 10,
+              "triggered": 0
+            },
+            "эмма": {
+              "total": 10,
+              "triggered": 0
+            },
+            "медленно": {
+              "total": 10,
+              "triggered": 0
+            },
+            "думай сам": {
+              "total": 10,
+              "triggered": 0
+            },
+            "книга на столе": {
+              "total": 10,
+              "triggered": 0
+            }
+          }
+        },
+        "ambiguous": {
+          "triggered": 6,
+          "total": 96,
+          "phrases": {
+            "мини бар": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини юбка": {
+              "total": 8,
+              "triggered": 3
+            },
+            "мини футбол": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини пекарня": {
+              "total": 8,
+              "triggered": 1
+            },
+            "мини сериал": {
+              "total": 8,
+              "triggered": 0
+            },
+            "министерство": {
+              "total": 8,
+              "triggered": 0
+            },
+            "минимум": {
+              "total": 8,
+              "triggered": 2
+            },
+            "минимальный размер": {
+              "total": 8,
+              "triggered": 0
+            },
+            "миниатюра": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини автобус": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини компьютер": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини проект": {
+              "total": 8,
+              "triggered": 0
+            }
+          }
+        }
+      },
+      "0.70": {
+        "full": {
+          "triggered": 301,
+          "total": 360,
+          "phrases": {
+            "Гемини": {
+              "total": 60,
+              "triggered": 49
+            },
+            "Геминай": {
+              "total": 60,
+              "triggered": 53
+            },
+            "Джемини": {
+              "total": 60,
+              "triggered": 53
+            },
+            "Джеминай": {
+              "total": 60,
+              "triggered": 53
+            },
+            "Гемма": {
+              "total": 60,
+              "triggered": 45
+            },
+            "Джемма": {
+              "total": 60,
+              "triggered": 48
+            }
+          }
+        },
+        "fragment": {
+          "triggered": 152,
+          "total": 256,
+          "phrases": {
+            "геми": {
+              "total": 64,
+              "triggered": 27
+            },
+            "джеми": {
+              "total": 64,
+              "triggered": 42
+            },
+            "мини": {
+              "total": 64,
+              "triggered": 41
+            },
+            "минай": {
+              "total": 64,
+              "triggered": 42
+            }
+          }
+        },
+        "noise": {
+          "triggered": 0,
+          "total": 80,
+          "phrases": {
+            "synthetic_noise": {
+              "total": 80,
+              "triggered": 0
+            }
+          }
+        },
+        "negative": {
+          "triggered": 6,
+          "total": 264,
+          "phrases": {
+            "геометрия": {
+              "total": 11,
+              "triggered": 0
+            },
+            "димина": {
+              "total": 11,
+              "triggered": 4
+            },
+            "временно": {
+              "total": 11,
+              "triggered": 0
+            },
+            "поменяй": {
+              "total": 11,
+              "triggered": 0
+            },
+            "георгий": {
+              "total": 10,
+              "triggered": 0
+            },
+            "мне кажется": {
+              "total": 10,
+              "triggered": 0
+            },
+            "ещё минуту": {
+              "total": 10,
+              "triggered": 0
+            },
+            "как именно": {
+              "total": 10,
+              "triggered": 0
+            },
+            "на диване": {
+              "total": 10,
+              "triggered": 0
+            },
+            "здесь никого": {
+              "total": 10,
+              "triggered": 0
+            },
+            "пожалуйста": {
+              "total": 10,
+              "triggered": 0
+            },
+            "доброе утро": {
+              "total": 10,
+              "triggered": 0
+            },
+            "работает": {
+              "total": 10,
+              "triggered": 0
+            },
+            "календарь": {
+              "total": 10,
+              "triggered": 0
+            },
+            "сделай громче": {
+              "total": 10,
+              "triggered": 0
+            },
+            "другими словами": {
+              "total": 10,
+              "triggered": 0
+            },
+            "иди ко мне": {
+              "total": 10,
+              "triggered": 0
+            },
+            "давай посмотрим": {
+              "total": 10,
+              "triggered": 0
+            },
+            "жемчуг": {
+              "total": 10,
+              "triggered": 0
+            },
+            "гимназия": {
+              "total": 10,
+              "triggered": 0
+            },
+            "перемена": {
+              "total": 10,
+              "triggered": 2
+            },
+            "послушай меня": {
+              "total": 10,
+              "triggered": 0
+            },
+            "эмма": {
+              "total": 10,
+              "triggered": 0
+            },
+            "медленно": {
+              "total": 10,
+              "triggered": 0
+            },
+            "думай сам": {
+              "total": 10,
+              "triggered": 0
+            },
+            "книга на столе": {
+              "total": 10,
+              "triggered": 0
+            }
+          }
+        },
+        "ambiguous": {
+          "triggered": 5,
+          "total": 96,
+          "phrases": {
+            "мини бар": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини юбка": {
+              "total": 8,
+              "triggered": 3
+            },
+            "мини футбол": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини пекарня": {
+              "total": 8,
+              "triggered": 1
+            },
+            "мини сериал": {
+              "total": 8,
+              "triggered": 0
+            },
+            "министерство": {
+              "total": 8,
+              "triggered": 0
+            },
+            "минимум": {
+              "total": 8,
+              "triggered": 1
+            },
+            "минимальный размер": {
+              "total": 8,
+              "triggered": 0
+            },
+            "миниатюра": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини автобус": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини компьютер": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини проект": {
+              "total": 8,
+              "triggered": 0
+            }
+          }
+        }
+      },
+      "0.80": {
+        "full": {
+          "triggered": 279,
+          "total": 360,
+          "phrases": {
+            "Гемини": {
+              "total": 60,
+              "triggered": 47
+            },
+            "Геминай": {
+              "total": 60,
+              "triggered": 49
+            },
+            "Джемини": {
+              "total": 60,
+              "triggered": 50
+            },
+            "Джеминай": {
+              "total": 60,
+              "triggered": 49
+            },
+            "Гемма": {
+              "total": 60,
+              "triggered": 42
+            },
+            "Джемма": {
+              "total": 60,
+              "triggered": 42
+            }
+          }
+        },
+        "fragment": {
+          "triggered": 122,
+          "total": 256,
+          "phrases": {
+            "геми": {
+              "total": 64,
+              "triggered": 18
+            },
+            "джеми": {
+              "total": 64,
+              "triggered": 37
+            },
+            "мини": {
+              "total": 64,
+              "triggered": 33
+            },
+            "минай": {
+              "total": 64,
+              "triggered": 34
+            }
+          }
+        },
+        "noise": {
+          "triggered": 0,
+          "total": 80,
+          "phrases": {
+            "synthetic_noise": {
+              "total": 80,
+              "triggered": 0
+            }
+          }
+        },
+        "negative": {
+          "triggered": 4,
+          "total": 264,
+          "phrases": {
+            "геометрия": {
+              "total": 11,
+              "triggered": 0
+            },
+            "димина": {
+              "total": 11,
+              "triggered": 2
+            },
+            "временно": {
+              "total": 11,
+              "triggered": 0
+            },
+            "поменяй": {
+              "total": 11,
+              "triggered": 0
+            },
+            "георгий": {
+              "total": 10,
+              "triggered": 0
+            },
+            "мне кажется": {
+              "total": 10,
+              "triggered": 0
+            },
+            "ещё минуту": {
+              "total": 10,
+              "triggered": 0
+            },
+            "как именно": {
+              "total": 10,
+              "triggered": 0
+            },
+            "на диване": {
+              "total": 10,
+              "triggered": 0
+            },
+            "здесь никого": {
+              "total": 10,
+              "triggered": 0
+            },
+            "пожалуйста": {
+              "total": 10,
+              "triggered": 0
+            },
+            "доброе утро": {
+              "total": 10,
+              "triggered": 0
+            },
+            "работает": {
+              "total": 10,
+              "triggered": 0
+            },
+            "календарь": {
+              "total": 10,
+              "triggered": 0
+            },
+            "сделай громче": {
+              "total": 10,
+              "triggered": 0
+            },
+            "другими словами": {
+              "total": 10,
+              "triggered": 0
+            },
+            "иди ко мне": {
+              "total": 10,
+              "triggered": 0
+            },
+            "давай посмотрим": {
+              "total": 10,
+              "triggered": 0
+            },
+            "жемчуг": {
+              "total": 10,
+              "triggered": 0
+            },
+            "гимназия": {
+              "total": 10,
+              "triggered": 0
+            },
+            "перемена": {
+              "total": 10,
+              "triggered": 2
+            },
+            "послушай меня": {
+              "total": 10,
+              "triggered": 0
+            },
+            "эмма": {
+              "total": 10,
+              "triggered": 0
+            },
+            "медленно": {
+              "total": 10,
+              "triggered": 0
+            },
+            "думай сам": {
+              "total": 10,
+              "triggered": 0
+            },
+            "книга на столе": {
+              "total": 10,
+              "triggered": 0
+            }
+          }
+        },
+        "ambiguous": {
+          "triggered": 4,
+          "total": 96,
+          "phrases": {
+            "мини бар": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини юбка": {
+              "total": 8,
+              "triggered": 2
+            },
+            "мини футбол": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини пекарня": {
+              "total": 8,
+              "triggered": 1
+            },
+            "мини сериал": {
+              "total": 8,
+              "triggered": 0
+            },
+            "министерство": {
+              "total": 8,
+              "triggered": 0
+            },
+            "минимум": {
+              "total": 8,
+              "triggered": 1
+            },
+            "минимальный размер": {
+              "total": 8,
+              "triggered": 0
+            },
+            "миниатюра": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини автобус": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини компьютер": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини проект": {
+              "total": 8,
+              "triggered": 0
+            }
+          }
+        }
+      },
+      "0.90": {
+        "full": {
+          "triggered": 243,
+          "total": 360,
+          "phrases": {
+            "Гемини": {
+              "total": 60,
+              "triggered": 37
+            },
+            "Геминай": {
+              "total": 60,
+              "triggered": 46
+            },
+            "Джемини": {
+              "total": 60,
+              "triggered": 44
+            },
+            "Джеминай": {
+              "total": 60,
+              "triggered": 43
+            },
+            "Гемма": {
+              "total": 60,
+              "triggered": 37
+            },
+            "Джемма": {
+              "total": 60,
+              "triggered": 36
+            }
+          }
+        },
+        "fragment": {
+          "triggered": 87,
+          "total": 256,
+          "phrases": {
+            "геми": {
+              "total": 64,
+              "triggered": 11
+            },
+            "джеми": {
+              "total": 64,
+              "triggered": 27
+            },
+            "мини": {
+              "total": 64,
+              "triggered": 24
+            },
+            "минай": {
+              "total": 64,
+              "triggered": 25
+            }
+          }
+        },
+        "noise": {
+          "triggered": 0,
+          "total": 80,
+          "phrases": {
+            "synthetic_noise": {
+              "total": 80,
+              "triggered": 0
+            }
+          }
+        },
+        "negative": {
+          "triggered": 2,
+          "total": 264,
+          "phrases": {
+            "геометрия": {
+              "total": 11,
+              "triggered": 0
+            },
+            "димина": {
+              "total": 11,
+              "triggered": 1
+            },
+            "временно": {
+              "total": 11,
+              "triggered": 0
+            },
+            "поменяй": {
+              "total": 11,
+              "triggered": 0
+            },
+            "георгий": {
+              "total": 10,
+              "triggered": 0
+            },
+            "мне кажется": {
+              "total": 10,
+              "triggered": 0
+            },
+            "ещё минуту": {
+              "total": 10,
+              "triggered": 0
+            },
+            "как именно": {
+              "total": 10,
+              "triggered": 0
+            },
+            "на диване": {
+              "total": 10,
+              "triggered": 0
+            },
+            "здесь никого": {
+              "total": 10,
+              "triggered": 0
+            },
+            "пожалуйста": {
+              "total": 10,
+              "triggered": 0
+            },
+            "доброе утро": {
+              "total": 10,
+              "triggered": 0
+            },
+            "работает": {
+              "total": 10,
+              "triggered": 0
+            },
+            "календарь": {
+              "total": 10,
+              "triggered": 0
+            },
+            "сделай громче": {
+              "total": 10,
+              "triggered": 0
+            },
+            "другими словами": {
+              "total": 10,
+              "triggered": 0
+            },
+            "иди ко мне": {
+              "total": 10,
+              "triggered": 0
+            },
+            "давай посмотрим": {
+              "total": 10,
+              "triggered": 0
+            },
+            "жемчуг": {
+              "total": 10,
+              "triggered": 0
+            },
+            "гимназия": {
+              "total": 10,
+              "triggered": 0
+            },
+            "перемена": {
+              "total": 10,
+              "triggered": 1
+            },
+            "послушай меня": {
+              "total": 10,
+              "triggered": 0
+            },
+            "эмма": {
+              "total": 10,
+              "triggered": 0
+            },
+            "медленно": {
+              "total": 10,
+              "triggered": 0
+            },
+            "думай сам": {
+              "total": 10,
+              "triggered": 0
+            },
+            "книга на столе": {
+              "total": 10,
+              "triggered": 0
+            }
+          }
+        },
+        "ambiguous": {
+          "triggered": 1,
+          "total": 96,
+          "phrases": {
+            "мини бар": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини юбка": {
+              "total": 8,
+              "triggered": 1
+            },
+            "мини футбол": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини пекарня": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини сериал": {
+              "total": 8,
+              "triggered": 0
+            },
+            "министерство": {
+              "total": 8,
+              "triggered": 0
+            },
+            "минимум": {
+              "total": 8,
+              "triggered": 0
+            },
+            "минимальный размер": {
+              "total": 8,
+              "triggered": 0
+            },
+            "миниатюра": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини автобус": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини компьютер": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини проект": {
+              "total": 8,
+              "triggered": 0
+            }
+          }
+        }
+      },
+      "0.95": {
+        "full": {
+          "triggered": 217,
+          "total": 360,
+          "phrases": {
+            "Гемини": {
+              "total": 60,
+              "triggered": 34
+            },
+            "Геминай": {
+              "total": 60,
+              "triggered": 39
+            },
+            "Джемини": {
+              "total": 60,
+              "triggered": 43
+            },
+            "Джеминай": {
+              "total": 60,
+              "triggered": 40
+            },
+            "Гемма": {
+              "total": 60,
+              "triggered": 29
+            },
+            "Джемма": {
+              "total": 60,
+              "triggered": 32
+            }
+          }
+        },
+        "fragment": {
+          "triggered": 69,
+          "total": 256,
+          "phrases": {
+            "геми": {
+              "total": 64,
+              "triggered": 8
+            },
+            "джеми": {
+              "total": 64,
+              "triggered": 21
+            },
+            "мини": {
+              "total": 64,
+              "triggered": 19
+            },
+            "минай": {
+              "total": 64,
+              "triggered": 21
+            }
+          }
+        },
+        "noise": {
+          "triggered": 0,
+          "total": 80,
+          "phrases": {
+            "synthetic_noise": {
+              "total": 80,
+              "triggered": 0
+            }
+          }
+        },
+        "negative": {
+          "triggered": 0,
+          "total": 264,
+          "phrases": {
+            "геометрия": {
+              "total": 11,
+              "triggered": 0
+            },
+            "димина": {
+              "total": 11,
+              "triggered": 0
+            },
+            "временно": {
+              "total": 11,
+              "triggered": 0
+            },
+            "поменяй": {
+              "total": 11,
+              "triggered": 0
+            },
+            "георгий": {
+              "total": 10,
+              "triggered": 0
+            },
+            "мне кажется": {
+              "total": 10,
+              "triggered": 0
+            },
+            "ещё минуту": {
+              "total": 10,
+              "triggered": 0
+            },
+            "как именно": {
+              "total": 10,
+              "triggered": 0
+            },
+            "на диване": {
+              "total": 10,
+              "triggered": 0
+            },
+            "здесь никого": {
+              "total": 10,
+              "triggered": 0
+            },
+            "пожалуйста": {
+              "total": 10,
+              "triggered": 0
+            },
+            "доброе утро": {
+              "total": 10,
+              "triggered": 0
+            },
+            "работает": {
+              "total": 10,
+              "triggered": 0
+            },
+            "календарь": {
+              "total": 10,
+              "triggered": 0
+            },
+            "сделай громче": {
+              "total": 10,
+              "triggered": 0
+            },
+            "другими словами": {
+              "total": 10,
+              "triggered": 0
+            },
+            "иди ко мне": {
+              "total": 10,
+              "triggered": 0
+            },
+            "давай посмотрим": {
+              "total": 10,
+              "triggered": 0
+            },
+            "жемчуг": {
+              "total": 10,
+              "triggered": 0
+            },
+            "гимназия": {
+              "total": 10,
+              "triggered": 0
+            },
+            "перемена": {
+              "total": 10,
+              "triggered": 0
+            },
+            "послушай меня": {
+              "total": 10,
+              "triggered": 0
+            },
+            "эмма": {
+              "total": 10,
+              "triggered": 0
+            },
+            "медленно": {
+              "total": 10,
+              "triggered": 0
+            },
+            "думай сам": {
+              "total": 10,
+              "triggered": 0
+            },
+            "книга на столе": {
+              "total": 10,
+              "triggered": 0
+            }
+          }
+        },
+        "ambiguous": {
+          "triggered": 1,
+          "total": 96,
+          "phrases": {
+            "мини бар": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини юбка": {
+              "total": 8,
+              "triggered": 1
+            },
+            "мини футбол": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини пекарня": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини сериал": {
+              "total": 8,
+              "triggered": 0
+            },
+            "министерство": {
+              "total": 8,
+              "triggered": 0
+            },
+            "минимум": {
+              "total": 8,
+              "triggered": 0
+            },
+            "минимальный размер": {
+              "total": 8,
+              "triggered": 0
+            },
+            "миниатюра": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини автобус": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини компьютер": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини проект": {
+              "total": 8,
+              "triggered": 0
+            }
+          }
+        }
+      },
+      "0.99": {
+        "full": {
+          "triggered": 151,
+          "total": 360,
+          "phrases": {
+            "Гемини": {
+              "total": 60,
+              "triggered": 16
+            },
+            "Геминай": {
+              "total": 60,
+              "triggered": 28
+            },
+            "Джемини": {
+              "total": 60,
+              "triggered": 37
+            },
+            "Джеминай": {
+              "total": 60,
+              "triggered": 33
+            },
+            "Гемма": {
+              "total": 60,
+              "triggered": 16
+            },
+            "Джемма": {
+              "total": 60,
+              "triggered": 21
+            }
+          }
+        },
+        "fragment": {
+          "triggered": 33,
+          "total": 256,
+          "phrases": {
+            "геми": {
+              "total": 64,
+              "triggered": 3
+            },
+            "джеми": {
+              "total": 64,
+              "triggered": 13
+            },
+            "мини": {
+              "total": 64,
+              "triggered": 6
+            },
+            "минай": {
+              "total": 64,
+              "triggered": 11
+            }
+          }
+        },
+        "noise": {
+          "triggered": 0,
+          "total": 80,
+          "phrases": {
+            "synthetic_noise": {
+              "total": 80,
+              "triggered": 0
+            }
+          }
+        },
+        "negative": {
+          "triggered": 0,
+          "total": 264,
+          "phrases": {
+            "геометрия": {
+              "total": 11,
+              "triggered": 0
+            },
+            "димина": {
+              "total": 11,
+              "triggered": 0
+            },
+            "временно": {
+              "total": 11,
+              "triggered": 0
+            },
+            "поменяй": {
+              "total": 11,
+              "triggered": 0
+            },
+            "георгий": {
+              "total": 10,
+              "triggered": 0
+            },
+            "мне кажется": {
+              "total": 10,
+              "triggered": 0
+            },
+            "ещё минуту": {
+              "total": 10,
+              "triggered": 0
+            },
+            "как именно": {
+              "total": 10,
+              "triggered": 0
+            },
+            "на диване": {
+              "total": 10,
+              "triggered": 0
+            },
+            "здесь никого": {
+              "total": 10,
+              "triggered": 0
+            },
+            "пожалуйста": {
+              "total": 10,
+              "triggered": 0
+            },
+            "доброе утро": {
+              "total": 10,
+              "triggered": 0
+            },
+            "работает": {
+              "total": 10,
+              "triggered": 0
+            },
+            "календарь": {
+              "total": 10,
+              "triggered": 0
+            },
+            "сделай громче": {
+              "total": 10,
+              "triggered": 0
+            },
+            "другими словами": {
+              "total": 10,
+              "triggered": 0
+            },
+            "иди ко мне": {
+              "total": 10,
+              "triggered": 0
+            },
+            "давай посмотрим": {
+              "total": 10,
+              "triggered": 0
+            },
+            "жемчуг": {
+              "total": 10,
+              "triggered": 0
+            },
+            "гимназия": {
+              "total": 10,
+              "triggered": 0
+            },
+            "перемена": {
+              "total": 10,
+              "triggered": 0
+            },
+            "послушай меня": {
+              "total": 10,
+              "triggered": 0
+            },
+            "эмма": {
+              "total": 10,
+              "triggered": 0
+            },
+            "медленно": {
+              "total": 10,
+              "triggered": 0
+            },
+            "думай сам": {
+              "total": 10,
+              "triggered": 0
+            },
+            "книга на столе": {
+              "total": 10,
+              "triggered": 0
+            }
+          }
+        },
+        "ambiguous": {
+          "triggered": 0,
+          "total": 96,
+          "phrases": {
+            "мини бар": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини юбка": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини футбол": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини пекарня": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини сериал": {
+              "total": 8,
+              "triggered": 0
+            },
+            "министерство": {
+              "total": 8,
+              "triggered": 0
+            },
+            "минимум": {
+              "total": 8,
+              "triggered": 0
+            },
+            "минимальный размер": {
+              "total": 8,
+              "triggered": 0
+            },
+            "миниатюра": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини автобус": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини компьютер": {
+              "total": 8,
+              "triggered": 0
+            },
+            "мини проект": {
+              "total": 8,
+              "triggered": 0
+            }
+          }
+        }
+      }
+    }
+  }
+}
