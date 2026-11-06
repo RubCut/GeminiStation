@@ -18,7 +18,8 @@ public class RingAnimatorTest {
         RingAnimator a = new RingAnimator(0); a.setPhase("thinking", 800);
         a.setPhase("speaking", 1800);
         double front = a.center(2350);
-        assertEquals(0.0, ((front + .5) % 24 + 24) % 24, .0001);
+        // Compare on the circle: floating point modulo near 24 can round to 24, not 0.
+        assertEquals(1.0, Math.cos((front + .5) * 2 * Math.PI / 24), .0001);
         assertEquals(front, a.center(9000), .0001);
         assertFalse(java.util.Arrays.equals(a.frame(2350, false), a.frame(2875, false)));
     }

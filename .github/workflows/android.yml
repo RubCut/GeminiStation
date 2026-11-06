@@ -96,6 +96,7 @@ jobs:
           fi
           if ! ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleDebug :keytester:testDebugUnitTest :keytester:assembleDebug :buttonhelper:testDebugUnitTest :buttonhelper:assembleDebug :pluginrunner:testDebugUnitTest :pluginrunner:assembleDebug > build-output.txt 2>&1; then
             tail -n 80 build-output.txt
+            python3 tools/report_junit_failures.py
             while IFS= read -r line; do printf '::error::%s\n' "$line"; done < <(tail -n 35 build-output.txt)
             exit 1
           fi
