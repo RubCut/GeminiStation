@@ -10,6 +10,8 @@ for report in Path('.').glob('*/build/test-results/testDebugUnitTest/*.xml'):
         continue
     for case in root.iter('testcase'):
         for problem in list(case.findall('failure')) + list(case.findall('error')):
-            print(f"FAILED {case.get('classname')}.{case.get('name')}: {problem.get('message', '')}")
+            message = f"FAILED {case.get('classname')}.{case.get('name')}: {problem.get('message', '')}"
+            message = message.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+            print(f"::error::{message}")
             if problem.text:
                 print(problem.text[:4000])
