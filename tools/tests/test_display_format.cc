@@ -24,4 +24,10 @@ int main() {
     var.bits_per_pixel = 32; assert(!supported_display(fix, var)); var.bits_per_pixel = 24;
     var.nonstd = 1; assert(!supported_display(fix, var)); var.nonstd = 0;
     fix.visual = FB_VISUAL_PSEUDOCOLOR; assert(!supported_display(fix, var));
+    fix.visual = FB_VISUAL_TRUECOLOR;
+    fix.line_length = 72; fix.smem_len = 72;
+    var.xres = var.xres_virtual = 24; var.yres = var.yres_virtual = 1;
+    assert(supported_ring(fix, var)); assert(!supported_display(fix, var));
+    fix.line_length = 75; assert(!supported_ring(fix, var)); fix.line_length = 72;
+    fix.smem_len = 71; assert(!supported_ring(fix, var));
 }

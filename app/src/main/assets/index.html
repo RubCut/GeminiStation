@@ -262,7 +262,12 @@ details{border-color:#49454f}summary{font-size:14px;color:#d0bcff}.editor-card t
    </section>
    <section class="group" id="display" aria-labelledby="displayTitle" hidden>
     <div class="group-heading"><div><h2 id="displayTitle">Экран станции</h2><p>Подключение и управление передней LED-матрицей</p></div></div>
-    <div class="cards"><article class="card full"><div class="card-head"><span class="card-icon blue"><svg class="icon"><use href="#i-screen"/></svg></span><div><h3>LED-экран</h3><p>Анимации Gemini на экране 25 × 16.</p></div><span class="tag">ЭКСПЕРИМЕНТАЛЬНО</span></div>
+    <div class="cards"><article class="card full"><div class="card-head"><span class="card-icon blue"><svg class="icon"><use href="#i-sparkle"/></svg></span><div><h3>Световое кольцо</h3><p>Анимации для этапов разговора.</p></div><span class="tag">ЭКСПЕРИМЕНТАЛЬНО</span></div>
+     <div class="toggle-line"><div class="toggle-copy"><strong>Управлять кольцом через root</strong><span>По умолчанию выключено; нужен KernelSU и доступ к fb5.</span></div><label class="switch"><input type="checkbox" id="ringEnabled" aria-label="Управлять кольцом через root" disabled><span class="switch-track"></span></label></div>
+     <div class="field"><label class="field-label" for="ringColor">Цвет кольца</label><select id="ringColor" disabled><option value="color">Голубой и розовый</option><option value="mono">Чёрно-белый</option></select></div>
+     <p class="field-hint">Прямая запись в fb5 ещё не проверена на станции и может конфликтовать со штатными анимациями или вызвать сбой драйвера. Приложение не отключает системные службы. При ошибке выключите режим; возврат штатной индикации зависит от прошивки.</p>
+     <div class="actions"><button id="saveRingOutput" class="secondary" disabled>Сохранить кольцо</button></div><p id="ringOutputMessage" class="status-message" role="status"></p>
+    </article><article class="card full"><div class="card-head"><span class="card-icon blue"><svg class="icon"><use href="#i-screen"/></svg></span><div><h3>LED-экран</h3><p>Анимации Gemini на экране 25 × 16.</p></div><span class="tag">ЭКСПЕРИМЕНТАЛЬНО</span></div>
      <div class="toggle-line"><div class="toggle-copy"><strong>Прямой вывод через root</strong><span>Экспериментально: запись в экран fb4 без входа в Яндекс. По умолчанию выключен.</span></div><label class="switch"><input type="checkbox" id="ledRoot" aria-label="Прямой вывод экрана через root" disabled><span class="switch-track"></span></label></div>
      <p class="field-hint">Требуются KernelSU и разрешение root для приложения. Проверьте работу на станции: формат и доступ зависят от прошивки. Мы не останавливаем системные службы; они могут перезаписывать изображение. Возврат часов после остановки не гарантирован. При ошибке можно вручную выключить этот режим и использовать обычный способ.</p>
      <div class="actions"><button id="saveLedOutput" class="secondary" disabled>Сохранить способ вывода</button></div><p id="ledOutputMessage" class="status-message" role="status"></p>
@@ -690,6 +695,19 @@ el('saveLedOutput').addEventListener('click',async()=>{
  finally{el('ledRoot').disabled=false;el('saveLedOutput').disabled=false}
 });
 loadLedOutput();
+async function loadRingOutput(){
+ try{const data=await request('/api/ring/output');if(typeof data.enabled!=='boolean'||typeof data.monochrome!=='boolean')throw Error('Не удалось загрузить настройки кольца');el('ringEnabled').checked=data.enabled;el('ringColor').value=data.monochrome?'mono':'color';for(const id of ['ringEnabled','ringColor','saveRingOutput'])el(id).disabled=false}
+ catch(e){el('ringOutputMessage').textContent=e.message}
+}
+el('saveRingOutput').addEventListener('click',async()=>{
+ const enabled=el('ringEnabled').checked, monochrome=el('ringColor').value==='mono';
+ if(enabled&&!confirm('Включить экспериментальную запись в кольцо? Драйвер ещё не проверен на вашей станции.'))return;
+ for(const id of ['ringEnabled','ringColor','saveRingOutput'])el(id).disabled=true;
+ try{const result=await request('/api/ring/output',{method:'POST',body:JSON.stringify({enabled,monochrome})});el('ringOutputMessage').textContent=result.message}
+ catch(e){el('ringOutputMessage').textContent=e.message;await loadRingOutput()}
+ finally{for(const id of ['ringEnabled','ringColor','saveRingOutput'])el(id).disabled=false}
+});
+loadRingOutput();
 el('testLed').addEventListener('click',()=>ledRequest('/api/led/test',{}).catch(()=>{}));
 el('clearLed').addEventListener('click',()=>ledRequest('/api/led/clear',{}).catch(()=>{}));
 el('deleteLed').addEventListener('click',()=>{if(confirm('Удалить авторизацию Яндекса и настройки экрана?'))ledRequest('/api/led',{delete:true}).catch(()=>{})});

@@ -17,5 +17,6 @@ with zipfile.ZipFile(sys.argv[1]) as apk:
     for abi in display:
         assert apk.read(f'lib/{abi}/libgemini_display.so')[:4] == b'\x7fELF'
     dex = [name for name in names if re.fullmatch(r'classes\d*\.dex', name)]
-    assert dex and any(b'Lru/geministation/RootDisplayHelper;' in apk.read(name) for name in dex), 'root helper missing from DEX'
+    for helper in (b'Lru/geministation/RootDisplayHelper;', b'Lru/geministation/RootRingHelper;'):
+        assert dex and any(helper in apk.read(name) for name in dex), f'root helper missing from DEX: {helper}'
 print('Framebuffer helper and native library are present for every supported ABI')

@@ -451,6 +451,25 @@ public final class WebServerService extends Service {
                     } catch (java.io.IOException e) { return json(Response.Status.BAD_REQUEST, e.getMessage()); }
                     catch (Exception e) { return json(Response.Status.INTERNAL_ERROR, "Не удалось сохранить образец"); }
                 }
+                if ("/api/ring/output".equals(path) && session.getMethod() == Method.GET)
+                    return reply(Response.Status.OK, "application/json; charset=utf-8", new JSONObject().put("enabled", RootRing.enabled(context)).put("monochrome", RootRing.monochrome(context)).toString());
+                if ("/api/ring/output".equals(path) && session.getMethod() == Method.POST) {
+                    if (!WebSecurity.permittedWrite(host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station")))
+                        return json(Response.Status.FORBIDDEN, "Запрос отклонён");
+                    String lengthHeader = session.getHeaders().get("content-length");
+                    long length = lengthHeader == null ? -1 : Long.parseLong(lengthHeader);
+                    if (length < 1 || length > 1024 || session.getHeaders().containsKey("transfer-encoding"))
+                        return json(Response.Status.BAD_REQUEST, "Недопустимый размер запроса");
+                    Map<String, String> files = new HashMap<>(); session.parseBody(files);
+                    JSONObject data = new JSONObject(files.get("postData"));
+                    if (!(data.opt("enabled") instanceof Boolean) || !(data.opt("monochrome") instanceof Boolean))
+                        return json(Response.Status.BAD_REQUEST, "Выберите настройки кольца");
+                    boolean enabled = data.getBoolean("enabled"), monochrome = data.getBoolean("monochrome");
+                    if (!RootRing.save(context, enabled, monochrome)) return json(Response.Status.INTERNAL_ERROR, "Не удалось сохранить настройку");
+                    new Handler(Looper.getMainLooper()).post(() -> RootRing.get(context).settingsChanged());
+                    AppLog.add("Кольцо: " + (enabled ? "включён экспериментальный root-режим" : "root-режим выключен") + "; палитра " + (monochrome ? "белая" : "цветная"));
+                    return json(Response.Status.OK, enabled ? "Настройки сохранены. Работа кольца не проверена на станции." : "Прямое управление кольцом выключено.");
+                }
                 if ("/api/led/output".equals(path) && session.getMethod() == Method.GET)
                     return reply(Response.Status.OK, "application/json; charset=utf-8", new JSONObject().put("root", RootDisplay.enabled(context)).toString());
                 if ("/api/led/output".equals(path) && session.getMethod() == Method.POST) {

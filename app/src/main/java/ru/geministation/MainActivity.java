@@ -62,6 +62,7 @@ public final class MainActivity extends Activity {
     private boolean closeAfterResponse;
     private ObjectAnimator spin, pulse;
     private LedController led;
+    private RootRing ring;
     private Runnable recognitionTimeout;
     private long recognitionStarted;
     private int recognitionAttempt, partialCount, handoffGeneration;
@@ -101,6 +102,7 @@ public final class MainActivity extends Activity {
         deviceActions = new DeviceActions(this);
         client = new GeminiClient(getApplicationContext());
         led = LedController.get(this);
+        ring = RootRing.get(this);
         buildUi();
         try { startForegroundService(new Intent(this, WebServerService.class)); }
         catch (RuntimeException e) { AppLog.add("Веб-сервер: ошибка запуска " + e.getClass().getSimpleName()); }
@@ -224,7 +226,7 @@ public final class MainActivity extends Activity {
     }
     private void startSpinner() {
         stopPulse();
-        led.show("thinking");
+        led.show("thinking"); ring.show("thinking");
         if (spin != null && spin.isStarted()) return;
         thinkingIndicator.start();
         spin = ObjectAnimator.ofFloat(logo, View.ROTATION, 0f, 360f);
@@ -240,7 +242,7 @@ public final class MainActivity extends Activity {
     }
     private void showErrorAndClose(String message) {
         AppLog.add("Диалог: " + message);
-        stopSpinner(); stopPulse(); led.show(null);
+        stopSpinner(); stopPulse(); led.show(null); ring.stop();
         showText(message);
         flow.finish();
         cancelRecognition();
@@ -249,6 +251,7 @@ public final class MainActivity extends Activity {
         handler.postDelayed(() -> { if (!destroyed) finish(); }, 5000);
     }
     private void closeForSilence() {
+        ring.stop();
         AppLog.add("Диалог: пользователь не ответил; завершение");
         flow.finish();
         cancelRecognition();
@@ -430,7 +433,7 @@ public final class MainActivity extends Activity {
     }
     private void confirmMedia(long delay) {
         final int generation = speechGeneration.incrementAndGet();
-        animatePulse(true); led.show("speaking");
+        animatePulse(true); led.show("speaking"); ring.show("speaking");
         AppLog.add("Медиа: показываем карточку и воспроизводим сигнал без TTS");
         soundCuePlayer.play(R.raw.waiting_for_answer, "подтверждение медиакоманды", () -> {
             if (destroyed || !resumed || speechGeneration.get() != generation || flow.phase() != ConversationFlow.Phase.SPEAKING) return;
@@ -443,7 +446,7 @@ public final class MainActivity extends Activity {
         runOnUiThread(() -> {
             if (destroyed || !resumed || speechGeneration.get() != generation || flow.phase() != ConversationFlow.Phase.SPEAKING) return;
             AppLog.add("Диалог: озвучка началась через " + (SystemClock.elapsedRealtime() - answerStarted) + " мс после распознавания");
-            animatePulse(true); led.show("speaking");
+            animatePulse(true); led.show("speaking"); ring.show("speaking");
         });
     }
     private void speak(String response) {
@@ -501,7 +504,7 @@ public final class MainActivity extends Activity {
         runOnUiThread(() -> {
             if (destroyed || !resumed || speechGeneration.get() != generation) return;
             AppLog.add("TTS: " + reason + "; ответ оставлен на экране");
-            stopSpinner(); stopPulse();
+            stopSpinner(); stopPulse(); ring.stop();
             backgroundAudioFocus.release();
             handler.postDelayed(() -> { if (!destroyed && resumed && speechGeneration.get() == generation) beginFollowUp(); }, 2000);
         });
@@ -540,6 +543,7 @@ public final class MainActivity extends Activity {
         } catch (Exception e) { keyError = "Не удалось прочитать API-ключ. Проверьте веб-настройки."; }
         if (keyError != null) {
             final String message = keyError;
+            ring.show("activation");
             soundCuePlayer.play(R.raw.assistant_start, "активация", () -> {
                 if (resumed && !destroyed) showErrorAndClose(message);
             });
@@ -610,6 +614,7 @@ public final class MainActivity extends Activity {
         cueComplete = false;
         // Keep the answer on screen during follow-up silence; replace it as soon as speech begins.
         animatePulse(false); led.show("listening");
+        ring.show(!followUp && cue == R.raw.assistant_start ? "activation" : "listening");
         if (!followUp) showText("Подключаюсь…");
         final KeyRotation.Attempt keys;
         try { keys = keyVault.attempt(KeyRotationDomains.Domain.LIVE); }
@@ -621,6 +626,7 @@ public final class MainActivity extends Activity {
         Runnable afterCue = () -> {
             if (!listening || attempt != recognitionAttempt || destroyed || !resumed) return;
             cueComplete = true;
+            ring.show("listening");
             if (liveTranscriber != null) {
                 if (!voiceTuning.preconnect) liveTranscriber.start();
                 liveTranscriber.allowCapture();
@@ -726,7 +732,7 @@ public final class MainActivity extends Activity {
         if (listening) AppLog.add("Речь #" + recognitionAttempt + ": отмена при уходе с экрана через " + recognitionElapsed() + " мс");
         soundCuePlayer.cancel();
         pendingNavigation = null;
-        cancelRecognition(); stopSpeaking(); stopSpinner(); stopPulse(); led.show(null);
+        cancelRecognition(); stopSpeaking(); stopSpinner(); stopPulse(); led.show(null); ring.stop();
         backgroundAudioFocus.release();
         WakeWordController.get(this).dialogClosed();
         // Don't leave an invisible assistant listening or waiting on a network request.
@@ -734,7 +740,7 @@ public final class MainActivity extends Activity {
     }
     @Override protected void onDestroy() {
         destroyed = true; flow.finish();
-        led.show(null);
+        led.show(null); ring.stop();
         handler.removeCallbacksAndMessages(null);
         soundCuePlayer.close();
         preferences.unregisterOnSharedPreferenceChangeListener(preferenceListener);
