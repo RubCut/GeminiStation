@@ -451,6 +451,24 @@ public final class WebServerService extends Service {
                     } catch (java.io.IOException e) { return json(Response.Status.BAD_REQUEST, e.getMessage()); }
                     catch (Exception e) { return json(Response.Status.INTERNAL_ERROR, "Не удалось сохранить образец"); }
                 }
+                if ("/api/led/output".equals(path) && session.getMethod() == Method.GET)
+                    return reply(Response.Status.OK, "application/json; charset=utf-8", new JSONObject().put("root", RootDisplay.enabled(context)).toString());
+                if ("/api/led/output".equals(path) && session.getMethod() == Method.POST) {
+                    if (!WebSecurity.permittedWrite(host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station")))
+                        return json(Response.Status.FORBIDDEN, "Запрос отклонён");
+                    String lengthHeader = session.getHeaders().get("content-length");
+                    long length = lengthHeader == null ? -1 : Long.parseLong(lengthHeader);
+                    if (length < 1 || length > 1024 || session.getHeaders().containsKey("transfer-encoding"))
+                        return json(Response.Status.BAD_REQUEST, "Недопустимый размер запроса");
+                    Map<String, String> files = new HashMap<>(); session.parseBody(files);
+                    JSONObject data = new JSONObject(files.get("postData"));
+                    if (!(data.opt("root") instanceof Boolean)) return json(Response.Status.BAD_REQUEST, "Выберите способ вывода");
+                    boolean root = data.getBoolean("root");
+                    if (!RootDisplay.setEnabled(context, root)) return json(Response.Status.INTERNAL_ERROR, "Не удалось сохранить настройку");
+                    new Handler(Looper.getMainLooper()).post(() -> LedController.get(context).backendChanged());
+                    AppLog.add("Экран: выбран " + (root ? "экспериментальный root framebuffer" : "обычный способ через Яндекс"));
+                    return json(Response.Status.OK, root ? "Выбран root-режим. Проверьте разрешение root и журнал при проверке экрана." : "Выбран обычный способ через Яндекс.");
+                }
                 if ("/api/led/animations".equals(path) && session.getMethod() == Method.GET)
                     return reply(Response.Status.OK, "application/json; charset=utf-8", LedAnimations.info(context).toString());
                 if ("/api/led/animations".equals(path) && session.getMethod() == Method.POST) {
@@ -489,13 +507,13 @@ public final class WebServerService extends Service {
                     JSONObject data = new JSONObject(files.get("postData"));
                     SecretStore store = new SecretStore(context, "led_secrets");
                     if ("/api/led/test".equals(path) || "/api/led/clear".equals(path)) {
-                        if (store.load().isEmpty()) return json(Response.Status.BAD_REQUEST, "Сначала войдите в Яндекс и выберите станцию или импортируйте настройки");
+                        if (!RootDisplay.enabled(context) && store.load().isEmpty()) return json(Response.Status.BAD_REQUEST, "Сначала войдите в Яндекс и выберите станцию или импортируйте настройки");
                         if ("/api/led/test".equals(path)) {
                             new Handler(Looper.getMainLooper()).post(() -> LedController.get(context).test());
                             return json(Response.Status.OK, "Команда проверки запущена; смотрите журнал и экран станции");
                         }
                         new Handler(Looper.getMainLooper()).post(() -> LedController.get(context).clear());
-                        return json(Response.Status.OK, "Запрошен возврат к часам; аккаунт сохранён");
+                        return json(Response.Status.OK, RootDisplay.enabled(context) ? "Прямая запись остановлена. Возврат часов зависит от прошивки." : "Запрошен возврат к часам; аккаунт сохранён");
                     }
                     qrLogin.clear();
                     boolean deleted = data.optBoolean("delete", false);

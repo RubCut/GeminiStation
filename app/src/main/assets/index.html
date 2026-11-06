@@ -263,6 +263,10 @@ details{border-color:#49454f}summary{font-size:14px;color:#d0bcff}.editor-card t
    <section class="group" id="display" aria-labelledby="displayTitle" hidden>
     <div class="group-heading"><div><h2 id="displayTitle">Экран станции</h2><p>Подключение и управление передней LED-матрицей</p></div></div>
     <div class="cards"><article class="card full"><div class="card-head"><span class="card-icon blue"><svg class="icon"><use href="#i-screen"/></svg></span><div><h3>LED-экран</h3><p>Анимации Gemini на экране 25 × 16.</p></div><span class="tag">ЭКСПЕРИМЕНТАЛЬНО</span></div>
+     <div class="toggle-line"><div class="toggle-copy"><strong>Прямой вывод через root</strong><span>Экспериментально: запись в экран fb4 без входа в Яндекс. По умолчанию выключен.</span></div><label class="switch"><input type="checkbox" id="ledRoot" aria-label="Прямой вывод экрана через root" disabled><span class="switch-track"></span></label></div>
+     <p class="field-hint">Требуются KernelSU и разрешение root для приложения. Проверьте работу на станции: формат и доступ зависят от прошивки. Мы не останавливаем системные службы; они могут перезаписывать изображение. Возврат часов после остановки не гарантирован. При ошибке можно вручную выключить этот режим и использовать обычный способ.</p>
+     <div class="actions"><button id="saveLedOutput" class="secondary" disabled>Сохранить способ вывода</button></div><p id="ledOutputMessage" class="status-message" role="status"></p>
+     <div class="divider"></div>
      <h3>Редактор анимаций</h3><p class="field-hint">Выберите анимацию отдельно для каждого состояния или загрузите свою. «Смешанная» объединяет прежнее движение с новым рисунком Gemini.</p>
      <div class="display-preview" aria-label="Анимации экрана станции">
       <div class="display-preview-item"><div class="display-preview-screen"><img id="ledPreview-listening" src="/api/led/preview/new/listening" alt="" width="25" height="16" loading="lazy"></div><strong>Слушает</strong><span>Когда вы говорите</span>
@@ -673,6 +677,19 @@ for(const mode of ledModes){
  });
 }
 loadLedAnimations();
+async function loadLedOutput(){
+ try{const data=await request('/api/led/output');if(typeof data.root!=='boolean')throw Error('Не удалось загрузить способ вывода');el('ledRoot').checked=data.root;el('ledRoot').disabled=false;el('saveLedOutput').disabled=false}
+ catch(e){el('ledOutputMessage').textContent=e.message}
+}
+el('saveLedOutput').addEventListener('click',async()=>{
+ const enabled=el('ledRoot').checked;
+ if(enabled&&!confirm('Включить экспериментальную прямую запись в экран? Работа и возврат часов ещё не проверены на вашей станции.'))return;
+ el('saveLedOutput').disabled=true;el('ledRoot').disabled=true;
+ try{const result=await request('/api/led/output',{method:'POST',body:JSON.stringify({root:enabled})});el('ledOutputMessage').textContent=result.message}
+ catch(e){el('ledOutputMessage').textContent=e.message;await loadLedOutput()}
+ finally{el('ledRoot').disabled=false;el('saveLedOutput').disabled=false}
+});
+loadLedOutput();
 el('testLed').addEventListener('click',()=>ledRequest('/api/led/test',{}).catch(()=>{}));
 el('clearLed').addEventListener('click',()=>ledRequest('/api/led/clear',{}).catch(()=>{}));
 el('deleteLed').addEventListener('click',()=>{if(confirm('Удалить авторизацию Яндекса и настройки экрана?'))ledRequest('/api/led',{delete:true}).catch(()=>{})});

@@ -52,6 +52,8 @@ jobs:
         run: node tools/test_home_rooms.js
       - name: Test animation editor
         run: node tools/test_led_editor.js
+      - name: Test framebuffer format guard
+        run: g++ -std=c++17 -Wall -Wextra -Werror tools/tests/test_display_format.cc -o /tmp/test-display && /tmp/test-display
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
