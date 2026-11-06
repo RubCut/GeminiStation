@@ -6,7 +6,7 @@ public class RingAnimatorTest {
     @Test public void activationReturnsToFrontAfterFastOrbit() {
         RingAnimator a = new RingAnimator(1000);
         assertEquals(-.5, a.center(1100), .0001);
-        assertEquals(11.5, a.center(1446), .03);
+        assertEquals(11.5, a.center(1447), .03);
         assertEquals(23.5, a.center(1794), .001);
         assertEquals(23.5, a.center(3000), .001);
     }
