@@ -104,6 +104,8 @@ jobs:
         run: python3 tools/test_sound_assets.py app/build/outputs/apk/debug/app-debug.apk
       - name: Verify microWakeWord APK assets
         run: python3 tools/test_micro_apk.py app/build/outputs/apk/debug/app-debug.apk
+      - name: Verify framebuffer APK assets
+        run: python3 tools/test_display_apk.py app/build/outputs/apk/debug/app-debug.apk
       - name: Verify APK signatures
         shell: bash
         run: |
