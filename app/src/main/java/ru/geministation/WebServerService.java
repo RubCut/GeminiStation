@@ -78,7 +78,8 @@ public final class WebServerService extends Service {
 
     private static final class Server extends NanoHTTPD {
         private final Context context;
-        private final String page;
+        private final String page, loginPage;
+        private final PanelAuth panelAuth;
         private final YandexQrLogin qrLogin;
         private final GeminiClient sampleClient;
         private final AndroidTtsPlayer systemTtsSample;
@@ -90,6 +91,11 @@ public final class WebServerService extends Service {
         Server(Context context) throws Exception {
             super(PORT); // Listen on all interfaces. Use ADB forwarding on untrusted networks.
             this.context = context;
+            this.panelAuth = new PanelAuth(context);
+            try (InputStream in = context.getAssets().open("login.html"); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+                byte[] b = new byte[4096]; int n; while ((n = in.read(b)) != -1) out.write(b, 0, n);
+                loginPage = out.toString("UTF-8");
+            }
             this.sampleClient = new GeminiClient(context);
             this.systemTtsSample = new AndroidTtsPlayer(context);
             this.qrLogin = new YandexQrLogin(context);
@@ -119,6 +125,51 @@ public final class WebServerService extends Service {
             String path = session.getUri();
             String host = session.getHeaders().get("host");
             if (!WebSecurity.permittedHost(host)) return json(Response.Status.FORBIDDEN, "Недопустимый адрес");
+            if ("/api/panel-login".equals(path) && session.getMethod() == Method.POST) {
+                if (!WebSecurity.permittedWrite(host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station")))
+                    return json(Response.Status.FORBIDDEN, "Запрос отклонён");
+                try {
+                    long length = Long.parseLong(session.getHeaders().getOrDefault("content-length", "-1"));
+                    if (length < 1 || length > 2048 || session.getHeaders().containsKey("transfer-encoding")) return json(Response.Status.BAD_REQUEST, "Недопустимый запрос");
+                    Map<String, String> files = new HashMap<>(); session.parseBody(files);
+                    JSONObject data = new JSONObject(files.get("postData"));
+                    if (!(data.opt("password") instanceof String)) return json(Response.Status.BAD_REQUEST, "Введите пароль");
+                    String token = panelAuth.login(session.getRemoteIpAddress(), data.getString("password"));
+                    if (token == null) return json(Response.Status.FORBIDDEN, "Неверный пароль или превышено число попыток. Попробуйте через минуту.");
+                    Response response = json(Response.Status.OK, "Вход выполнен"); response.addHeader("Set-Cookie", PanelAuth.cookie(token)); return response;
+                } catch (Exception e) { return json(Response.Status.BAD_REQUEST, "Не удалось выполнить вход"); }
+            }
+            boolean stationLed = PanelAccessPolicy.stationLedAsset(session.getMethod().name(), path, session.getRemoteIpAddress());
+            if (!stationLed && !panelAuth.authorized(session.getHeaders().get("cookie"))) {
+                if (session.getMethod() == Method.GET && "/".equals(path)) return reply(Response.Status.OK, "text/html; charset=utf-8", loginPage);
+                return json(Response.Status.UNAUTHORIZED, "Для доступа к панели необходимо войти");
+            }
+            if ("/api/panel-auth".equals(path) && session.getMethod() == Method.GET) {
+                try { return reply(Response.Status.OK, "application/json; charset=utf-8", new JSONObject().put("enabled", panelAuth.enabled()).toString()); }
+                catch (Exception e) { return json(Response.Status.INTERNAL_ERROR, "Ошибка доступа"); }
+            }
+            if ("/api/panel-auth".equals(path) && session.getMethod() == Method.POST) {
+                if (!WebSecurity.permittedWrite(host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station"))) return json(Response.Status.FORBIDDEN, "Запрос отклонён");
+                try {
+                    long length = Long.parseLong(session.getHeaders().getOrDefault("content-length", "-1"));
+                    if (length < 1 || length > 2048 || session.getHeaders().containsKey("transfer-encoding")) return json(Response.Status.BAD_REQUEST, "Недопустимый запрос");
+                    Map<String, String> files = new HashMap<>(); session.parseBody(files); JSONObject data = new JSONObject(files.get("postData"));
+                    if (!(data.opt("action") instanceof String)) return json(Response.Status.BAD_REQUEST, "Некорректное действие");
+                    if (panelAuth.enabled()) {
+                        if (!(data.opt("current") instanceof String) || panelAuth.login(session.getRemoteIpAddress(), data.getString("current")) == null)
+                            return json(Response.Status.FORBIDDEN, "Неверный текущий пароль или превышено число попыток");
+                    }
+                    String action = data.getString("action");
+                    if ("disable".equals(action)) {
+                        if (!panelAuth.disable()) return json(Response.Status.INTERNAL_ERROR, "Не удалось отключить пароль");
+                        Response response = json(Response.Status.OK, "Пароль отключён"); response.addHeader("Set-Cookie", PanelAuth.expiredCookie()); return response;
+                    }
+                    if (!"set".equals(action) || !(data.opt("password") instanceof String) || !PanelAuth.validPassword(data.getString("password")))
+                        return json(Response.Status.BAD_REQUEST, "Пароль должен содержать от 8 до 128 символов");
+                    String token = panelAuth.setPassword(data.getString("password"));
+                    Response response = json(Response.Status.OK, "Пароль сохранён"); response.addHeader("Set-Cookie", PanelAuth.cookie(token)); return response;
+                } catch (Exception e) { return json(Response.Status.INTERNAL_ERROR, "Не удалось сохранить настройки доступа"); }
+            }
             if (session.getMethod() == Method.GET && "/".equals(path)) return reply(Response.Status.OK, "text/html; charset=utf-8", page);
             if (session.getMethod() == Method.GET && "/api/fonts/google-sans.ttf".equals(path)) {
                 try {
@@ -168,6 +219,19 @@ public final class WebServerService extends Service {
             }
             if (!path.startsWith("/api/")) return json(Response.Status.NOT_FOUND, "Не найдено");
             try {
+                if ("/api/settings-backup".equals(path) && session.getMethod() == Method.GET)
+                    return reply(Response.Status.OK, "application/json; charset=utf-8", SettingsBackup.export(context).toString());
+                if ("/api/settings-backup".equals(path) && session.getMethod() == Method.POST) {
+                    if (!WebSecurity.permittedWrite(host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station"))) return json(Response.Status.FORBIDDEN, "Запрос отклонён");
+                    long length = Long.parseLong(session.getHeaders().getOrDefault("content-length", "-1"));
+                    if (length < 1 || length > 65536 || session.getHeaders().containsKey("transfer-encoding")) return json(Response.Status.BAD_REQUEST, "Недопустимый размер файла");
+                    Map<String, String> files = new HashMap<>(); session.parseBody(files);
+                    try {
+                        if (!SettingsBackup.restore(context, new JSONObject(files.get("postData")))) return json(Response.Status.INTERNAL_ERROR, "Ошибка сохранения: часть настроек могла примениться; проверьте их");
+                        AppLog.add("Настройки импортированы из файла без секретов");
+                        return json(Response.Status.OK, "Настройки импортированы");
+                    } catch (IllegalArgumentException | org.json.JSONException e) { return json(Response.Status.BAD_REQUEST, "Некорректный файл или недоступный TTS-движок; настройки не применены"); }
+                }
                 if (session.getMethod() == Method.GET && "/api/logs".equals(path)) {
                     JSONObject result = new JSONObject().put("logs", AppLog.snapshot()).put("model", AppSettings.model(context))
                             .put("voice", AppSettings.voice(context)).put("voices", new org.json.JSONArray(TtsVoices.ALL))
