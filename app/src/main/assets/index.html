@@ -129,6 +129,32 @@ details{border-color:#49454f}summary{font-size:14px;color:#d0bcff}.editor-card t
 /* Compact MD3 density, while preserving readable text and 40px touch targets. */
 .sidebar{padding:20px 12px;gap:22px}.nav a{min-height:42px;padding:8px 14px;gap:10px}.main{padding:0 28px 40px}.topbar{height:56px}.intro{padding:20px 24px;margin-top:16px}.intro h1{font-size:27px}.group{margin-top:22px}.group-heading{margin-bottom:12px}.cards{gap:10px}.card{padding:17px;border-radius:18px}.card-head{margin-bottom:12px}.card-icon{width:36px;height:36px}.field{margin-top:12px}.actions{margin-top:12px}.overview{gap:10px;margin:12px 0 18px}.overview-card{min-height:78px;padding:13px}.notice{margin-top:14px;padding:12px}.overview-links{display:flex;flex-wrap:wrap;gap:8px}.overview-links a{background:var(--md-surface-high);padding:9px 13px;border-radius:12px;color:#e8def8}.overview-links a:hover{background:#49454f}
 @media(max-width:760px){.sidebar{padding:12px 12px 0}.nav a{min-height:40px;padding:8px 12px}.main{padding:0 12px 32px}.intro{padding:18px;margin-top:12px}.card{padding:15px}.overview-card{min-height:70px;padding:12px}}
+
+/* Phone navigation and compact, touch-friendly MD3 surfaces. */
+.mobile-nav,.mobile-more-layer{display:none}
+@media(max-width:760px){
+ html{scroll-padding-top:12px}body{background:#121219}.layout{display:block;position:relative;min-height:100dvh}
+ .sidebar{height:76px;padding:15px 16px;background:#1c1b24;display:flex;justify-content:center;border:0}
+ .sidebar>.brand{padding:0}.sidebar>div:not(.brand),.sidebar-foot{display:none}
+ .brand-mark{width:42px;height:42px;border-radius:15px}.brand-name{font-size:16px;line-height:1.2}.brand-sub{font-size:11px;margin-top:3px}
+ .main{padding:0 16px calc(116px + env(safe-area-inset-bottom,0px))}.topbar{position:absolute;top:20px;right:16px;height:36px;border:0;z-index:2}.breadcrumb{display:none}
+ .connection{padding:8px 10px;font-size:11px;border-radius:22px;background:#302d37}.connection .dot{width:7px;height:7px}.connection-desktop{display:none}.connection-mobile{display:inline}
+ .intro{margin:20px 0 0;padding:0;background:none;border:0;box-shadow:none;display:block;overflow:visible}.intro:after{display:none}.eyebrow{font-size:10px;margin-bottom:6px;letter-spacing:.12em}.intro h1{font-size:27px;line-height:1.15}.intro-copy{font-size:13px;line-height:1.45;margin-top:6px}.local-badge{display:none}
+ .notice{margin-top:16px;padding:13px 14px;border-radius:16px}.notice p{font-size:12px;line-height:1.45}
+ .overview{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:14px 0}.overview-card,.overview-card:last-child{grid-column:auto;min-height:82px;padding:13px;border-radius:18px;background:#24232e}.overview-top{font-size:10px;letter-spacing:.03em;line-height:1.3}.overview-top .icon{width:17px;height:17px}.overview-value{font-size:14px;margin-top:8px;line-height:1.3}
+ .overview-links{display:none}.overview-tools{gap:9px}.overview-detail{margin:0;border:1px solid #34313e}.overview-detail>summary{min-height:44px}
+ .group{margin-top:22px}.group-heading{margin-bottom:12px}.group-heading h2{font-size:19px}.cards{grid-template-columns:1fr;gap:10px}.card,.card.full{grid-column:auto;padding:16px;border-radius:20px}.card-head{gap:12px;margin-bottom:14px}.card-icon{width:38px;height:38px;border-radius:13px}.field{margin-top:14px}.field-label,.row-label{margin-bottom:6px}.field-hint{line-height:1.45}.actions{gap:8px;margin-top:14px}button{min-height:44px}input:not([type="checkbox"]):not([type="range"]),select,textarea{font-size:16px;min-height:48px}.toggle-line{min-height:44px}
+ .footer{padding-top:22px;font-size:11px}.editor-card .actions{position:static}.editor-card textarea{min-height:45vh}.log-output{max-height:55vh}
+ .mobile-nav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));position:fixed;z-index:20;left:12px;right:12px;bottom:12px;bottom:max(12px,env(safe-area-inset-bottom,0px));padding:7px 5px 5px;background:#292831;border:1px solid #ffffff0d;border-radius:32px;box-shadow:0 8px 30px #0008;transition:transform .18s}
+ .mobile-nav a,.mobile-nav button{background:transparent;border:0;color:#c9c5d3;min-width:0;min-height:56px;padding:3px 0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:10px;font-weight:600;line-height:1.1;border-radius:20px;letter-spacing:0;white-space:nowrap}
+ .mobile-nav a:hover,.mobile-nav button:hover:not(:disabled){background:transparent;color:#eee7fa}.mobile-nav .nav-icon{width:48px;height:27px;display:grid;place-items:center;border-radius:18px}.mobile-nav .icon{width:20px;height:20px}.mobile-nav [aria-current="page"]{color:#efe8ff}.mobile-nav [aria-current="page"] .nav-icon,.mobile-nav button[aria-expanded="true"] .nav-icon{background:#4a435f;color:#e9ddff}
+ .mobile-more-layer:not([hidden]){display:block;position:fixed;inset:0;z-index:19}.mobile-more-backdrop{position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:0;background:#0008}.mobile-more-backdrop:hover:not(:disabled){background:#0008}
+ .mobile-more-sheet{position:absolute;left:12px;right:12px;bottom:90px;bottom:calc(max(12px,env(safe-area-inset-bottom,0px)) + 78px);max-height:min(60vh,430px);overflow:auto;padding:16px;background:#292831;border:1px solid #49454f;border-radius:24px;box-shadow:0 8px 30px #0008}.mobile-more-sheet h2{font-size:15px;margin:0 0 8px;padding:0 8px;color:#e6e1e5}.mobile-more-sheet a{display:flex;align-items:center;gap:12px;min-height:48px;padding:9px 10px;border-radius:14px;font-size:14px;color:#e5deee}.mobile-more-sheet a:hover,.mobile-more-sheet a[aria-current="page"]{background:#4a435f}.mobile-more-sheet .icon{color:#d0bcff;width:20px;height:20px}
+ .keyboard-open .mobile-nav{transform:translateY(150%);pointer-events:none}
+}
+@media(max-width:340px){.brand-name{font-size:14px}.brand-sub{font-size:10px}.brand-mark{width:36px;height:36px}.sidebar{padding-left:12px}.topbar{right:12px}.main{padding-left:12px;padding-right:12px}.mobile-nav a,.mobile-nav button{font-size:9px}.mobile-nav .nav-icon{width:42px}}
+@media(min-width:761px){.connection-mobile{display:none}}
+.overview-detail{margin-top:0;padding:17px}.overview-detail>summary{list-style:none;display:flex;align-items:center;gap:12px;color:inherit;font-weight:inherit}.overview-detail>summary::-webkit-details-marker{display:none}.overview-detail>summary::after{content:"+";margin-left:auto;font-size:23px;color:#d0bcff}.overview-detail[open]>summary::after{content:"−"}.overview-detail>summary .card-head{margin:0;flex:1}.overview-detail[open]>summary{margin-bottom:14px}.overview-detail-title{display:block;font-size:15px;font-weight:650;line-height:1.3}.overview-detail-sub{display:block;color:var(--muted);font-size:12px;line-height:1.4;margin-top:3px}
 </style>
 </head>
 <body>
@@ -144,6 +170,7 @@ details{border-color:#49454f}summary{font-size:14px;color:#d0bcff}.editor-card t
  <symbol id="i-info" viewBox="0 0 24 24"><path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></symbol>
  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm7 10c0 4.52-2.98 8.69-7 9.93-4.02-1.24-7-5.41-7-9.93V6.3l7-3.11 7 3.11V11zm-11.59.59L6 13l4 4 8-8-1.41-1.42L10 14.17z"/></symbol>
  <symbol id="i-home" viewBox="0 0 24 24"><path d="M12 5.69l5 4.5V18h-2v-6H9v6H7v-7.81l5-4.5M12 3L2 12h3v8h6v-6h2v6h6v-8h3L12 3z"/></symbol>
+ <symbol id="i-more" viewBox="0 0 24 24"><path d="M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0 6a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0 6a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></symbol>
  <symbol id="i-plugin" viewBox="0 0 24 24"><path d="M10.5 4.5c.28 0 .5.22.5.5v2h6v6h2c.28 0 .5.22.5.5s-.22.5-.5.5h-2v6h-2.12c-.68-1.75-2.39-3-4.38-3s-3.7 1.25-4.38 3H4v-2.12c1.75-.68 3-2.39 3-4.38 0-1.99-1.24-3.7-2.99-4.38L4 7h6V5c0-.28.22-.5.5-.5m0-2C9.12 2.5 8 3.62 8 5H4c-1.1 0-1.99.9-1.99 2v3.8h.29c1.49 0 2.7 1.21 2.7 2.7s-1.21 2.7-2.7 2.7H2V20c0 1.1.9 2 2 2h3.8v-.3c0-1.49 1.21-2.7 2.7-2.7s2.7 1.21 2.7 2.7v.3H17c1.1 0 2-.9 2-2v-4c1.38 0 2.5-1.12 2.5-2.5S20.38 11 19 11V7c0-1.1-.9-2-2-2h-4c0-1.38-1.12-2.5-2.5-2.5z"/></symbol>
 </svg>
 <div class="layout">
@@ -153,7 +180,7 @@ details{border-color:#49454f}summary{font-size:14px;color:#d0bcff}.editor-card t
   <div class="sidebar-foot"><strong>Локальное управление</strong>Настройки вашей станции<br>в одном месте.</div>
  </aside>
  <main class="main">
-  <header class="topbar"><div class="breadcrumb">Gemini Station <span class="crumb-sep">/</span> <b>Настройки</b></div><div class="connection"><span class="dot" id="connectionDot" data-state="loading"></span><span id="connectionStatus" role="status">Подключение…</span></div></header>
+  <header class="topbar"><div class="breadcrumb">Gemini Station <span class="crumb-sep">/</span> <b>Настройки</b></div><div class="connection"><span class="dot" id="connectionDot" data-state="loading"></span><span class="connection-desktop" id="connectionStatus" role="status">Подключение…</span><span class="connection-mobile" id="mobileConnectionStatus" role="status">Подключение…</span></div></header>
   <div class="content">
    <div class="intro"><div><p class="eyebrow">Панель управления</p><h1 id="pageTitle">Ассистент</h1><p class="intro-copy" id="pageDescription">Подключение, модель и голос ответа вашего ассистента.</p></div><div class="local-badge"><svg class="icon"><use href="#i-shield"/></svg>Локальная сеть</div></div>
    <section id="summary" aria-label="Обзор станции"><div class="notice"><svg class="icon"><use href="#i-info"/></svg><p><strong>Безопасность локальной сети.</strong> HTTP не шифруется: данные и пароль могут быть перехвачены. Используйте доверенную сеть и не открывайте порт в интернет. Без пароля любой пользователь сети может управлять панелью.</p></div>
@@ -168,18 +195,18 @@ details{border-color:#49454f}summary{font-size:14px;color:#d0bcff}.editor-card t
    </div>
    <div class="overview-links"><a href="#assistant">Модель, голос и API →</a><a href="#activation">Активация и распознавание →</a><a href="#editor">Инструкции →</a><a href="#display">Экран и кольцо →</a><a href="#smartHome">Умный дом и музыка →</a><a href="#plugins">Плагины →</a><a href="#journal">Журнал →</a></div>
    <div class="cards overview-tools" style="margin-top:14px">
-    <article class="card"><div class="card-head"><span class="card-icon"><svg class="icon"><use href="#i-lock"/></svg></span><div><h3>Доступ к панели</h3><p id="panelAuthStatus">Проверяем…</p></div></div>
+    <details class="card overview-detail"><summary><span class="card-head"><span class="card-icon"><svg class="icon"><use href="#i-lock"/></svg></span><span><strong class="overview-detail-title">Доступ к панели</strong><span class="overview-detail-sub" id="panelAuthStatus">Проверяем…</span></span></span></summary>
      <div class="field" id="panelCurrentRow" hidden><label class="field-label" for="panelCurrent">Текущий пароль</label><input id="panelCurrent" type="password" autocomplete="current-password" maxlength="128"></div>
      <div class="field"><label class="field-label" for="panelPassword">Новый пароль (8–128 символов)</label><input id="panelPassword" type="password" autocomplete="new-password" maxlength="128"></div>
      <div class="field"><label class="field-label" for="panelPasswordConfirm">Повторите новый пароль</label><input id="panelPasswordConfirm" type="password" autocomplete="new-password" maxlength="128"></div>
      <div class="actions"><button id="panelSet" disabled>Включить / сменить пароль</button><button id="panelDisable" class="secondary" disabled>Отключить пароль</button></div><p id="panelAuthMessage" class="status-message" role="status"></p>
-    </article>
-    <article class="card"><div class="card-head"><span class="card-icon"><svg class="icon"><use href="#i-grid"/></svg></span><div><h3>Настройки в файле</h3><p>Перенос модели, голоса, активации, DNS, инструкций и параметров распознавания.</p></div></div>
-     <p class="field-hint">Ключи, токены, пароль панели, личные образцы, плагины, настройки умного дома, экрана и кольца не включаются.</p>
+    </details>
+    <details class="card overview-detail"><summary><span class="card-head"><span class="card-icon"><svg class="icon"><use href="#i-grid"/></svg></span><span><strong class="overview-detail-title">Настройки в файле</strong><span class="overview-detail-sub">Экспорт и импорт</span></span></span></summary>
+     <p class="field-hint">Перенос модели, голоса, активации, DNS, инструкций и параметров распознавания. Ключи, токены, пароль панели, личные образцы, плагины, настройки умного дома, экрана и кольца не включаются.</p>
      <div class="actions"><button id="settingsExport" class="secondary">Экспортировать</button></div>
      <div class="field"><label class="field-label" for="settingsFile">Файл настроек JSON</label><input type="file" id="settingsFile" accept=".json,application/json"></div>
      <div class="actions"><button id="settingsImport" class="secondary">Импортировать настройки</button></div><p id="settingsMessage" class="status-message" role="status"></p>
-    </article>
+    </details>
    </div>
    </section>
    <p class="field-hint" id="globalSaveHint">Кнопки сохранения ассистента и активации также применяют другие изменённые настройки этих разделов.</p>
@@ -346,6 +373,23 @@ details{border-color:#49454f}summary{font-size:14px;color:#d0bcff}.editor-card t
   </div>
  </main>
 </div>
+<div class="mobile-more-layer" id="mobileMoreLayer" hidden>
+ <button class="mobile-more-backdrop" id="mobileMoreClose" aria-label="Закрыть меню"></button>
+ <nav class="mobile-more-sheet" aria-label="Другие разделы">
+  <h2>Другие разделы</h2>
+  <a id="mobile-editor" href="#editor"><svg class="icon"><use href="#i-sparkle"/></svg>Инструкции</a>
+  <a id="mobile-smartHome" href="#smartHome"><svg class="icon"><use href="#i-home"/></svg>Умный дом и музыка</a>
+  <a id="mobile-plugins" href="#plugins"><svg class="icon"><use href="#i-plugin"/></svg>Плагины</a>
+  <a id="mobile-journal" href="#journal"><svg class="icon"><use href="#i-log"/></svg>Журнал</a>
+ </nav>
+</div>
+<nav class="mobile-nav" id="mobileNav" aria-label="Основные разделы">
+ <a id="mobile-summary" href="#summary"><span class="nav-icon"><svg class="icon"><use href="#i-grid"/></svg></span><span>Обзор</span></a>
+ <a id="mobile-assistant" href="#assistant"><span class="nav-icon"><svg class="icon"><use href="#i-sparkle"/></svg></span><span>Ассистент</span></a>
+ <a id="mobile-activation" href="#activation"><span class="nav-icon"><svg class="icon"><use href="#i-mic"/></svg></span><span>Голос</span></a>
+ <a id="mobile-display" href="#display"><span class="nav-icon"><svg class="icon"><use href="#i-screen"/></svg></span><span>Экран</span></a>
+ <button type="button" id="mobileMore" aria-expanded="false" aria-controls="mobileMoreLayer"><span class="nav-icon"><svg class="icon"><use href="#i-more"/></svg></span><span>Ещё</span></button>
+</nav>
 <script>
 'use strict';
 const el=id=>document.getElementById(id);
@@ -360,19 +404,33 @@ const pages={
  plugins:['Плагины','Дополнительные инструменты ассистента.'],
  journal:['Журнал','Состояние и диагностика устройства.']
 };
+const mobileExtra=new Set(['editor','smartHome','plugins','journal']);
+function setMoreOpen(open){el('mobileMoreLayer').hidden=!open;el('mobileMore').setAttribute('aria-expanded',String(open))}
 function showPage(id, updateUrl=false){
  if(!Object.prototype.hasOwnProperty.call(pages,id)) id='summary';
  for(const name of Object.keys(pages)){
   el(name).hidden=name!==id;
   if(name===id)el('nav-'+name).setAttribute('aria-current','page');
   else el('nav-'+name).removeAttribute('aria-current');
+  if(name===id)el('mobile-'+name).setAttribute('aria-current','page');
+  else el('mobile-'+name).removeAttribute('aria-current');
  }
+ if(mobileExtra.has(id))el('mobileMore').setAttribute('aria-current','page');
+ else el('mobileMore').removeAttribute('aria-current');
+ setMoreOpen(false);
  el('globalSaveHint').hidden=id!=='assistant'&&id!=='activation';
  el('pageTitle').textContent=pages[id][0];el('pageDescription').textContent=pages[id][1];
  if(updateUrl&&window.history&&window.history.pushState)window.history.pushState(null,'','#'+id);
  if(updateUrl&&window.scrollTo)window.scrollTo(0,0);
 }
 for(const name of Object.keys(pages))el('nav-'+name).addEventListener('click',e=>{e.preventDefault();showPage(name,true)});
+for(const name of Object.keys(pages))el('mobile-'+name).addEventListener('click',e=>{e.preventDefault();showPage(name,true)});
+el('mobileMore').addEventListener('click',()=>{const open=el('mobileMoreLayer').hidden;setMoreOpen(open);if(open)el('mobile-editor').focus()});
+el('mobileMoreClose').addEventListener('click',()=>{setMoreOpen(false);el('mobileMore').focus()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!el('mobileMoreLayer').hidden){setMoreOpen(false);el('mobileMore').focus()}});
+document.addEventListener('focusin',e=>{const t=e.target;if(t&&((t.tagName==='INPUT'&&!['checkbox','range','file'].includes(t.type))||t.tagName==='TEXTAREA'))document.body.classList.add('keyboard-open')});
+document.addEventListener('focusout',e=>{const t=e.target;if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'))document.body.classList.remove('keyboard-open')});
+
 if(window.addEventListener){const syncPage=()=>showPage((window.location.hash||'').slice(1));window.addEventListener('popstate',syncPage);window.addEventListener('hashchange',syncPage)}
 showPage(window.location?(window.location.hash||'').slice(1):'summary');
 
@@ -558,6 +616,7 @@ function numberChanged(){
 function setConnection(online){
  el('connectionDot').setAttribute('data-state',online?'online':'offline');
  el('connectionStatus').textContent=online?'Станция на связи':'Нет связи со станцией';
+ el('mobileConnectionStatus').textContent=online?'На связи':'Нет связи';
 }
 function updateKeys(keys){
  const list=el('keyList'), signature=keys.map(key=>key.id).join(',');
