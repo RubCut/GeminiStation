@@ -95,7 +95,7 @@ final class DeviceActions {
             int target = action.kind == DeviceToolSpec.Kind.SET_VOLUME
                     ? Math.round(action.number * max / 100f)
                     : before + action.number * Math.max(1, Math.round(max * .1f));
-            target = Math.max(0, Math.min(max, target));
+            target = Math.max(audio.getStreamMinVolume(AudioManager.STREAM_MUSIC), Math.min(max, target));
             audio.setStreamVolume(AudioManager.STREAM_MUSIC, target, AudioManager.FLAG_SHOW_UI);
             int actual = audio.getStreamVolume(AudioManager.STREAM_MUSIC);
             if (target != before && actual == before) return new Outcome("Громкость изменить не удалось.", null);

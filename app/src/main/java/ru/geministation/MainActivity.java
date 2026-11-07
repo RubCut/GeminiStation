@@ -652,7 +652,7 @@ public final class MainActivity extends Activity {
             public void onConnected() {
                 if (!active()) return;
                 liveConnected = true;
-                if (!waitingForFinal) clearRecognitionTimeout();
+                // Keep the startup watchdog until capture is actually ready; never cancel a speech deadline.
                 if (micReady && !heardSpeech && !waitingForFinal) scheduleNoSpeechTimeout(attempt, voiceTuning.silenceMs);
             }
             public void onPartial(String value) {

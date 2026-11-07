@@ -21,7 +21,12 @@ final class WebSecurity {
         } catch (Exception ignored) { }
         return false;
     }
-    static boolean stationLoopback(String remoteIp) { return "127.0.0.1".equals(remoteIp); }
+    static boolean stationLoopback(String remoteIp) {
+        // Numeric literals only: never resolve an attacker-controlled hostname.
+        if (remoteIp == null || !remoteIp.matches("[0-9a-fA-F:.]+") || remoteIp.length() > 45) return false;
+        try { return java.net.InetAddress.getByName(remoteIp).isLoopbackAddress(); }
+        catch (Exception ignored) { return false; }
+    }
     static boolean permittedWrite(String host, String origin, String marker) {
         return permittedHost(host) && origin != null && origin.equalsIgnoreCase("http://" + host)
                 && "1".equals(marker);

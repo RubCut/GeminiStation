@@ -28,4 +28,16 @@ public class MediaCommandsTest {
         assertFalse(MediaCommands.send(MediaCommands.Command.PLAY, null));
         assertFalse(MediaCommands.send(MediaCommands.Command.PLAY, (code, down) -> { throw new SecurityException(); }));
     }
+    @Test public void attemptsReleaseEvenWhenDownOrUpThrows() {
+        List<Boolean> events = new ArrayList<>();
+        assertFalse(MediaCommands.send(MediaCommands.Command.PLAY, (code, down) -> {
+            events.add(down); if (down) throw new SecurityException();
+        }));
+        assertEquals(Arrays.asList(true, false), events);
+        events.clear();
+        assertFalse(MediaCommands.send(MediaCommands.Command.PLAY, (code, down) -> {
+            events.add(down); if (!down && events.size() == 2) throw new SecurityException();
+        }));
+        assertEquals(Arrays.asList(true, false, false), events);
+    }
 }

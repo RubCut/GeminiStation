@@ -173,8 +173,13 @@ public final class WebServerService extends Service {
             if (session.getMethod() == Method.GET && "/".equals(path)) return reply(Response.Status.OK, "text/html; charset=utf-8", page);
             if (session.getMethod() == Method.GET && "/api/fonts/google-sans.ttf".equals(path)) {
                 try {
-                    InputStream font = context.getAssets().open("fonts/google_sans.ttf");
-                    Response response = newFixedLengthResponse(Response.Status.OK, "font/ttf", font, font.available());
+                    byte[] bytes;
+                    try (InputStream font = context.getAssets().open("fonts/google_sans.ttf"); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+                        byte[] buffer = new byte[8192]; int n;
+                        while ((n = font.read(buffer)) != -1) out.write(buffer, 0, n);
+                        bytes = out.toByteArray();
+                    }
+                    Response response = newFixedLengthResponse(Response.Status.OK, "font/ttf", new ByteArrayInputStream(bytes), bytes.length);
                     response.addHeader("Cache-Control", "public, max-age=86400"); response.addHeader("X-Content-Type-Options", "nosniff"); return response;
                 } catch (Exception e) { return json(Response.Status.NOT_FOUND, "Шрифт недоступен"); }
             }
@@ -190,8 +195,13 @@ public final class WebServerService extends Service {
             String previewAsset = LedPreviewAsset.assetForPath(path);
             if (session.getMethod() == Method.GET && previewAsset != null) {
                 try {
-                    InputStream gif = context.getAssets().open(previewAsset);
-                    Response response = newFixedLengthResponse(Response.Status.OK, "image/gif", gif, gif.available());
+                    byte[] bytes;
+                    try (InputStream gif = context.getAssets().open(previewAsset); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+                        byte[] buffer = new byte[4096]; int n;
+                        while ((n = gif.read(buffer)) != -1) out.write(buffer, 0, n);
+                        bytes = out.toByteArray();
+                    }
+                    Response response = newFixedLengthResponse(Response.Status.OK, "image/gif", new ByteArrayInputStream(bytes), bytes.length);
                     response.addHeader("Cache-Control", "no-store");
                     return response;
                 } catch (Exception e) { return json(Response.Status.NOT_FOUND, "Нет изображения"); }
@@ -513,8 +523,8 @@ public final class WebServerService extends Service {
                         if (length != 2) return json(Response.Status.BAD_REQUEST, "Недопустимый запрос");
                         Map<String, String> files = new HashMap<>(); session.parseBody(files);
                         if (!"{}".equals(files.get("postData"))) return json(Response.Status.BAD_REQUEST, "Недопустимый запрос");
-                        PersonalWakeStore.clear(context);
-                        WakeWordController.get(context).personalSamplesChanged();
+                        try { PersonalWakeStore.clear(context); }
+                        finally { WakeWordController.get(context).personalSamplesChanged(); }
                         AppLog.add("Личные образцы произношения удалены");
                         return json(Response.Status.OK, "Образцы удалены");
                     }
@@ -619,7 +629,11 @@ public final class WebServerService extends Service {
                     }
                     qrLogin.clear();
                     boolean deleted = data.optBoolean("delete", false);
-                    if (deleted) { synchronized (HomeSelection.LOCK) { store.clear(); } AppLog.add("LED: настройки удалены"); }
+                    if (deleted) {
+                        try { synchronized (HomeSelection.LOCK) { store.clear(); } }
+                        finally { new Handler(Looper.getMainLooper()).post(() -> LedController.get(context).invalidate()); }
+                        AppLog.add("LED: настройки удалены");
+                    }
                     else {
                         String token = data.optString("x_token", "").trim();
                         String device = data.optString("device_id", "").trim();
@@ -750,18 +764,20 @@ public final class WebServerService extends Service {
                     if (!MicroWakePolicy.validEngine(wakeEngine)) return json(Response.Status.BAD_REQUEST, "Некорректный движок активации");
                     if (!WakeSensitivity.valid(wakeSensitivity)) return json(Response.Status.BAD_REQUEST, "Некорректная чувствительность");
                     String key = data.optString("key", "").trim();
-                    boolean deleteKey = data.optBoolean("deleteKey", false);
-                    if (!AppSettings.validModel(model) || !TtsVoices.valid(voice) || key.length() > 512 || (deleteKey && !key.isEmpty()))
+                    if (data.has("deleteKey") && !(data.opt("deleteKey") instanceof Boolean))
+                        return json(Response.Status.BAD_REQUEST, "Некорректное действие с ключом");
+                    if (data.optBoolean("deleteKey", false))
+                        return json(Response.Status.BAD_REQUEST, "Удаляйте выбранный ключ через /api/keys");
+                    if (!AppSettings.validModel(model) || !TtsVoices.valid(voice) || key.length() > 512)
                         return json(Response.Status.BAD_REQUEST, "Некорректные настройки");
                     ApiKeyVault vault = ApiKeyVault.get(context);
-                    if (deleteKey) vault.clear();
-                    else if (!key.isEmpty()) {
+                    if (!key.isEmpty()) {
                         try { vault.add(key); }
                         catch (IllegalArgumentException e) { return json(Response.Status.BAD_REQUEST, e.getMessage()); }
                     }
                     if (!AppSettings.save(context, model, voice, buttonEnabled, wakeEnabled, wakeSensitivity, audioDuckEnabled, wakeFilter, wakeAmplify, wakeEngine, wakeVad, wakePersonal)) return json(Response.Status.INTERNAL_ERROR, "Не удалось сохранить настройки");
                     WakeWordController.get(context).settingsChanged();
-                    AppLog.add(deleteKey ? "API-ключ удалён через веб-интерфейс" : "Настройки сохранены через веб-интерфейс");
+                    AppLog.add("Настройки сохранены через веб-интерфейс");
                     return json(Response.Status.OK, "Настройки сохранены");
                 }
                 return json(Response.Status.NOT_FOUND, "Не найдено");

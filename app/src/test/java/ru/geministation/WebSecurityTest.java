@@ -25,6 +25,16 @@ public class WebSecurityTest {
         assertFalse(WebSecurity.permittedWrite(lan, "http://" + lan, null));
         assertFalse(WebSecurity.permittedWrite(lan, null, "1"));
     }
+    @Test public void loopbackSupportsNumericIpv4AndMappedIpv6Only() {
+        assertTrue(WebSecurity.stationLoopback("127.0.0.1"));
+        assertTrue(WebSecurity.stationLoopback("::1"));
+        assertTrue(WebSecurity.stationLoopback("::ffff:127.0.0.1"));
+        assertTrue(WebSecurity.stationLoopback("0:0:0:0:0:ffff:7f00:1"));
+        assertFalse(WebSecurity.stationLoopback("192.168.1.5"));
+        assertFalse(WebSecurity.stationLoopback("::ffff:192.168.1.5"));
+        assertFalse(WebSecurity.stationLoopback("localhost"));
+        assertFalse(WebSecurity.stationLoopback("127.0.0.1.evil.example"));
+    }
     @Test public void rejectsDnsRebindingAndCrossOrigin() {
         assertFalse(WebSecurity.permittedHost("evil.example:6529"));
         assertFalse(WebSecurity.permittedWrite("localhost:6529", "http://evil.example:6529", "1"));

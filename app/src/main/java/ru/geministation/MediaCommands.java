@@ -26,11 +26,18 @@ final class MediaCommands {
     }
     static boolean send(Command command, Sink sink) {
         if (command == null || sink == null) return false;
-        try {
-            sink.send(command.keyCode, true);
-            sink.send(command.keyCode, false);
-            return true;
-        } catch (RuntimeException e) { return false; }
+        boolean downOk = false, upOk = false;
+        try { sink.send(command.keyCode, true); downOk = true; }
+        catch (RuntimeException ignored) { }
+        finally {
+            // Even a failed dispatch may have reached the system before it threw.
+            try { sink.send(command.keyCode, false); upOk = true; }
+            catch (RuntimeException ignored) {
+                // Best effort only: the platform may reject this attempt too.
+                try { sink.send(command.keyCode, false); } catch (RuntimeException ignoredAgain) { }
+            }
+        }
+        return downOk && upOk;
     }
     private MediaCommands() { }
 }

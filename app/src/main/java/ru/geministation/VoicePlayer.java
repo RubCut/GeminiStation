@@ -18,6 +18,15 @@ final class VoicePlayer {
             }
         }
     }
+    private static long waitForProgress(long stalledAt, BooleanSupplier active) throws IOException {
+        if (!active.getAsBoolean()) throw new InterruptedIOException("Playback canceled");
+        long now = android.os.SystemClock.elapsedRealtime();
+        if (stalledAt == 0) stalledAt = now;
+        if (now - stalledAt >= 3000) throw new IOException("Audio output stalled");
+        try { Thread.sleep(20); }
+        catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new InterruptedIOException("Playback interrupted"); }
+        return stalledAt;
+    }
     Stream openStream(BooleanSupplier active, Runnable onStarted) { return new Stream(active, onStarted); }
     final class Stream implements AutoCloseable {
         private final BooleanSupplier active;
@@ -50,11 +59,12 @@ final class VoicePlayer {
                 AppLog.add("TTS: начато потоковое воспроизведение");
             }
             if (rate != audio.rate || channels != audio.channels) throw new IOException("Audio format changed mid-stream");
-            int offset = 0;
+            int offset = 0; long stalledAt = 0;
             while (offset < audio.samples.length && active.getAsBoolean()) {
                 int count = track.write(audio.samples, offset, Math.min(4096, audio.samples.length - offset));
-                if (count <= 0) throw new IOException("Audio playback failed");
-                offset += count;
+                if (count < 0) throw new IOException("Audio playback failed (" + count + ")");
+                if (count == 0) { stalledAt = waitForProgress(stalledAt, active); continue; }
+                stalledAt = 0; offset += count;
             }
             if (!active.getAsBoolean()) throw new InterruptedIOException("Playback canceled");
             frames += offset / (2 * channels);
@@ -94,11 +104,12 @@ final class VoicePlayer {
                 track.play();
             }
             onStarted.run();
-            int written = 0;
+            int written = 0; long stalledAt = 0;
             while (written < audio.samples.length && active.getAsBoolean()) {
                 int count = track.write(audio.samples, written, Math.min(4096, audio.samples.length - written));
-                if (count <= 0) throw new IOException("Audio playback failed");
-                written += count;
+                if (count < 0) throw new IOException("Audio playback failed (" + count + ")");
+                if (count == 0) { stalledAt = waitForProgress(stalledAt, active); continue; }
+                stalledAt = 0; written += count;
             }
             long frames = written / (audio.channels * 2);
             long deadline = android.os.SystemClock.elapsedRealtime() + frames * 1000 / audio.rate + 5000;

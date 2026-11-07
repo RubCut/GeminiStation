@@ -184,27 +184,29 @@ final class SmartHome {
         if (!snapshot.devices.contains(device) || index < 0 || index >= caps.size()) throw new IOException("capability missing");
         HomeCapabilities.Capability cap = caps.get(index); Object value = cap.value(input);
         if (value == null) throw new IOException("invalid capability value");
+        if (snapshot.identity == null || !snapshot.identity.equals(identity(c)) || !HomeSelection.permitted(c, snapshot.identity, device.scope)) throw new IOException("account or scope changed");
+        String token = token(c);
+        // Refresh is read-only and may take seconds; do not block settings changes while waiting.
+        JSONObject current = YandexCloud.home(token, "/v1.0/user/info", null);
+        if (!"ok".equals(current.optString("status")) || current.optJSONArray("devices") == null) throw new IOException("home refresh failed");
+        Device live = null;
+        for (Device candidate : parse(current).devices) if (device.id.equals(candidate.id)) {
+            if (live != null) throw new IOException("ambiguous device");
+            live = candidate;
+        }
+        if (live == null || !device.scope.equals(live.scope)) throw new IOException("room changed");
+        HomeCapabilities.Capability liveCap = null;
+        for (HomeCapabilities.Capability candidate : HomeCapabilities.parse(live.raw)) if (cap.type.equals(candidate.type) && cap.instance.equals(candidate.instance)) {
+            if (liveCap != null) throw new IOException("ambiguous capability");
+            liveCap = candidate;
+        }
+        if (liveCap == null || liveCap.value(input) == null) throw new IOException("capability changed");
+        value = liveCap.value(input);
+        JSONObject action = new JSONObject().put("type", cap.type).put("state", new JSONObject().put("instance", cap.instance).put("value", value));
+        JSONObject body = new JSONObject().put("devices", new JSONArray().put(new JSONObject().put("id", device.id).put("actions", new JSONArray().put(action))));
+        // Hold the lock through the actual command so revoked scope cannot race its dispatch.
         synchronized (HomeSelection.LOCK) {
-            if (snapshot.identity == null || !snapshot.identity.equals(identity(c)) || !HomeSelection.permitted(c, snapshot.identity, device.scope)) throw new IOException("account or scope changed");
-            String token = token(c);
-            // The device may have moved rooms or its advertised capability may have changed since the prompt.
-            JSONObject current = YandexCloud.home(token, "/v1.0/user/info", null);
-            if (!"ok".equals(current.optString("status")) || current.optJSONArray("devices") == null) throw new IOException("home refresh failed");
-            Device live = null;
-            for (Device candidate : parse(current).devices) if (device.id.equals(candidate.id)) {
-                if (live != null) throw new IOException("ambiguous device");
-                live = candidate;
-            }
-            if (live == null || !device.scope.equals(live.scope) || !snapshot.identity.equals(identity(c)) || !HomeSelection.permitted(c, snapshot.identity, live.scope)) throw new IOException("account, room or scope changed");
-            HomeCapabilities.Capability liveCap = null;
-            for (HomeCapabilities.Capability candidate : HomeCapabilities.parse(live.raw)) if (cap.type.equals(candidate.type) && cap.instance.equals(candidate.instance)) {
-                if (liveCap != null) throw new IOException("ambiguous capability");
-                liveCap = candidate;
-            }
-            if (liveCap == null || liveCap.value(input) == null) throw new IOException("capability changed");
-            value = liveCap.value(input);
-            JSONObject action = new JSONObject().put("type", cap.type).put("state", new JSONObject().put("instance", cap.instance).put("value", value));
-            JSONObject body = new JSONObject().put("devices", new JSONArray().put(new JSONObject().put("id", device.id).put("actions", new JSONArray().put(action))));
+            if (!snapshot.identity.equals(identity(c)) || !HomeSelection.permitted(c, snapshot.identity, live.scope)) throw new IOException("account or scope changed");
             JSONObject result;
             try { result = YandexCloud.home(token, "/v1.0/devices/actions", body); }
             catch (IOException e) { if (controlForbidden(e)) throw new ControlDenied(); throw e; }

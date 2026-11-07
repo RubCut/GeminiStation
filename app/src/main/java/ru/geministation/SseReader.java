@@ -41,8 +41,8 @@ final class SseReader {
                 if (line.length() > 0 && line.charAt(line.length() - 1) == '\r') line.setLength(line.length() - 1);
                 return line.toString();
             }
+            if (line.length() >= MAX_LINE) throw new IOException("SSE line too large");
             line.append((char) c);
-            if (line.length() > MAX_LINE) throw new IOException("SSE line too large");
         }
     }
 }

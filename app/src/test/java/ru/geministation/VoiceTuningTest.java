@@ -11,6 +11,7 @@ public class VoiceTuningTest {
         assertEquals(200, result.wakeMinMs); assertEquals(5000, result.silenceMs);
         assertTrue(d.sameWake(result));
         assertFalse(d.sameWake(new VoiceTuning(300, 400, 1200, 5000, 800, 1800, true, true)));
+        assertTrue(d.sameWake(new VoiceTuning(200, 400, 2000, 5000, 800, 1800, true, true)));
     }
     @Test public void rejectsOutOfRangeAndMalformedSettings() throws Exception {
         JSONObject data = VoiceTuning.defaults().json();

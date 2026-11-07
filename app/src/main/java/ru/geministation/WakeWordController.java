@@ -23,6 +23,9 @@ final class WakeWordController {
     private volatile String status = "Ожидание запуска веб-сервера";
     private volatile int rms = -1, peak = -1;
     private volatile WakeCapture capture;
+    // Worker-owned bounded backoff; a persistently broken microphone must not spin forever.
+    private int unexpectedRestarts;
+    private long captureStartedAt;
 
     static synchronized WakeWordController get(Context context) {
         if (instance == null) instance = new WakeWordController(context.getApplicationContext());
@@ -41,7 +44,7 @@ final class WakeWordController {
         });
     }
     void serviceStopped() { serviceRunning = false; worker.execute(this::reconcile); }
-    void settingsChanged() { worker.execute(this::reconcile); }
+    void settingsChanged() { worker.execute(() -> { unexpectedRestarts = 0; reconcile(); }); }
     void personalSamplesChanged() { worker.execute(() -> { if (stopCapture()) reconcile(); }); }
     void dialogOpening() { dialogActive = true; worker.execute(this::reconcile); }
     void pauseForDialog(Consumer<Boolean> continuation) {
@@ -119,18 +122,21 @@ final class WakeWordController {
                     worker.execute(() -> {
                         if (capture != owner) return;
                         capture = null; rms = -1; peak = -1;
-                        if (error != null) {
-                            status = "Ошибка микрофона; проверьте журнал";
-                            AppLog.add("Голосовая активация: ошибка записи " + error);
-                        } else if (!firing.get() && wanted()) {
-                            status = "Обработчик остановился; выключите и снова включите активацию";
-                            AppLog.add("Голосовая активация: обработчик неожиданно остановился");
+                        if (!firing.get() && wanted()) {
+                            if (SystemClock.elapsedRealtime() - captureStartedAt >= 60000) unexpectedRestarts = 0;
+                            if (error != null) AppLog.add("Голосовая активация: ошибка записи " + error);
+                            else AppLog.add("Голосовая активация: обработчик неожиданно остановился");
+                            if (unexpectedRestarts < 3) {
+                                long delay = 3000L << unexpectedRestarts++;
+                                status = "Микрофон остановился; повторный запуск через " + delay / 1000 + " с";
+                                main.postDelayed(() -> worker.execute(() -> { if (capture == null && wanted()) reconcile(); }), delay);
+                            } else status = "Ошибка микрофона; проверьте журнал и включите активацию заново";
                         }
                     });
                 }
             }, engine, sensitivity, filter, amplify, vad, personal, tuning);
             capture = next; rms = -1; peak = -1;
-            next.start();
+            next.start(); captureStartedAt = SystemClock.elapsedRealtime();
             if (!wanted()) { reconcile(); return; }
             status = "Микрофон запущен (" + next.sourceName() + ", " + engine + ")";
             AppLog.add("Голосовая активация: микрофон запущен (" + next.sourceName() + "), движок " + engine + ", чувствительность " + sensitivity + ", фильтр " + filter + ", усиление " + amplify + ", проверка речи " + vad + ", личные образцы " + personal);

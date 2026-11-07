@@ -697,11 +697,11 @@ async function sampleVoice(){
  }catch(e){el('sampleStatus').textContent=e.message||'Не удалось загрузить образец'}
  finally{button.disabled=false}
 }
-async function save(remove,feedback='message'){
+async function save(feedback='message'){
  try{
   const voice=el('voice').value, buttonEnabled=el('buttonEnabled').checked, audioDuckEnabled=el('audioDuckEnabled').checked, wakeEnabled=el('wakeEnabled').checked, wakeEngine=el('wakeEngine').value, wakeSensitivity=getSensitivity(), wakeFilter=el('wakeFilter').checked, wakeVad=el('wakeVad').checked, wakePersonal=el('wakePersonal').checked, wakeAmplify=el('wakeAmplify').checked;
   if(wakeSensitivity===null){sensitivityError('Введите целое число от 1 до 100.');el('sensitivityNumber').focus();return}
-  await request('/api/config',{method:'POST',body:JSON.stringify({model:el('model').value,voice,buttonEnabled,audioDuckEnabled,wakeEnabled,wakeEngine,wakeSensitivity,wakeFilter,wakeVad,wakePersonal,wakeAmplify,key:'',deleteKey:remove})});
+  await request('/api/config',{method:'POST',body:JSON.stringify({model:el('model').value,voice,buttonEnabled,audioDuckEnabled,wakeEnabled,wakeEngine,wakeSensitivity,wakeFilter,wakeVad,wakePersonal,wakeAmplify,key:''})});
   if(el('voice').value===voice)voiceDirty=false;
   if(el('buttonEnabled').checked===buttonEnabled)buttonDirty=false;
   if(el('audioDuckEnabled').checked===audioDuckEnabled)audioDuckDirty=false;
@@ -712,7 +712,7 @@ async function save(remove,feedback='message'){
   if(el('wakeVad').checked===wakeVad)wakeVadDirty=false;
   if(el('wakePersonal').checked===wakePersonal)wakePersonalDirty=false;
   if(el('wakeAmplify').checked===wakeAmplify)wakeAmplifyDirty=false;
-  el(feedback).textContent=remove?'Ключи удалены':'Настройки сохранены';await refresh();
+  el(feedback).textContent='Настройки сохранены';await refresh();
  }catch(e){el(feedback).textContent=e.message}
 }
 async function ledRequest(path,data){try{const result=await request(path,{method:'POST',body:JSON.stringify(data)});el('ledMessage').textContent=result.message;return result}catch(e){el('ledMessage').textContent=e.message;throw e}}
@@ -855,7 +855,7 @@ el('resetPrompt').addEventListener('click',()=>saveSystemPrompt(true));
 el('voice').addEventListener('change',()=>{voiceDirty=true});
 el('buttonEnabled').addEventListener('change',()=>{buttonDirty=true});
 el('audioDuckEnabled').addEventListener('change',()=>{audioDuckDirty=true});
-el('saveDuckSettings').addEventListener('click',()=>save(false,'duckMessage'));
+el('saveDuckSettings').addEventListener('click',()=>save('duckMessage'));
 el('wakeEnabled').addEventListener('change',()=>{wakeDirty=true});
 el('wakeEngine').addEventListener('change',()=>{wakeEngineDirty=true});
 el('wakeFilter').addEventListener('change',()=>{wakeFilterDirty=true});
@@ -866,11 +866,11 @@ el('wakeSensitivity').addEventListener('input',sliderChanged);
 el('wakeSensitivity').addEventListener('change',sliderChanged);
 el('sensitivityNumber').addEventListener('input',numberChanged);
 el('sensitivityNumber').addEventListener('change',numberChanged);
-el('saveWakeSettings').addEventListener('click',()=>save(false,'wakeMessage'));
-el('saveVoice').addEventListener('click',()=>save(false,'voiceMessage'));
+el('saveWakeSettings').addEventListener('click',()=>save('wakeMessage'));
+el('saveVoice').addEventListener('click',()=>save('voiceMessage'));
 el('sampleVoice').addEventListener('click',()=>sampleVoice());
-el('saveButtonSettings').addEventListener('click',()=>save(false,'buttonMessage'));
-el('save').addEventListener('click',()=>save(false));
+el('saveButtonSettings').addEventListener('click',()=>save('buttonMessage'));
+el('save').addEventListener('click',()=>save());
 el('addKey').addEventListener('click',async()=>{
  const key=el('key').value.trim();if(!key){el('keyMessage').textContent='Введите API-ключ';return}
  keyBusy=true;el('addKey').disabled=true;el('delete').disabled=true;
@@ -887,6 +887,7 @@ el('delete').addEventListener('click',async()=>{
 });
 el('refresh').addEventListener('click',()=>refresh().catch(()=>{}));
 refresh().catch(()=>{});
-setInterval(()=>refresh().catch(()=>{}),5000);
+setInterval(()=>{if(!document.hidden)refresh().catch(()=>{})},5000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh().catch(()=>{})});
 </script>
 </body></html>

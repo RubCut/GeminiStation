@@ -245,7 +245,7 @@ function page() {
   assert.equal(saved.apiKeys.length,1);
   assert.equal(p.element('keyMessage').textContent,'Ключ удалён');
   p.element('key').value='unsaved-secret';
-  await vm.runInContext('save(false)',p.context);
+  await vm.runInContext('save()',p.context);
   assert.equal(writes.at(-1).key,'','settings save must not silently submit a key');
   assert.equal(p.element('key').value,'unsaved-secret');
   p.element('voice').value='Puck'; p.element('voice').handlers.change();
@@ -275,7 +275,7 @@ function page() {
   p.element('buttonEnabled').checked=true; p.element('buttonEnabled').handlers.change();
   await vm.runInContext('refresh()',p.context);
   assert.equal(p.element('buttonEnabled').checked,true,'poll must not discard an unsaved button setting');
-  await vm.runInContext('save(false)',p.context);
+  await vm.runInContext('save()',p.context);
   assert.equal(writes.at(-1).buttonEnabled,true);
   assert.equal(writes.at(-1).wakeEnabled,true);
   assert.equal(writes.at(-1).wakeSensitivity,'100');
@@ -297,7 +297,7 @@ function page() {
   assert.equal(p.element('voice').value,'Aoede', 'other saved changes update an unedited selector');
   for (const value of ['', '0', '101', '1.5', '-1']) {
     p.element('sensitivityNumber').value=value;p.element('sensitivityNumber').handlers.input();
-    const count=writes.length;await vm.runInContext('save(false, "wakeMessage")',p.context);
+    const count=writes.length;await vm.runInContext('save("wakeMessage")',p.context);
     assert.equal(writes.length,count,'invalid manual value must not be saved');
     assert.match(p.element('sensitivityError').textContent,/от 1 до 100/);
     assert.equal(p.element('sensitivityNumber').attributes['aria-invalid'],'true');
@@ -307,13 +307,13 @@ function page() {
   p.element('sensitivityNumber').value='73';p.element('sensitivityNumber').handlers.input();
   assert.equal(p.element('wakeSensitivity').value,'73','manual input moves slider');
   assert.equal(p.element('sensitivityError').textContent,'');
-  await vm.runInContext('save(false, "wakeMessage")',p.context);
+  await vm.runInContext('save("wakeMessage")',p.context);
   assert.equal(writes.at(-1).wakeSensitivity,'73');
   assert.equal(p.element('wakeMessage').textContent,'Настройки сохранены');
   for (let percent=1;percent<=100;percent++) {
     p.element('wakeSensitivity').value=String(percent);p.element('wakeSensitivity').handlers.input();
     assert.equal(p.element('sensitivityNumber').value,String(percent));
-    await vm.runInContext('save(false)',p.context);
+    await vm.runInContext('save()',p.context);
     assert.equal(writes.at(-1).wakeSensitivity,String(percent));
   }
   saved.wakeSensitivity='high';p=page();await vm.runInContext('refresh()',p.context);

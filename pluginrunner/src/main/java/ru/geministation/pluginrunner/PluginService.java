@@ -37,6 +37,10 @@ public final class PluginService extends Service {
                 try { if (result != null) result.completed("Plugin request rejected", false); } catch (RemoteException ignored) { }
                 return;
             }
+            // Independent of the Python worker and Binder callbacks. This process hosts
+            // only one job; a wedged interpreter must not survive indefinitely.
+            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(
+                    () -> Process.killProcess(Process.myPid()), 47000);
             Thread thread = new Thread(() -> {
                 try {
                     if (!Python.isStarted()) Python.start(new AndroidPlatform(PluginService.this));

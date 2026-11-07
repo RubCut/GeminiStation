@@ -46,6 +46,6 @@ final class VoiceTuning {
         return value;
     }
     boolean sameWake(VoiceTuning other) {
-        return other != null && wakeMinMs == other.wakeMinMs && wakeRecentMs == other.wakeRecentMs && wakeResetMs == other.wakeResetMs;
+        return other != null && wakeMinMs == other.wakeMinMs && wakeRecentMs == other.wakeRecentMs;
     }
 }

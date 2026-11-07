@@ -51,5 +51,9 @@ final class SecretStore {
         cipher.init(Cipher.DECRYPT_MODE, key(), new GCMParameterSpec(128, Base64.decode(prefs.getString("iv", ""), Base64.NO_WRAP)));
         return new String(cipher.doFinal(Base64.decode(value, Base64.NO_WRAP)), StandardCharsets.UTF_8);
     } }
-    void clear() { synchronized (LOCK) { context.getSharedPreferences(preferences, Context.MODE_PRIVATE).edit().clear().apply(); } }
+    void clear() { synchronized (LOCK) {
+        // apply() updates memory immediately but may lose deletion on a crash.
+        if (!context.getSharedPreferences(preferences, Context.MODE_PRIVATE).edit().clear().commit())
+            throw new IllegalStateException("Could not persist secret removal");
+    } }
 }

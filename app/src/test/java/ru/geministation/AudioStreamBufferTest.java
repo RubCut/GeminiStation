@@ -34,4 +34,24 @@ public class AudioStreamBufferTest {
         b.cancel(); b.connect(sink); b.finish(sink);
         assertTrue(sink.events.isEmpty()); assertFalse(b.write(new byte[]{3}, sink));
     }
+    @Test public void captureCanQueueDuringSlowDrainAndEndFollowsAllAudio() throws Exception {
+        AudioStreamBuffer b = new AudioStreamBuffer(10);
+        java.util.concurrent.CountDownLatch entered = new java.util.concurrent.CountDownLatch(1), release = new java.util.concurrent.CountDownLatch(1);
+        List<String> events = java.util.Collections.synchronizedList(new ArrayList<>());
+        AudioStreamBuffer.Sink sink = new AudioStreamBuffer.Sink() {
+            public void audio(byte[] pcm) throws Exception {
+                events.add("pcm" + pcm[0]);
+                if (pcm[0] == 1) { entered.countDown(); if (!release.await(2, java.util.concurrent.TimeUnit.SECONDS)) throw new AssertionError("timeout"); }
+            }
+            public void end() { events.add("end"); }
+        };
+        b.write(new byte[]{1}, sink); b.write(new byte[]{2}, sink);
+        java.util.concurrent.atomic.AtomicReference<Throwable> failure = new java.util.concurrent.atomic.AtomicReference<>();
+        Thread drain = new Thread(() -> { try { b.connect(sink); } catch (Throwable e) { failure.set(e); } });
+        drain.start(); assertTrue(entered.await(2, java.util.concurrent.TimeUnit.SECONDS));
+        try { assertTrue(b.write(new byte[]{3}, sink)); b.finish(sink); }
+        finally { release.countDown(); }
+        drain.join(2000); assertFalse(drain.isAlive()); assertNull(failure.get());
+        assertEquals(Arrays.asList("pcm1", "pcm2", "pcm3", "end"), events);
+    }
 }

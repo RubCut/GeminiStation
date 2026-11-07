@@ -7,25 +7,39 @@ final class AudioStreamBuffer {
         void end() throws Exception;
     }
     private final PendingAudio pending;
-    private boolean connected, finished, cancelled, endSent;
+    private boolean connected, draining, finished, cancelled, endSent;
     AudioStreamBuffer(int maxBytes) { pending = new PendingAudio(maxBytes); }
     synchronized boolean write(byte[] pcm, Sink sink) throws Exception {
         if (cancelled || finished) return false;
-        if (connected) { sink.audio(pcm); return true; }
+        if (connected && !draining) { sink.audio(pcm); return true; }
         return pending.offer(pcm);
     }
-    synchronized int connect(Sink sink) throws Exception {
-        if (cancelled || connected) return 0;
-        connected = true;
-        int bytes = pending.sizeBytes();
-        while (!pending.isEmpty()) sink.audio(pending.poll());
-        sendEndIfFinished(sink);
-        return bytes;
+    int connect(Sink sink) throws Exception {
+        final int bytes;
+        synchronized (this) {
+            if (cancelled || connected) return 0;
+            connected = true; draining = true; bytes = pending.sizeBytes();
+        }
+        // Keep capture non-blocking while the pre-connect queue drains, without
+        // letting new chunks overtake it. The same bounded queue limits memory.
+        for (;;) {
+            byte[] chunk;
+            synchronized (this) {
+                if (cancelled) { draining = false; return bytes; }
+                chunk = pending.poll();
+                if (chunk == null) {
+                    draining = false;
+                    sendEndIfFinished(sink);
+                    return bytes;
+                }
+            }
+            sink.audio(chunk);
+        }
     }
     synchronized void finish(Sink sink) throws Exception {
         if (cancelled || finished) return;
         finished = true;
-        if (connected) sendEndIfFinished(sink);
+        if (connected && !draining) sendEndIfFinished(sink);
     }
     private void sendEndIfFinished(Sink sink) throws Exception {
         if (finished && !endSent) { sink.end(); endSent = true; }
