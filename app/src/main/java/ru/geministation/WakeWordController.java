@@ -24,7 +24,7 @@ final class WakeWordController {
     private volatile int rms = -1, peak = -1;
     private volatile WakeCapture capture;
     // Worker-owned bounded backoff; a persistently broken microphone must not spin forever.
-    private int unexpectedRestarts;
+    private final WakeRetry retry = new WakeRetry();
     private long captureStartedAt;
 
     static synchronized WakeWordController get(Context context) {
@@ -44,7 +44,7 @@ final class WakeWordController {
         });
     }
     void serviceStopped() { serviceRunning = false; worker.execute(this::reconcile); }
-    void settingsChanged() { worker.execute(() -> { unexpectedRestarts = 0; reconcile(); }); }
+    void settingsChanged() { worker.execute(() -> { retry.reset(); reconcile(); }); }
     void personalSamplesChanged() { worker.execute(() -> { if (stopCapture()) reconcile(); }); }
     void dialogOpening() { dialogActive = true; worker.execute(this::reconcile); }
     void pauseForDialog(Consumer<Boolean> continuation) {
@@ -123,11 +123,10 @@ final class WakeWordController {
                         if (capture != owner) return;
                         capture = null; rms = -1; peak = -1;
                         if (!firing.get() && wanted()) {
-                            if (SystemClock.elapsedRealtime() - captureStartedAt >= 60000) unexpectedRestarts = 0;
                             if (error != null) AppLog.add("Голосовая активация: ошибка записи " + error);
                             else AppLog.add("Голосовая активация: обработчик неожиданно остановился");
-                            if (unexpectedRestarts < 3) {
-                                long delay = 3000L << unexpectedRestarts++;
+                            long delay = retry.afterFailure(SystemClock.elapsedRealtime() - captureStartedAt);
+                            if (delay >= 0) {
                                 status = "Микрофон остановился; повторный запуск через " + delay / 1000 + " с";
                                 main.postDelayed(() -> worker.execute(() -> { if (capture == null && wanted()) reconcile(); }), delay);
                             } else status = "Ошибка микрофона; проверьте журнал и включите активацию заново";

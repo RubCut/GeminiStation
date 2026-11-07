@@ -27,7 +27,7 @@ saved.voiceTuning={wakeMinMs:200,wakeRecentMs:400,wakeResetMs:1200,silenceMs:500
 const writes = [], samples = [], helperRequests = [], ttsSamples = [];
 let sampleError = false, blockPlayback = false, revoked = [];
 let panelEnabled=false, panelWrites=[], backupWrites=[], reloads=0;
-let copyAllowed=true, copied='', clipboardAllowed=false, pendingLogFetch=null;
+let copyAllowed=true, copied='', clipboardAllowed=false, pendingLogFetch=null, authExpired=false, badJson=false;
 function page() {
   const nodes = new Map(), docHandlers={};
   let selection=null, focused=null;
@@ -47,6 +47,8 @@ function page() {
       addEventListener(type,fn){docHandlers[type]=fn},execCommand(command){assert.equal(command,'copy');if(copyAllowed){copied=focused.value;return true}return false}},
     window:{getSelection:()=>selection,location:{hash:"",reload(){reloads++}}},navigator:{clipboard:{writeText:async(text)=>{if(!clipboardAllowed)throw Error('blocked');copied=text}}},
     fetch:async(path, options)=>{
+      if(authExpired)return {status:401,ok:false,json:async()=>{throw Error('bad json')}};
+      if(badJson)return {status:200,ok:true,json:async()=>{throw Error('bad json')}};
       if(path==='/api/logs' && pendingLogFetch)return new Promise(resolve=>pendingLogFetch.push(resolve));
       if(path==='/api/panel-auth') {
         if(options.method==='POST'){const data=JSON.parse(options.body);panelWrites.push(data);panelEnabled=data.action==='set';return {ok:true,json:async()=>({message:'Сохранено'})};}
@@ -320,8 +322,9 @@ function page() {
   assert.equal(p.element('sensitivityNumber').value,'100','old high setting migrates to 100%');
   saved.wakeSensitivity='low';p=page();await vm.runInContext('refresh()',p.context);
   assert.equal(p.element('sensitivityNumber').value,'1','old low setting migrates to 1%');
-  await vm.runInContext('save(true)',p.context);
-  assert.equal(writes.at(-1).voice,'Aoede', 'deleting the key preserves the selected voice');
+  await vm.runInContext('save()',p.context);
+  assert.equal(writes.at(-1).voice,'Aoede', 'saving preserves the selected voice');
+  assert.equal(Object.hasOwn(writes.at(-1),'deleteKey'),false,'config save must not delete keys');
   // The complete snapshot is available even after many entries, with HTTP-friendly copy fallback.
   saved.logs=Array.from({length:40},(_,i)=>`line ${i}`);p=page();await vm.runInContext('refresh()',p.context);
   assert.equal(p.element('logs').textContent.split('\n').length,40);
@@ -349,5 +352,11 @@ function page() {
   pendingLogFetch[0]({ok:true,json:async()=>({...saved,logs:['older']})});await older;
   assert.equal(p.element('logs').textContent,'newer','late response must not replace a newer log snapshot');
   pendingLogFetch=null;
+  const beforeReload=reloads;authExpired=true;
+  await assert.rejects(vm.runInContext("request('/api/test')",p.context),/необходимо войти/);
+  await assert.rejects(vm.runInContext("request('/api/test')",p.context),/необходимо войти/);
+  assert.equal(reloads,beforeReload+1,'concurrent expired requests reload only once');
+  authExpired=false;badJson=true;
+  await assert.rejects(vm.runInContext("request('/api/test')",p.context),/некорректный ответ/);badJson=false;
   console.log('Voice settings UI test passed');
 })().catch(e=>{console.error(e);process.exitCode=1});

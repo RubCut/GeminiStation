@@ -2,6 +2,14 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const html=fs.readFileSync('app/src/main/assets/index.html','utf8');
 const script=html.match(/<script>([\s\S]*?)<\/script>/)[1];
+// Panel previews and station assets are distinct routes: only /led/*.gif checks
+// the SHA version. A cache-busting timestamp must not be checked against it.
+const server=fs.readFileSync('app/src/main/java/ru/geministation/WebServerService.java','utf8');
+const custom=server.slice(server.indexOf('path.matches("/api/led/preview/custom/'),server.indexOf('// Read-only panel previews'));
+assert.match(custom,/LedAnimations\.read/);assert.doesNotMatch(custom,/LedAssetUrl\.build|getParameters/);
+const station=server.slice(server.indexOf('// Only the station itself may fetch'),server.indexOf('if (!path.startsWith("/api/"))'));
+assert.match(station,/LedAssetUrl\.build/);assert.match(station,/getParameters/);
+
 class Element {
  constructor(){this.value='';this.files=[];this.handlers={};this.disabled=false;this.children=[];this.customOption={disabled:false};this.style={setProperty(){}}}
  set textContent(v){this._text=v;this.children=[]}get textContent(){return this._text||''}

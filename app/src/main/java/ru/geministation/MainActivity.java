@@ -647,13 +647,13 @@ public final class MainActivity extends Activity {
                 AppLog.add("Речь #" + attempt + ": прямой микрофон готов через " + recognitionElapsed() + " мс");
                 micReady = true;
                 if (!followUp) showText(liveConnected ? "Слушаю…" : "Слушаю… Подключаюсь к Gemini");
-                if (liveConnected && !heardSpeech && !waitingForFinal) scheduleNoSpeechTimeout(attempt, voiceTuning.silenceMs);
+                if (ListeningPolicy.startSilenceTimer(liveConnected, micReady, heardSpeech, waitingForFinal)) scheduleNoSpeechTimeout(attempt, voiceTuning.silenceMs);
             }
             public void onConnected() {
                 if (!active()) return;
                 liveConnected = true;
                 // Keep the startup watchdog until capture is actually ready; never cancel a speech deadline.
-                if (micReady && !heardSpeech && !waitingForFinal) scheduleNoSpeechTimeout(attempt, voiceTuning.silenceMs);
+                if (ListeningPolicy.startSilenceTimer(liveConnected, micReady, heardSpeech, waitingForFinal)) scheduleNoSpeechTimeout(attempt, voiceTuning.silenceMs);
             }
             public void onPartial(String value) {
                 if (!active()) return;

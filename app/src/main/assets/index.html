@@ -435,9 +435,12 @@ document.addEventListener('focusout',e=>{const t=e.target;if(t&&(t.tagName==='IN
 if(window.addEventListener){const syncPage=()=>showPage((window.location.hash||'').slice(1));window.addEventListener('popstate',syncPage);window.addEventListener('hashchange',syncPage)}
 showPage(window.location?(window.location.hash||'').slice(1):'summary');
 
+let loginRedirecting=false;
 async function request(path,options={}){
  const response=await fetch(path,{...options,headers:options.body?{'Content-Type':'application/json','X-Gemini-Station':'1'}:{},cache:'no-store'});
- const data=await response.json(); if(response.status===401 && window.location && window.location.reload) window.location.reload(); if(!response.ok) throw new Error(data.message||'Ошибка'); return data;
+ if(response.status===401){if(!loginRedirecting&&window.location&&window.location.reload){loginRedirecting=true;window.location.reload()}throw Error('Для доступа к панели необходимо войти')}
+ let data;try{data=await response.json()}catch(e){throw Error('Сервер вернул некорректный ответ')}
+ if(!response.ok)throw Error(data.message||'Ошибка');return data;
 }
 let panelAuthEnabled=false;
 async function refreshPanelAuth(){try{const data=await request('/api/panel-auth');panelAuthEnabled=!!data.enabled;el('panelAuthStatus').textContent=panelAuthEnabled?'Защита включена':'Пароль выключен';el('panelCurrentRow').hidden=!panelAuthEnabled;el('panelSet').disabled=false;el('panelDisable').disabled=!panelAuthEnabled}catch(e){el('panelAuthStatus').textContent=e.message}}

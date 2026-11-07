@@ -14,4 +14,11 @@ public class ListeningPolicyTest {
         policy.reset();
         assertTrue(policy.grantGrace(true));
     }
+    @Test public void bothCaptureAndConnectionAreRequiredBeforeSilenceTimer() {
+        assertFalse(ListeningPolicy.startSilenceTimer(true, false, false, false));
+        assertFalse(ListeningPolicy.startSilenceTimer(false, true, false, false));
+        assertTrue(ListeningPolicy.startSilenceTimer(true, true, false, false));
+        assertFalse(ListeningPolicy.startSilenceTimer(true, true, true, false));
+        assertFalse(ListeningPolicy.startSilenceTimer(true, true, false, true));
+    }
 }

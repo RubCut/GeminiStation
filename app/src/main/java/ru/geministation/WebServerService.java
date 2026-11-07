@@ -531,8 +531,14 @@ public final class WebServerService extends Service {
                     // Read the bounded binary body directly; do not create NanoHTTPD temporary files for voice recordings.
                     byte[] wav = new byte[(int) length];
                     InputStream input = session.getInputStream(); int offset = 0;
+                    // Socket idle timeout is 5 s; also bound the total upload against slow trickles.
+                    long deadline = android.os.SystemClock.elapsedRealtime() + 20000;
                     while (offset < wav.length) {
-                        int count = input.read(wav, offset, wav.length - offset);
+                        if (android.os.SystemClock.elapsedRealtime() >= deadline)
+                            return json(Response.Status.BAD_REQUEST, "Загрузка записи заняла слишком много времени");
+                        final int count;
+                        try { count = input.read(wav, offset, wav.length - offset); }
+                        catch (java.net.SocketTimeoutException e) { return json(Response.Status.BAD_REQUEST, "Время загрузки записи истекло"); }
                         if (count <= 0) return json(Response.Status.BAD_REQUEST, "Запись передана не полностью");
                         offset += count;
                     }
@@ -764,9 +770,7 @@ public final class WebServerService extends Service {
                     if (!MicroWakePolicy.validEngine(wakeEngine)) return json(Response.Status.BAD_REQUEST, "Некорректный движок активации");
                     if (!WakeSensitivity.valid(wakeSensitivity)) return json(Response.Status.BAD_REQUEST, "Некорректная чувствительность");
                     String key = data.optString("key", "").trim();
-                    if (data.has("deleteKey") && !(data.opt("deleteKey") instanceof Boolean))
-                        return json(Response.Status.BAD_REQUEST, "Некорректное действие с ключом");
-                    if (data.optBoolean("deleteKey", false))
+                    if (!ApiConfigPolicy.acceptsLegacyDeleteFlag(data))
                         return json(Response.Status.BAD_REQUEST, "Удаляйте выбранный ключ через /api/keys");
                     if (!AppSettings.validModel(model) || !TtsVoices.valid(voice) || key.length() > 512)
                         return json(Response.Status.BAD_REQUEST, "Некорректные настройки");
