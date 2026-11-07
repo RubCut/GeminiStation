@@ -29,6 +29,8 @@ final class PluginRegistry {
         Pending(Record record, String priorDigest) { this.record = record; this.priorDigest = priorDigest; token = UUID.randomUUID().toString(); expiresAt = android.os.SystemClock.elapsedRealtime() + 120000; }
     }
     private static Pending pending;
+    // Bounded, in-memory diagnostics: never mixed into the general app log or backups.
+    private static final java.util.Map<String, java.util.ArrayDeque<String>> logs = new java.util.HashMap<>();
     private static File directory(Context context) throws Exception {
         File dir = new File(context.getFilesDir(), "plugins");
         if (!dir.isDirectory() && !dir.mkdirs()) throw new IllegalStateException("Не удалось создать каталог");
@@ -96,6 +98,69 @@ final class PluginRegistry {
     static synchronized void delete(Context c, String id) throws Exception {
         if (pending != null && pending.record.archive.manifest.id.equals(id)) pending = null;
         AtomicFile file = new AtomicFile(path(c, id)); file.delete();
+        new AtomicFile(configPath(c, id)).delete();
+        logs.remove(id);
+    }
+    private static File configPath(Context c, String id) throws Exception {
+        // Reuse the id validator and private plugin directory; not matched by list().
+        path(c, id);
+        return new File(directory(c), id + ".config");
+    }
+    static synchronized JSONObject config(Context c, String id, String digest) throws Exception {
+        Record record = read(c, id);
+        if (record == null || (digest != null && !digest.equals(record.archive.digest)))
+            throw new IllegalArgumentException("Плагин не найден или изменился");
+        File file = configPath(c, id);
+        if (!file.exists() && !new File(file.getPath() + ".bak").exists()) {
+            JSONObject defaults = record.archive.manifestJson.optJSONObject("settings");
+            return defaults == null ? new JSONObject() : new JSONObject(defaults.toString());
+        }
+        try (FileInputStream in = new AtomicFile(file).openRead(); java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream()) {
+            byte[] buffer = new byte[1024]; int n;
+            while ((n = in.read(buffer)) != -1) {
+                if (out.size() + n > 8192) throw new IllegalStateException("Файл настроек слишком большой");
+                out.write(buffer, 0, n);
+            }
+            return new JSONObject(new String(out.toByteArray(), StandardCharsets.UTF_8));
+        }
+    }
+    static synchronized void saveConfig(Context c, String id, String digest, JSONObject config) throws Exception {
+        Record record = read(c, id);
+        if (record == null || digest == null || !digest.equals(record.archive.digest))
+            throw new IllegalArgumentException("Плагин не найден или изменился; обновите список");
+        if (config == null) throw new IllegalArgumentException("Настройки должны быть JSON-объектом");
+        byte[] bytes = config.toString().getBytes(StandardCharsets.UTF_8);
+        if (bytes.length > 8192) throw new IllegalArgumentException("Настройки больше 8 КиБ");
+        AtomicFile file = new AtomicFile(configPath(c, id)); FileOutputStream out = null;
+        try { out = file.startWrite(); out.write(bytes); file.finishWrite(out); }
+        catch (Exception e) { if (out != null) file.failWrite(out); throw e; }
+    }
+    static synchronized void resetConfig(Context c, String id, String digest) throws Exception {
+        Record record = read(c, id);
+        if (record == null || digest == null || !digest.equals(record.archive.digest))
+            throw new IllegalArgumentException("Плагин не найден или изменился; обновите список");
+        new AtomicFile(configPath(c, id)).delete();
+    }
+    static synchronized void log(Context c, String id, String digest, String message) {
+        try {
+            Record record = read(c, id);
+            if (record == null || !record.archive.digest.equals(digest)) return;
+            java.util.ArrayDeque<String> entries = logs.computeIfAbsent(id, k -> new java.util.ArrayDeque<>());
+            String bounded = message.length() > 4200 ? message.substring(0, 4200) + "…" : message;
+            entries.addLast(new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.ROOT).format(new java.util.Date()) + " " + bounded);
+            while (entries.size() > 30) entries.removeFirst();
+        } catch (Exception ignored) { }
+    }
+    static synchronized JSONArray logs(Context c, String id) throws Exception {
+        if (read(c, id) == null) throw new IllegalArgumentException("Плагин не найден");
+        JSONArray result = new JSONArray();
+        java.util.ArrayDeque<String> entries = logs.get(id);
+        if (entries != null) for (String entry : entries) result.put(entry);
+        return result;
+    }
+    static synchronized void clearLogs(Context c, String id) throws Exception {
+        if (read(c, id) == null) throw new IllegalArgumentException("Плагин не найден");
+        logs.remove(id);
     }
     static synchronized List<Record> list(Context c) throws Exception {
         File[] files = directory(c).listFiles((dir, name) -> name.matches("[a-z][a-z0-9_]{0,23}\\.json"));

@@ -13,12 +13,20 @@ for (const [, id] of script.matchAll(/\bel\('([^']+)'\)/g)) {
 for (const [, id] of markup.matchAll(/(?:href|for|aria-describedby|aria-labelledby)="#?([\w-]+)"/g)) {
   assert.ok(ids.includes(id), `missing anchor or label target: ${id}`);
 }
+// Mobile navigation must keep every existing page reachable and both backup/access cards separate.
+for(const id of ['summary','assistant','activation','display','editor','smartHome','plugins','journal'])
+  assert.ok(ids.includes('mobile-'+id), `missing mobile navigation for ${id}`);
+const overviewTools=markup.slice(markup.indexOf('class="cards overview-tools"'),markup.indexOf('<section class="group" id="assistant"'));
+assert.equal((overviewTools.match(/<details\b/g)||[]).length,2);
+assert.equal((overviewTools.match(/<\/details>/g)||[]).length,2);
+assert.match(overviewTools, /id="panelPassword"/);assert.match(overviewTools, /id="settingsExport"/);
 assert.match(markup, /<input type="range" id="wakeSensitivity" min="1" max="100" step="1"/);
 assert.match(markup, /<input type="number" id="sensitivityNumber" min="1" max="100" step="1"/);
 const saved = {model:'gemini-3.5-flash-lite', voice:'Kore', voices:['Kore','Puck','Aoede'], logs:[], buttonEnabled:false, audioDuckEnabled:true, buttonServiceConnected:false, wakeEnabled:false, wakeEngine:"microwakeword_selected_tts", wakeSampleCount:0, wakeFilter:true, wakeAmplify:true, engine:'gemini', engines:[{id:'gemini',name:'Gemini TTS'},{id:'org.example.tts',name:'Пример TTS'}], wakeStatus:"Выключена", wakeSensitivity:"normal", wakeRms:-1, wakePeak:-1, dnsEnabled:true, dnsBypassVpn:true, dnsServer:"https://d.webshiftvpn.ru/dns-query", vpnActive:false, systemPrompt:"Старый промпт", defaultSystemPrompt:"Исходный промпт", apiKeys:[{id:"11111111-1111-4111-8111-111111111111"}]};
 saved.voiceTuning={wakeMinMs:200,wakeRecentMs:400,wakeResetMs:1200,silenceMs:5000,finalMs:800,interimMs:1800,preconnect:true,earlyCapture:true};
 const writes = [], samples = [], helperRequests = [], ttsSamples = [];
 let sampleError = false, blockPlayback = false, revoked = [];
+let panelEnabled=false, panelWrites=[], backupWrites=[], reloads=0;
 let copyAllowed=true, copied='', clipboardAllowed=false, pendingLogFetch=null;
 function page() {
   const nodes = new Map(), docHandlers={};
@@ -28,7 +36,7 @@ function page() {
       const node = {value:'',_text:'',disabled:false,children:[],handlers:{},attributes:{},style:{setProperty(name,value){this[name]=value}},
         setAttribute(name,value){this.attributes[name]=value}, addEventListener(type, fn){this.handlers[type]=fn},
         appendChild(child){this.children.push(child);if(id==='keyList'&&this.children.length===1)this.value=child.value},
-        removeAttribute() {}, focus(){this.focused=true;focused=this}, select(){this.selected=true},
+        removeAttribute(name) {delete this.attributes[name]}, focus(){this.focused=true;focused=this}, select(){this.selected=true},
         contains(other){return other===this}, play:async()=>{if(blockPlayback)throw Error('blocked')}};
       Object.defineProperty(node,'textContent',{get(){return this._text},set(value){this._text=value;this.children=[];if(id==='keyList')this.value=''}});
       nodes.set(id,node);
@@ -37,9 +45,17 @@ function page() {
   }
   const context = vm.createContext({document:{getElementById:element,createElement:()=>({}),
       addEventListener(type,fn){docHandlers[type]=fn},execCommand(command){assert.equal(command,'copy');if(copyAllowed){copied=focused.value;return true}return false}},
-    window:{getSelection:()=>selection},navigator:{clipboard:{writeText:async(text)=>{if(!clipboardAllowed)throw Error('blocked');copied=text}}},
+    window:{getSelection:()=>selection,location:{hash:"",reload(){reloads++}}},navigator:{clipboard:{writeText:async(text)=>{if(!clipboardAllowed)throw Error('blocked');copied=text}}},
     fetch:async(path, options)=>{
       if(path==='/api/logs' && pendingLogFetch)return new Promise(resolve=>pendingLogFetch.push(resolve));
+      if(path==='/api/panel-auth') {
+        if(options.method==='POST'){const data=JSON.parse(options.body);panelWrites.push(data);panelEnabled=data.action==='set';return {ok:true,json:async()=>({message:'Сохранено'})};}
+        return {ok:true,json:async()=>({enabled:panelEnabled})};
+      }
+      if(path==='/api/settings-backup') {
+        if(options.method==='POST') {backupWrites.push(JSON.parse(options.body));return {ok:true,json:async()=>({message:'Импортировано'})};}
+        return {ok:true,json:async()=>({format:'GeminiStationSettings',version:1,settings:{model:saved.model}})};
+      }
       if(path==='/api/wake-samples') {
         if(options.method==='POST'){assert.equal(options.headers['X-Gemini-Station'],'1'); assert.equal(options.body.byteLength,50); saved.wakeSampleCount++; return {ok:true,json:async()=>({message:'Образец сохранён'})};}
         return {ok:true,json:async()=>({count:saved.wakeSampleCount,max:5})};
@@ -72,6 +88,34 @@ function page() {
 }
 (async()=>{
   let p=page(); await vm.runInContext('refresh()',p.context);
+  assert.equal(p.element('summary').hidden,false,'overview is the default page');
+  assert.equal(p.element('assistant').hidden,true);
+  assert.equal(p.element('mobile-summary').attributes['aria-current'],'page');
+  p.element('mobileMore').handlers.click();
+  assert.equal(p.element('mobileMoreLayer').hidden,false);
+  assert.equal(p.element('mobileMore').attributes['aria-expanded'],'true');
+  p.element('mobile-smartHome').handlers.click({preventDefault(){}});
+  assert.equal(p.element('smartHome').hidden,false);assert.equal(p.element('mobileMoreLayer').hidden,true);
+  assert.equal(p.element('mobileMore').attributes['aria-current'],'page');
+  p.element('mobile-activation').handlers.click({preventDefault(){}});
+  assert.equal(p.element('activation').hidden,false);assert.equal(p.element('mobileMore').attributes['aria-current'],undefined);
+  p.element('mobileMore').handlers.click();p.element('mobileMoreClose').handlers.click();
+  assert.equal(p.element('mobileMoreLayer').hidden,true);
+  p.element('mobile-summary').handlers.click({preventDefault(){}});
+  await vm.runInContext('refreshPanelAuth()',p.context);
+  assert.equal(p.element('panelDisable').disabled,true);
+  p.element('panelPassword').value='short'; await p.element('panelSet').handlers.click();
+  assert.equal(panelWrites.length,0,'short password must be rejected before sending');
+  p.element('panelPassword').value='long-enough-password'; await p.element('panelSet').handlers.click();
+  assert.equal(panelWrites.length,0,'mismatched password must not be sent');
+  p.element('panelPasswordConfirm').value='long-enough-password'; await p.element('panelSet').handlers.click();
+  assert.equal(panelEnabled,true);assert.equal(p.element('panelCurrentRow').hidden,false);
+  assert.equal(p.element('panelPassword').value,'','password field is cleared after saving');
+  p.element('panelCurrent').value='long-enough-password';await p.element('panelDisable').handlers.click();
+  assert.equal(panelEnabled,false);assert.equal(p.element('panelCurrent').value,'');
+  p.element('settingsFile').files=[{size:30,text:async()=>'{"format":"GeminiStationSettings","version":1}'}];
+  await p.element('settingsImport').handlers.click();
+  assert.equal(backupWrites.length,1);assert.equal(backupWrites[0].version,1);assert.equal(reloads,1);
   p.element('nav-editor').handlers.click({preventDefault(){}});
   assert.equal(p.element('editor').hidden,false);assert.equal(p.element('assistant').hidden,true);
   p.element('systemPrompt').value='Несохранённый текст';p.element('systemPrompt').handlers.input();

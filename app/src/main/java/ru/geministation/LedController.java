@@ -36,6 +36,7 @@ final class LedController {
         return instance;
     }
     private final Context context;
+    private final RootDisplay rootDisplay;
     private final Handler main = new Handler(Looper.getMainLooper());
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final OkHttpClient cloud = new OkHttpClient.Builder().proxy(Proxy.NO_PROXY)
@@ -63,7 +64,7 @@ final class LedController {
         void report(boolean ok) { if (reported.compareAndSet(false, true)) main.post(() -> callback.accept(ok)); }
     }
     private final java.util.concurrent.atomic.AtomicReference<MusicRequest> pendingMusic = new java.util.concurrent.atomic.AtomicReference<>();
-    private LedController(Context context) { this.context = context; }
+    private LedController(Context context) { this.context = context; this.rootDisplay = new RootDisplay(context); }
 
     // Called on the main thread. Coalesce changes and avoid restarting the animation each cycle.
     void show(String next) {
@@ -77,6 +78,7 @@ final class LedController {
     }
     /** Replaces the current animation with a very short, finite blank GIF. No account changes. */
     void clear() {
+        rootDisplay.stop();
         cancelTest();
         active = null;
         change("clear");
@@ -124,6 +126,7 @@ final class LedController {
     }
     /** Discard old credentials and socket after account or station changes. */
     void invalidate() {
+        rootDisplay.stop();
         cancelTest();
         active = null; desired = null; generation++;
         MusicRequest cancelled = pendingMusic.getAndSet(null); if (cancelled != null) cancelled.report(false);
@@ -134,6 +137,10 @@ final class LedController {
             cachedConfig = null; cachedToken = null; cachedUntil = 0; tokenRejected.set(false);
             if (connection != null) connection.close();
         });
+    }
+    void backendChanged() {
+        rootDisplay.stop();
+        if (active != null) change(active);
     }
     void animationsChanged() {
         // This cache is owned by the LED executor; enqueue its invalidation before a resend.
@@ -146,6 +153,7 @@ final class LedController {
     }
     /** Warm the local connection in the background, if a station has been configured. */
     void prewarm() {
+        if (RootDisplay.enabled(context)) return;
         final int version = generation;
         if (active == null) {
             if (idleClose != null) main.removeCallbacks(idleClose);
@@ -315,6 +323,12 @@ final class LedController {
         return url;
     }
     private boolean send(String frame, int version, long started) {
+        if (version != generation) return true;
+        if (RootDisplay.enabled(context)) {
+            if ("clear".equals(frame)) rootDisplay.stop(); else rootDisplay.play(frame);
+            return true;
+        }
+        rootDisplay.stop();
         String stage = "настройки";
         try {
             String cfg = new SecretStore(context, "led_secrets").load();

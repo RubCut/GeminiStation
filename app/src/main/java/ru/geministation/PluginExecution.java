@@ -48,6 +48,18 @@ final class PluginExecution {
     }
     static synchronized JSONObject execute(Context context, Tool tool, JSONObject call) throws Exception {
         Context c = context.getApplicationContext();
+        String id = tool.record.archive.manifest.id, digest = tool.record.archive.digest;
+        PluginRegistry.log(c, id, digest, "Запуск инструмента " + tool.handler);
+        try {
+            JSONObject result = executeInternal(c, tool, call);
+            PluginRegistry.log(c, id, digest, result.has("error") ? "Завершено с ошибкой: " + result.optString("error") : "Выполнение завершено");
+            return result;
+        } catch (Exception e) {
+            PluginRegistry.log(c, id, digest, "Ошибка запуска плагина");
+            throw e;
+        }
+    }
+    private static JSONObject executeInternal(Context c, Tool tool, JSONObject call) throws Exception {
         JSONObject args = call.optJSONObject("args");
         if (args == null && !call.has("args")) args = new JSONObject();
         if (!PluginManifest.validArgs(tool.schema, args)) return new JSONObject().put("error", "Некорректные аргументы инструмента");
@@ -92,20 +104,31 @@ final class PluginExecution {
             bound = c.bindService(intent, connection, Context.BIND_AUTO_CREATE);
             if (!bound || !connected.await(8, TimeUnit.SECONDS) || runner.get() == null) return new JSONObject().put("error", "Python runner недоступен");
             if (!PluginRegistry.permitted(c, id, digest, false)) return new JSONObject().put("error", "Плагин отключён или изменён");
-            runner.get().execute(tool.record.archive.source, tool.handler, args.toString(), shell, new IPluginResult.Stub() {
+            try {
+            runner.get().executeWithConfig(tool.record.archive.source, tool.handler, args.toString(),
+                    PluginRegistry.config(c, id, digest).toString(), shell, new IPluginResult.Stub() {
                 @Override public void completed(String result, boolean ok) {
                     if (Binder.getCallingUid() != runnerUid || !active.get()) return;
                     try {
-                        if (!ok || result == null || result.getBytes(StandardCharsets.UTF_8).length > 16384)
-                            output.compareAndSet(null, new JSONObject().put("error", "Ошибка выполнения плагина"));
+                        if (!ok || result == null || result.getBytes(StandardCharsets.UTF_8).length > 50000)
+                            output.compareAndSet(null, new JSONObject().put("error", "Ошибка выполнения плагина или несовместимая версия PluginRunner"));
                         else {
-                            Object parsed = new org.json.JSONTokener(result).nextValue();
-                            output.compareAndSet(null, new JSONObject().put("result", parsed == null ? JSONObject.NULL : parsed));
+                            JSONObject response = new JSONObject(result);
+                            String pluginLog = response.optString("log", "");
+                            if (!pluginLog.isEmpty()) PluginRegistry.log(c, id, digest, "Вывод плагина:\n" + pluginLog);
+                            if (!response.optBoolean("ok", false) || !response.has("result")) {
+                                String type = response.optString("error_type", "");
+                                if (type.matches("[A-Za-z_][A-Za-z0-9_]{0,79}")) PluginRegistry.log(c, id, digest, "Тип ошибки: " + type);
+                                output.compareAndSet(null, new JSONObject().put("error", "Ошибка выполнения плагина"));
+                            } else output.compareAndSet(null, new JSONObject().put("result", response.get("result")));
                         }
                     } catch (Exception e) { try { output.compareAndSet(null, new JSONObject().put("error", "Некорректный результат плагина")); } catch (Exception ignored) { } }
                     finished.countDown();
                 }
             });
+            } catch (android.os.RemoteException | RuntimeException e) {
+                return new JSONObject().put("error", "Не удалось запустить плагин; обновите PluginRunner вместе с приложением");
+            }
             long remaining = Math.max(0, deadline - SystemClock.elapsedRealtime());
             if (!finished.await(remaining, TimeUnit.MILLISECONDS)) return new JSONObject().put("error", "Время выполнения плагина истекло");
             return output.get() != null ? output.get() : new JSONObject().put("error", "Python runner завершился без результата");

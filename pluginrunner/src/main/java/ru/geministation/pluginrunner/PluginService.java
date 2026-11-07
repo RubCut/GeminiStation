@@ -25,8 +25,14 @@ public final class PluginService extends Service {
     }
     private final IPluginRunner.Stub binder = new IPluginRunner.Stub() {
         @Override public void execute(String source, String handler, String argsJson, IPluginShell shell, IPluginResult result) {
+            start(source, handler, argsJson, "{}", shell, result, false);
+        }
+        @Override public void executeWithConfig(String source, String handler, String argsJson, String configJson, IPluginShell shell, IPluginResult result) {
+            start(source, handler, argsJson, configJson, shell, result, true);
+        }
+        private void start(String source, String handler, String argsJson, String configJson, IPluginShell shell, IPluginResult result, boolean withConfig) {
             if (!trustedCaller()) throw new SecurityException("Unauthorized caller");
-            if (source == null || source.length() > 65536 || handler == null || !handler.matches("[A-Za-z_][A-Za-z0-9_]{0,63}")
+            if (configJson == null || configJson.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 8192 || source == null || source.length() > 65536 || handler == null || !handler.matches("[A-Za-z_][A-Za-z0-9_]{0,63}")
                     || argsJson == null || argsJson.length() > 16384 || result == null || !busy.compareAndSet(false, true)) {
                 try { if (result != null) result.completed("Plugin request rejected", false); } catch (RemoteException ignored) { }
                 return;
@@ -34,8 +40,9 @@ public final class PluginService extends Service {
             Thread thread = new Thread(() -> {
                 try {
                     if (!Python.isStarted()) Python.start(new AndroidPlatform(PluginService.this));
-                    String output = Python.getInstance().getModule("plugin_host")
-                            .callAttr("invoke", source, handler, argsJson, shell).toString();
+                    String output = withConfig
+                            ? Python.getInstance().getModule("plugin_host").callAttr("invoke_with_config", source, handler, argsJson, configJson, shell).toString()
+                            : Python.getInstance().getModule("plugin_host").callAttr("invoke", source, handler, argsJson, shell).toString();
                     result.completed(output, true);
                 } catch (Throwable e) {
                     // Do not leak Python exception messages, arguments, keys or stdout to logs.

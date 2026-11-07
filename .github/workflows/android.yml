@@ -52,6 +52,8 @@ jobs:
         run: node tools/test_home_rooms.js
       - name: Test animation editor
         run: node tools/test_led_editor.js
+      - name: Test framebuffer format guard
+        run: g++ -std=c++17 -Wall -Wextra -Werror tools/tests/test_display_format.cc -o /tmp/test-display && /tmp/test-display
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -75,8 +77,10 @@ jobs:
         run: python3 experiments/microwakeword/test_pronunciations.py
       - name: Check supplied sound cues
         run: python3 tools/test_sound_assets.py
-      - name: Test Python plugin host
-        run: python3 tools/test_plugin_host.py
+      - name: Test Python plugin host and panel
+        run: |
+          python3 tools/test_plugin_host.py
+          node tools/test_plugin_ui.js
       - name: Test meme sound plugin
         run: python3 tools/test_meme_plugin.py
       - name: Check ADB helper command surface
@@ -94,6 +98,7 @@ jobs:
           fi
           if ! ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleDebug :keytester:testDebugUnitTest :keytester:assembleDebug :buttonhelper:testDebugUnitTest :buttonhelper:assembleDebug :pluginrunner:testDebugUnitTest :pluginrunner:assembleDebug > build-output.txt 2>&1; then
             tail -n 80 build-output.txt
+            python3 tools/report_junit_failures.py
             while IFS= read -r line; do printf '::error::%s\n' "$line"; done < <(tail -n 35 build-output.txt)
             exit 1
           fi
@@ -102,6 +107,8 @@ jobs:
         run: python3 tools/test_sound_assets.py app/build/outputs/apk/debug/app-debug.apk
       - name: Verify microWakeWord APK assets
         run: python3 tools/test_micro_apk.py app/build/outputs/apk/debug/app-debug.apk
+      - name: Verify framebuffer APK assets
+        run: python3 tools/test_display_apk.py app/build/outputs/apk/debug/app-debug.apk
       - name: Verify APK signatures
         shell: bash
         run: |

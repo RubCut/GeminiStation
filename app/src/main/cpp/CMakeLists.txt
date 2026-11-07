@@ -13,3 +13,6 @@ add_library(gemini_wake_frontend SHARED wake_frontend.cc wake_jni.cc
 target_include_directories(gemini_wake_frontend PRIVATE ${FRONTEND} ${FRONTEND}/kissfft)
 target_compile_definitions(gemini_wake_frontend PRIVATE FIXED_POINT=16)
 target_compile_features(gemini_wake_frontend PRIVATE cxx_std_17)
+
+add_library(gemini_display SHARED display_jni.cc)
+target_compile_features(gemini_display PRIVATE cxx_std_17)

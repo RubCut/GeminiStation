@@ -10,10 +10,20 @@ class Element {
  contains(){return false}
 }
 const nodes=new Map();function el(id){if(!nodes.has(id))nodes.set(id,new Element());return nodes.get(id)}
+let rootOutput=false, outputWrites=[], allowConfirm=true;
+let ringOutput={enabled:false,monochrome:false}, ringWrites=[];
 let conf={choices:{listening:'classic',thinking:'hybrid',speaking:'new'},custom:{listening:false,thinking:false,speaking:false}},writes=[],reject=false;
 const c=vm.createContext({document:{getElementById:el,createElement:()=>new Element(),addEventListener(){}},window:{getSelection:()=>null},navigator:{},
- setInterval(){},setTimeout(){},confirm:()=>true,URL:{},btoa:s=>Buffer.from(s,'binary').toString('base64'),
+ setInterval(){},setTimeout(){},confirm:()=>allowConfirm,URL:{},btoa:s=>Buffer.from(s,'binary').toString('base64'),
  fetch:async(path,opts)=>{
+  if(path==='/api/ring/output'){
+   if(opts.method==='POST'){const data=JSON.parse(opts.body);ringWrites.push(data);ringOutput=data;return {ok:true,json:async()=>({message:'Сохранено'})}}
+   return {ok:true,json:async()=>({...ringOutput})};
+  }
+  if(path==='/api/led/output'){
+   if(opts.method==='POST'){const data=JSON.parse(opts.body);outputWrites.push(data);rootOutput=data.root;return {ok:true,json:async()=>({message:'Сохранено'})}}
+   return {ok:true,json:async()=>({root:rootOutput})};
+  }
   if(path==='/api/led/animations'){
    if(opts.method==='POST'){
     const body=JSON.parse(opts.body);writes.push(body);
@@ -30,6 +40,17 @@ const c=vm.createContext({document:{getElementById:el,createElement:()=>new Elem
 vm.runInContext(script,c);
 (async()=>{
  await vm.runInContext('loadLedAnimations()',c);
+ await vm.runInContext('loadLedOutput()',c);
+ await vm.runInContext('loadRingOutput()',c);
+ assert.equal(el('ringEnabled').checked,false,'ring root is off by default');
+ assert.equal(el('ringColor').value,'color');
+ el('ringEnabled').checked=true;el('ringColor').value='mono';allowConfirm=false;await el('saveRingOutput').handlers.click();assert.equal(ringWrites.length,0);
+ allowConfirm=true;await el('saveRingOutput').handlers.click();assert.deepEqual(ringWrites[0],{enabled:true,monochrome:true});
+ el('ringEnabled').checked=false;await el('saveRingOutput').handlers.click();assert.deepEqual(ringWrites[1],{enabled:false,monochrome:true});
+ assert.equal(el('ledRoot').checked,false,'root output is off by default');
+ el('ledRoot').checked=true;allowConfirm=false;await el('saveLedOutput').handlers.click();assert.equal(outputWrites.length,0,'confirmation is required');
+ allowConfirm=true;await el('saveLedOutput').handlers.click();assert.deepEqual(outputWrites[0],{root:true});
+ el('ledRoot').checked=false;await el('saveLedOutput').handlers.click();assert.deepEqual(outputWrites[1],{root:false});
  assert.equal(el('ledStyle-listening').value,'classic');assert.equal(el('ledStyle-thinking').value,'hybrid');
  assert.equal(el('ledStyle-speaking').customOption.disabled,true);
  assert.equal(el('ledPreview-listening').src,'/api/led/preview/classic/listening');
