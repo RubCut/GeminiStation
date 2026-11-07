@@ -88,6 +88,8 @@ function page() {
   p.element('panelPassword').value='short'; await p.element('panelSet').handlers.click();
   assert.equal(panelWrites.length,0,'short password must be rejected before sending');
   p.element('panelPassword').value='long-enough-password'; await p.element('panelSet').handlers.click();
+  assert.equal(panelWrites.length,0,'mismatched password must not be sent');
+  p.element('panelPasswordConfirm').value='long-enough-password'; await p.element('panelSet').handlers.click();
   assert.equal(panelEnabled,true);assert.equal(p.element('panelCurrentRow').hidden,false);
   assert.equal(p.element('panelPassword').value,'','password field is cleared after saving');
   p.element('panelCurrent').value='long-enough-password';await p.element('panelDisable').handlers.click();

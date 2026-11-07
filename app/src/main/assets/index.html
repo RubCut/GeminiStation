@@ -171,10 +171,11 @@ details{border-color:#49454f}summary{font-size:14px;color:#d0bcff}.editor-card t
     <article class="card"><div class="card-head"><span class="card-icon"><svg class="icon"><use href="#i-lock"/></svg></span><div><h3>Доступ к панели</h3><p id="panelAuthStatus">Проверяем…</p></div></div>
      <div class="field" id="panelCurrentRow" hidden><label class="field-label" for="panelCurrent">Текущий пароль</label><input id="panelCurrent" type="password" autocomplete="current-password" maxlength="128"></div>
      <div class="field"><label class="field-label" for="panelPassword">Новый пароль (8–128 символов)</label><input id="panelPassword" type="password" autocomplete="new-password" maxlength="128"></div>
+     <div class="field"><label class="field-label" for="panelPasswordConfirm">Повторите новый пароль</label><input id="panelPasswordConfirm" type="password" autocomplete="new-password" maxlength="128"></div>
      <div class="actions"><button id="panelSet" disabled>Включить / сменить пароль</button><button id="panelDisable" class="secondary" disabled>Отключить пароль</button></div><p id="panelAuthMessage" class="status-message" role="status"></p>
     </article>
     <article class="card"><div class="card-head"><span class="card-icon"><svg class="icon"><use href="#i-grid"/></svg></span><div><h3>Настройки в файле</h3><p>Перенос модели, голоса, активации, DNS, инструкций и параметров распознавания.</p></div></div>
-     <p class="field-hint">Ключи, токены, пароль панели, личные образцы, плагины, GIF и root-режимы не включаются.</p>
+     <p class="field-hint">Ключи, токены, пароль панели, личные образцы, плагины, настройки умного дома, экрана и кольца не включаются.</p>
      <div class="actions"><button id="settingsExport" class="secondary">Экспортировать</button></div>
      <div class="field"><label class="field-label" for="settingsFile">Файл настроек JSON</label><input type="file" id="settingsFile" accept=".json,application/json"></div>
      <div class="actions"><button id="settingsImport" class="secondary">Импортировать настройки</button></div><p id="settingsMessage" class="status-message" role="status"></p>
@@ -384,9 +385,10 @@ async function refreshPanelAuth(){try{const data=await request('/api/panel-auth'
 async function changePanelAuth(action){
  const current=el('panelCurrent').value,password=el('panelPassword').value;
  if(action==='set' && (password.length<8||password.length>128)){el('panelAuthMessage').textContent='Пароль должен содержать от 8 до 128 символов';return}
+ if(action==='set' && password!==el('panelPasswordConfirm').value){el('panelAuthMessage').textContent='Пароли не совпадают';return}
  if(action==='disable'&&!confirm('Отключить пароль панели?'))return;
  el('panelSet').disabled=true;el('panelDisable').disabled=true;
- try{const result=await request('/api/panel-auth',{method:'POST',body:JSON.stringify({action,current,password})});el('panelCurrent').value='';el('panelPassword').value='';el('panelAuthMessage').textContent=result.message;await refreshPanelAuth()}
+ try{const result=await request('/api/panel-auth',{method:'POST',body:JSON.stringify({action,current,password})});el('panelCurrent').value='';el('panelPassword').value='';el('panelPasswordConfirm').value='';el('panelAuthMessage').textContent=result.message;await refreshPanelAuth()}
  catch(e){el('panelAuthMessage').textContent=e.message;await refreshPanelAuth()}
 }
 el('panelSet').addEventListener('click',()=>changePanelAuth('set'));
