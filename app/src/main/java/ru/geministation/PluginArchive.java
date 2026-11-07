@@ -42,7 +42,11 @@ final class PluginArchive {
             }
         }
         if (manifest == null || source == null || source.isEmpty()) throw new IllegalArgumentException("Нет манифеста или кода");
-        JSONObject json = new JSONObject(manifest); PluginManifest spec = PluginManifest.parse(json);
+        JSONObject json = new JSONObject(manifest);
+        if (json.has("settings") && (json.optJSONObject("settings") == null
+                || json.getJSONObject("settings").toString().getBytes(StandardCharsets.UTF_8).length > 8192))
+            throw new IllegalArgumentException("Настройки по умолчанию должны быть JSON-объектом до 8 КиБ");
+        PluginManifest spec = PluginManifest.parse(json);
         byte[] hash = MessageDigest.getInstance("SHA-256").digest(zip); StringBuilder digest = new StringBuilder();
         for (byte b : hash) digest.append(String.format(java.util.Locale.ROOT, "%02x", b & 0xff));
         return new PluginArchive(json, spec, source, digest.toString());

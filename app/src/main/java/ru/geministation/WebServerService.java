@@ -336,6 +336,16 @@ public final class WebServerService extends Service {
                     return reply(Response.Status.OK, "application/json; charset=utf-8",
                             new JSONObject().put("plugins", PluginRegistry.describe(PluginRegistry.list(context))).toString());
                 }
+                if (session.getMethod() == Method.GET && "/api/plugin-details".equals(path)) {
+                    try {
+                        java.util.List<String> ids = session.getParameters().get("id");
+                        if (ids == null || ids.size() != 1) return json(Response.Status.BAD_REQUEST, "Укажите плагин");
+                        String id = ids.get(0);
+                        return reply(Response.Status.OK, "application/json; charset=utf-8", new JSONObject()
+                                .put("config", PluginRegistry.config(context, id, null))
+                                .put("logs", PluginRegistry.logs(context, id)).toString());
+                    } catch (IllegalArgumentException e) { return json(Response.Status.BAD_REQUEST, "Плагин не найден"); }
+                }
                 if (session.getMethod() == Method.POST && "/api/plugins".equals(path)) {
                     if (!WebSecurity.permittedWrite(host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station")))
                         return json(Response.Status.FORBIDDEN, "Запрос отклонён");
@@ -356,7 +366,16 @@ public final class WebServerService extends Service {
                         } else if ("enable".equals(action)) pending = PluginRegistry.stageEnable(context, data.optString("id", ""));
                         else if ("disable".equals(action)) PluginRegistry.disable(context, data.optString("id", ""));
                         else if ("delete".equals(action)) PluginRegistry.delete(context, data.optString("id", ""));
-                        else return json(Response.Status.BAD_REQUEST, "Неизвестное действие");
+                        else if ("saveConfig".equals(action)) {
+                            PluginRegistry.saveConfig(context, data.optString("id", ""), data.optString("sha256", ""), data.optJSONObject("config"));
+                            return json(Response.Status.OK, "Настройки сохранены для следующего вызова");
+                        } else if ("resetConfig".equals(action)) {
+                            PluginRegistry.resetConfig(context, data.optString("id", ""), data.optString("sha256", ""));
+                            return json(Response.Status.OK, "Настройки сброшены");
+                        } else if ("clearLogs".equals(action)) {
+                            PluginRegistry.clearLogs(context, data.optString("id", ""));
+                            return json(Response.Status.OK, "Журнал очищен");
+                        } else return json(Response.Status.BAD_REQUEST, "Неизвестное действие");
                         if (pending != null) {
                             try {
                                 Intent approval = new Intent(context, PluginApprovalActivity.class)
@@ -367,7 +386,7 @@ public final class WebServerService extends Service {
                                 throw e;
                             }
                             AppLog.add("Плагины: ожидается подтверждение на станции");
-                            return json(Response.Status.OK, "Подтвердите установку на экране станции.");
+                            return json(Response.Status.OK, "Подтвердите установку или включение на экране станции.");
                         }
                         AppLog.add("Плагины: отключён или удалён через веб");
                         return json(Response.Status.OK, "Готово");

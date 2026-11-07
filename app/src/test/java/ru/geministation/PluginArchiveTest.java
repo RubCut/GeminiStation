@@ -38,6 +38,16 @@ public class PluginArchiveTest {
             try { PluginArchive.parse(archive); fail("invalid ZIP accepted"); } catch (IllegalArgumentException expected) { }
         }
     }
+    @Test public void validatesOptionalSettingsDefaults() throws Exception {
+        String valid = MANIFEST.substring(0, MANIFEST.length() - 1) + ",\"settings\":{\"volume\":5}}";
+        PluginArchive archive = PluginArchive.parse(zip("plugin.json", valid, "plugin.py", "pass"));
+        assertEquals(5, archive.manifestJson.getJSONObject("settings").getInt("volume"));
+        for (String setting : new String[]{"[]", "null", "\"bad\"", "{\"long\":\"" + "x".repeat(8200) + "\"}"}) {
+            String invalid = MANIFEST.substring(0, MANIFEST.length() - 1) + ",\"settings\":" + setting + "}";
+            try { PluginArchive.parse(zip("plugin.json", invalid, "plugin.py", "pass")); fail("invalid defaults accepted"); }
+            catch (IllegalArgumentException expected) { }
+        }
+    }
     @Test public void lengthPrefixedToolNamesAvoidIdCollisions() throws Exception {
         String first = MANIFEST.replace("example", "a_b").replace("check", "c");
         String second = MANIFEST.replace("example", "a").replace("check", "b_c");

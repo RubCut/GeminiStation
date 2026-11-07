@@ -362,6 +362,7 @@ details{border-color:#49454f}summary{font-size:14px;color:#d0bcff}.editor-card t
     <article class="card"><div class="soft-block"><p>Устанавливайте только доверенный код. Плагин имеет доступ к сети и может взаимодействовать с локальными сервисами, включая локальную панель. Если разрешить ADB shell, он сможет выполнять команды с правами shell без дополнительных подтверждений. Подтверждение установки и повторного включения требуется на экране станции.</p></div>
      <div class="field"><label class="field-label" for="pluginFile">ZIP с plugin.json и plugin.py</label><input type="file" id="pluginFile" accept=".zip,application/zip"></div>
      <div class="actions"><button id="pluginInstall">Загрузить и подтвердить на станции</button><button id="pluginRefresh" class="secondary">Обновить список</button></div>
+     <p class="field-hint">Настройки хранятся на станции в открытом виде и не входят в экспорт. Вывод плагина может содержать секреты; журнал хранится в памяти до перезапуска приложения.</p>
      <p id="pluginMessage" class="status-message" role="status"></p><div id="pluginList"></div>
     </article>
    </section>
@@ -462,7 +463,24 @@ async function refreshPlugins(){
    const hash=document.createElement('p');hash.textContent='SHA-256: '+plugin.sha256;row.appendChild(hash);
    const actions=document.createElement('div');actions.className='actions';
    const toggle=document.createElement('button');toggle.className='secondary';toggle.textContent=plugin.enabled?'Отключить':'Включить';toggle.onclick=()=>pluginAction(plugin.enabled?'disable':'enable',plugin.id);actions.appendChild(toggle);
-   const remove=document.createElement('button');remove.className='danger';remove.textContent='Удалить';remove.onclick=()=>{if(confirm('Удалить плагин '+plugin.name+'?'))pluginAction('delete',plugin.id)};actions.appendChild(remove);row.appendChild(actions);list.appendChild(row)});
+   const remove=document.createElement('button');remove.className='danger';remove.textContent='Удалить';remove.onclick=()=>{if(confirm('Удалить плагин '+plugin.name+' вместе с настройками и журналом?'))pluginAction('delete',plugin.id)};actions.appendChild(remove);row.appendChild(actions);
+   const details=document.createElement('details'), summary=document.createElement('summary');summary.textContent='Настройки и журнал';details.appendChild(summary);
+   const hint=document.createElement('p');hint.className='field-hint';hint.textContent='JSON-объект; доступен плагину как config. Изменения действуют со следующего вызова. Не публикуйте журнал без проверки.';details.appendChild(hint);
+   const editor=document.createElement('textarea');editor.setAttribute('aria-label','Настройки плагина '+plugin.name);editor.spellcheck=false;editor.disabled=true;details.appendChild(editor);
+   const configActions=document.createElement('div');configActions.className='actions';
+   const save=document.createElement('button');save.textContent='Сохранить настройки';save.disabled=true;configActions.appendChild(save);
+   const reset=document.createElement('button');reset.className='secondary';reset.textContent='По умолчанию';reset.disabled=true;configActions.appendChild(reset);details.appendChild(configActions);
+   const status=document.createElement('p');status.className='status-message';status.setAttribute('role','status');details.appendChild(status);
+   const logTitle=document.createElement('h3');logTitle.textContent='Журнал плагина';details.appendChild(logTitle);
+   const logActions=document.createElement('div');logActions.className='actions';const refreshLog=document.createElement('button');refreshLog.className='secondary';refreshLog.textContent='Обновить журнал';logActions.appendChild(refreshLog);
+   const clearLog=document.createElement('button');clearLog.className='secondary';clearLog.textContent='Очистить журнал';logActions.appendChild(clearLog);details.appendChild(logActions);
+   const log=document.createElement('pre');log.className='log-output';log.textContent='Загрузите журнал';log.setAttribute('aria-label','Журнал плагина '+plugin.name);details.appendChild(log);
+   let loaded=false;async function loadDetails(withConfig){try{const d=await request('/api/plugin-details?id='+encodeURIComponent(plugin.id));if(withConfig){editor.value=JSON.stringify(d.config,null,2);editor.disabled=false;save.disabled=false;reset.disabled=false;loaded=true}log.textContent=d.logs.length?d.logs.join('\n\n'):'Записей пока нет';status.textContent=''}catch(e){status.textContent=e.message}}
+   details.addEventListener('toggle',()=>{if(details.open&&!loaded)loadDetails(true)});refreshLog.onclick=()=>loadDetails(false);
+   save.onclick=async()=>{try{const config=JSON.parse(editor.value);if(!config||Array.isArray(config)||typeof config!=='object')throw Error('Нужен JSON-объект');const r=await request('/api/plugins',{method:'POST',body:JSON.stringify({action:'saveConfig',id:plugin.id,sha256:plugin.sha256,config})});status.textContent=r.message}catch(e){status.textContent=e.message}};
+   reset.onclick=async()=>{if(!confirm('Сбросить настройки плагина к значениям по умолчанию?'))return;try{await request('/api/plugins',{method:'POST',body:JSON.stringify({action:'resetConfig',id:plugin.id,sha256:plugin.sha256})});await loadDetails(true);status.textContent='Настройки сброшены'}catch(e){status.textContent=e.message}};
+   clearLog.onclick=async()=>{try{await request('/api/plugins',{method:'POST',body:JSON.stringify({action:'clearLogs',id:plugin.id})});await loadDetails(false);status.textContent='Журнал очищен'}catch(e){status.textContent=e.message}};
+   row.appendChild(details);list.appendChild(row)});
  }catch(e){el('pluginMessage').textContent=e.message}
 }
 async function pluginAction(action,id){try{const result=await request('/api/plugins',{method:'POST',body:JSON.stringify({action,id})});el('pluginMessage').textContent=result.message;await refreshPlugins()}catch(e){el('pluginMessage').textContent=e.message}}

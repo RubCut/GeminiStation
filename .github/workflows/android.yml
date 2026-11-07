@@ -77,8 +77,10 @@ jobs:
         run: python3 experiments/microwakeword/test_pronunciations.py
       - name: Check supplied sound cues
         run: python3 tools/test_sound_assets.py
-      - name: Test Python plugin host
-        run: python3 tools/test_plugin_host.py
+      - name: Test Python plugin host and panel
+        run: |
+          python3 tools/test_plugin_host.py
+          node tools/test_plugin_ui.js
       - name: Test meme sound plugin
         run: python3 tools/test_meme_plugin.py
       - name: Check ADB helper command surface
