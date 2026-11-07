@@ -3,7 +3,7 @@ const assert = require('node:assert/strict'), fs=require('node:fs'), vm=require(
 const html=fs.readFileSync('app/src/main/assets/index.html','utf8');
 const script=html.slice(html.indexOf('async function refreshPlugins(){'),html.indexOf('let ttsLoaded='));
 const nodes={};
-function node(tag='div') {return {tag,children:[],attrs:{},handlers:{},value:'',disabled:false,open:false,
+function node(tag='div') {return {tag,children:[],attrs:{},handlers:{},style:{},value:'',disabled:false,open:false,
   appendChild(child){this.children.push(child)}, setAttribute(k,v){this.attrs[k]=v},
   addEventListener(k,fn){this.handlers[k]=fn},
   set textContent(v){this._text=v;this.children=[]},get textContent(){return this._text||''}}}

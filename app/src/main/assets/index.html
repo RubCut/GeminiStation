@@ -460,13 +460,13 @@ async function refreshPlugins(){
   if(!data.plugins.length){list.textContent='Нет установленных плагинов';return}
   data.plugins.forEach(plugin=>{const row=document.createElement('div');row.className='soft-block';
    const title=document.createElement('p');title.textContent=plugin.name+' ('+plugin.id+') · '+plugin.version+' · '+(plugin.enabled?'включён':'выключен')+(plugin.shell?' · ADB shell':'');row.appendChild(title);
-   const hash=document.createElement('p');hash.textContent='SHA-256: '+plugin.sha256;row.appendChild(hash);
+   const hash=document.createElement('p');hash.style.overflowWrap='anywhere';hash.textContent='SHA-256: '+plugin.sha256;row.appendChild(hash);
    const actions=document.createElement('div');actions.className='actions';
    const toggle=document.createElement('button');toggle.className='secondary';toggle.textContent=plugin.enabled?'Отключить':'Включить';toggle.onclick=()=>pluginAction(plugin.enabled?'disable':'enable',plugin.id);actions.appendChild(toggle);
    const remove=document.createElement('button');remove.className='danger';remove.textContent='Удалить';remove.onclick=()=>{if(confirm('Удалить плагин '+plugin.name+' вместе с настройками и журналом?'))pluginAction('delete',plugin.id)};actions.appendChild(remove);row.appendChild(actions);
    const details=document.createElement('details'), summary=document.createElement('summary');summary.textContent='Настройки и журнал';details.appendChild(summary);
    const hint=document.createElement('p');hint.className='field-hint';hint.textContent='JSON-объект; доступен плагину как config. Изменения действуют со следующего вызова. Не публикуйте журнал без проверки.';details.appendChild(hint);
-   const editor=document.createElement('textarea');editor.setAttribute('aria-label','Настройки плагина '+plugin.name);editor.spellcheck=false;editor.disabled=true;details.appendChild(editor);
+   const editor=document.createElement('textarea');editor.style.minHeight='150px';editor.setAttribute('aria-label','Настройки плагина '+plugin.name);editor.spellcheck=false;editor.disabled=true;details.appendChild(editor);
    const configActions=document.createElement('div');configActions.className='actions';
    const save=document.createElement('button');save.textContent='Сохранить настройки';save.disabled=true;configActions.appendChild(save);
    const reset=document.createElement('button');reset.className='secondary';reset.textContent='По умолчанию';reset.disabled=true;configActions.appendChild(reset);details.appendChild(configActions);
