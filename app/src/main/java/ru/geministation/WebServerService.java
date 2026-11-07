@@ -85,6 +85,7 @@ public final class WebServerService extends Service {
         private final AndroidTtsPlayer systemTtsSample;
         private final AtomicBoolean sampleInProgress = new AtomicBoolean();
         private final AtomicBoolean androidSampleInProgress = new AtomicBoolean();
+        private final AtomicBoolean weatherRequestInProgress = new AtomicBoolean();
         private String lastLedAsset;
         private long lastLedAssetAt;
         void closeAuth() { qrLogin.closeAsync(); systemTtsSample.stop(); }
@@ -229,6 +230,41 @@ public final class WebServerService extends Service {
             }
             if (!path.startsWith("/api/")) return json(Response.Status.NOT_FOUND, "Не найдено");
             try {
+                if ("/api/weather/location".equals(path) && session.getMethod() == Method.GET) {
+                    WeatherService.Place place = WeatherSettings.get(context);
+                    return reply(Response.Status.OK, "application/json; charset=utf-8", new JSONObject().put("location", place == null ? JSONObject.NULL : place.label()).toString());
+                }
+                if (session.getMethod() == Method.POST && ("/api/weather/search".equals(path) || "/api/weather/location".equals(path))) {
+                    if (!WebSecurity.permittedWrite(host, session.getHeaders().get("origin"), session.getHeaders().get("x-gemini-station"))) return json(Response.Status.FORBIDDEN, "Запрос отклонён");
+                    long length = Long.parseLong(session.getHeaders().getOrDefault("content-length", "-1"));
+                    if (length < 1 || length > 2048 || session.getHeaders().containsKey("transfer-encoding")) return json(Response.Status.BAD_REQUEST, "Недопустимый запрос");
+                    Map<String, String> files = new HashMap<>(); session.parseBody(files);
+                    JSONObject data = new JSONObject(files.get("postData"));
+                    if (!weatherRequestInProgress.compareAndSet(false, true)) return json(Response.Status.BAD_REQUEST, "Дождитесь завершения запроса погоды");
+                    try {
+                        if ("/api/weather/location".equals(path) && "clear".equals(data.optString("action"))) {
+                            if (!WeatherSettings.clear(context)) return json(Response.Status.INTERNAL_ERROR, "Не удалось очистить город");
+                            return json(Response.Status.OK, "Город удалён");
+                        }
+                        Object rawQuery = data.opt("query");
+                        if (!(rawQuery instanceof String) || !WeatherService.validQuery((String) rawQuery)) return json(Response.Status.BAD_REQUEST, "Укажите город (от 2 до 80 символов)");
+                        Object rawId = data.opt("id");
+                        if ("/api/weather/location".equals(path) && (!(rawId instanceof Number) || ((Number)rawId).doubleValue() != ((Number)rawId).longValue() || ((Number)rawId).longValue() <= 0)) return json(Response.Status.BAD_REQUEST, "Выберите город из результатов поиска");
+                        java.util.List<WeatherService.Place> places;
+                        try { places = sampleClient.weather().search((String) rawQuery); }
+                        catch (Exception e) { return json(Response.Status.INTERNAL_ERROR, "Не удалось найти город. Проверьте доступ к Open-Meteo и попробуйте снова."); }
+                        if ("/api/weather/search".equals(path)) {
+                            org.json.JSONArray list = new org.json.JSONArray();
+                            for (WeatherService.Place p : places) list.put(new JSONObject().put("id", p.id).put("label", p.label()));
+                            return reply(Response.Status.OK, "application/json; charset=utf-8", new JSONObject().put("results", list).toString());
+                        }
+                        for (WeatherService.Place p : places) if (p.id == ((Number)rawId).longValue()) {
+                            if (!WeatherSettings.save(context, p)) return json(Response.Status.INTERNAL_ERROR, "Не удалось сохранить город");
+                            return reply(Response.Status.OK, "application/json; charset=utf-8", new JSONObject().put("message", "Город сохранён").put("location", p.label()).toString());
+                        }
+                        return json(Response.Status.BAD_REQUEST, "Результат поиска изменился. Найдите и выберите город заново.");
+                    } finally { weatherRequestInProgress.set(false); }
+                }
                 if ("/api/settings-backup".equals(path) && session.getMethod() == Method.GET)
                     return reply(Response.Status.OK, "application/json; charset=utf-8", SettingsBackup.export(context).toString());
                 if ("/api/settings-backup".equals(path) && session.getMethod() == Method.POST) {

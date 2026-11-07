@@ -329,7 +329,20 @@ public final class MainActivity extends Activity {
                     action = new DeviceToolSpec.Action(DeviceToolSpec.Kind.OPEN_LINK, action.number, url);
                 }
                 String networkText = null;
+                boolean needsClarification = false;
                 YandexCloud.Track music = null;
+                if (action != null && action.kind == DeviceToolSpec.Kind.GET_TIME) {
+                    networkText = ClockInfo.current(action.data, System.currentTimeMillis());
+                } else if (action != null && action.kind == DeviceToolSpec.Kind.GET_WEATHER && !destroyed && resumed) {
+                    try {
+                        WeatherAnswer weather = WeatherAnswer.get(client.weather(), WeatherSettings.get(getApplicationContext()), action.data, action.number);
+                        networkText = weather.text; needsClarification = weather.clarify;
+                    } catch (Exception e) {
+                        AppLog.add("Погода: сервис недоступен (" + e.getClass().getSimpleName() + ")");
+                        networkText = "Не удалось получить погоду. Проверьте интернет и правильность часов станции и попробуйте ещё раз.";
+                        needsClarification = true;
+                    }
+                }
                 if (action != null && (action.kind == DeviceToolSpec.Kind.HOME_CONTROL || action.kind == DeviceToolSpec.Kind.HOME_SET) && !destroyed && resumed) {
                     SmartHome.Device device = home.devices.get(action.number);
                     try {
@@ -355,6 +368,7 @@ public final class MainActivity extends Activity {
                     }
                 }
                 final String remoteText = networkText;
+                final boolean clarify = needsClarification;
                 final YandexCloud.Track foundTrack = music;
                 final DeviceToolSpec.Action chosen = action;
                 final boolean videoSearch = search, videoFound = foundVideo, nativeVideoSearch = nativeSearch;
@@ -362,7 +376,7 @@ public final class MainActivity extends Activity {
                     if (destroyed || !resumed || !flow.answered()) return;
                     String response = result.text;
                     boolean mediaDispatched = false;
-                    closeAfterResponse = result.finishDialog;
+                    closeAfterResponse = result.finishDialog && !clarify;
                     if (result.call != null) {
                         if (remoteText != null) {
                             response = remoteText;

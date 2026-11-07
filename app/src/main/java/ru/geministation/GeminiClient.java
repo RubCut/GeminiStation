@@ -56,7 +56,8 @@ final class GeminiClient {
                 .eventListenerFactory(call -> new NetworkDiagnostics(
                         "speech".equals(call.request().tag(String.class)) ? "Gemini TTS" :
                                 "transcribe".equals(call.request().tag(String.class)) ? "Gemini Live" :
-                                        "youtube".equals(call.request().tag(String.class)) ? "YouTube поиск" : "Gemini текст",
+                                        "youtube".equals(call.request().tag(String.class)) ? "YouTube поиск" :
+                                        "weather".equals(call.request().tag(String.class)) ? "Погода" : "Gemini текст",
                         dnsCache == null ? null : dnsCache::clear)).build();
         clientKey = key;
         AppLog.add(mode == DnsSettings.Mode.CUSTOM ? "DNS: пользовательский сервер" :
@@ -106,6 +107,7 @@ final class GeminiClient {
             return result;
         }
     }
+    WeatherService weather() throws IOException { return new WeatherService(client()); }
     /** Search only real YouTube Data API results; never invent video identifiers. */
     String searchYoutube(String apiKey, String query) throws Exception {
         if (!LinkPolicy.searchQuery(query)) throw new IOException("Некорректный поисковый запрос");

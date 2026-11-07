@@ -13,12 +13,12 @@ for (const [, id] of script.matchAll(/\bel\('([^']+)'\)/g)) {
 for (const [, id] of markup.matchAll(/(?:href|for|aria-describedby|aria-labelledby)="#?([\w-]+)"/g)) {
   assert.ok(ids.includes(id), `missing anchor or label target: ${id}`);
 }
-// Mobile navigation must keep every existing page reachable and both backup/access cards separate.
+// Mobile navigation must keep every existing page reachable and backup/access/weather cards separate.
 for(const id of ['summary','assistant','activation','display','editor','smartHome','plugins','journal'])
   assert.ok(ids.includes('mobile-'+id), `missing mobile navigation for ${id}`);
 const overviewTools=markup.slice(markup.indexOf('class="cards overview-tools"'),markup.indexOf('<section class="group" id="assistant"'));
-assert.equal((overviewTools.match(/<details\b/g)||[]).length,2);
-assert.equal((overviewTools.match(/<\/details>/g)||[]).length,2);
+assert.equal((overviewTools.match(/<details\b/g)||[]).length,3);
+assert.equal((overviewTools.match(/<\/details>/g)||[]).length,3);
 assert.match(overviewTools, /id="panelPassword"/);assert.match(overviewTools, /id="settingsExport"/);
 assert.match(markup, /<input type="range" id="wakeSensitivity" min="1" max="100" step="1"/);
 assert.match(markup, /<input type="number" id="sensitivityNumber" min="1" max="100" step="1"/);

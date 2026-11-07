@@ -201,8 +201,15 @@ details{border-color:#49454f}summary{font-size:14px;color:#d0bcff}.editor-card t
      <div class="field"><label class="field-label" for="panelPasswordConfirm">Повторите новый пароль</label><input id="panelPasswordConfirm" type="password" autocomplete="new-password" maxlength="128"></div>
      <div class="actions"><button id="panelSet" disabled>Включить / сменить пароль</button><button id="panelDisable" class="secondary" disabled>Отключить пароль</button></div><p id="panelAuthMessage" class="status-message" role="status"></p>
     </details>
+    <details class="card overview-detail"><summary><span class="card-head"><span class="card-icon"><svg class="icon"><use href="#i-sparkle"/></svg></span><span><strong class="overview-detail-title">Погода</strong><span class="overview-detail-sub" id="weatherLocation">Загрузка…</span></span></span></summary>
+     <p class="field-hint">Выберите город по умолчанию или назовите другой в вопросе. При поиске название города передаётся Open-Meteo; при запросе погоды ему передаются координаты выбранного города. Данные хранятся на станции и не входят в экспорт настроек.</p>
+     <div class="field"><label class="field-label" for="weatherQuery">Населённый пункт</label><input id="weatherQuery" maxlength="80" autocomplete="off" placeholder="Например, Москва"></div>
+     <div class="actions"><button id="weatherSearch">Найти</button><button id="weatherClear" class="secondary">Очистить город</button></div>
+     <div class="field" id="weatherResultsRow" hidden><label class="field-label" for="weatherResults">Выберите населённый пункт</label><select id="weatherResults"></select><div class="actions"><button id="weatherSave">Сохранить город</button></div></div>
+     <p id="weatherMessage" class="status-message" role="status"></p>
+    </details>
     <details class="card overview-detail"><summary><span class="card-head"><span class="card-icon"><svg class="icon"><use href="#i-grid"/></svg></span><span><strong class="overview-detail-title">Настройки в файле</strong><span class="overview-detail-sub">Экспорт и импорт</span></span></span></summary>
-     <p class="field-hint">Перенос модели, голоса, активации, DNS, инструкций и параметров распознавания. Ключи, токены, пароль панели, личные образцы, плагины, настройки умного дома, экрана и кольца не включаются.</p>
+     <p class="field-hint">Перенос модели, голоса, активации, DNS, инструкций и параметров распознавания. Ключи, токены, пароль панели, город погоды, личные образцы, плагины, настройки умного дома, экрана и кольца не включаются.</p>
      <div class="actions"><button id="settingsExport" class="secondary">Экспортировать</button></div>
      <div class="field"><label class="field-label" for="settingsFile">Файл настроек JSON</label><input type="file" id="settingsFile" accept=".json,application/json"></div>
      <div class="actions"><button id="settingsImport" class="secondary">Импортировать настройки</button></div><p id="settingsMessage" class="status-message" role="status"></p>
@@ -888,6 +895,24 @@ el('delete').addEventListener('click',async()=>{
  catch(e){el('keyMessage').textContent=e.message}
  finally{keyBusy=false;await refresh().catch(()=>{})}
 });
+let weatherSearchedQuery='';
+async function refreshWeather(){try{const data=await request('/api/weather/location');el('weatherLocation').textContent=data.location||'Город не выбран'}catch(e){el('weatherLocation').textContent='Не удалось загрузить город'}}
+function weatherBusy(busy){for(const id of ['weatherSearch','weatherClear','weatherSave'])el(id).disabled=busy}
+el('weatherQuery').addEventListener('input',()=>{weatherSearchedQuery='';el('weatherResultsRow').hidden=true});
+el('weatherSearch').addEventListener('click',async()=>{
+ const query=el('weatherQuery').value.trim();if(query.length<2){el('weatherMessage').textContent='Введите название города';return}
+ weatherBusy(true);el('weatherMessage').textContent='Ищем…';el('weatherResultsRow').hidden=true;weatherSearchedQuery='';
+ try{const data=await request('/api/weather/search',{method:'POST',body:JSON.stringify({query})});if(el('weatherQuery').value.trim()!==query)return;
+ const select=el('weatherResults');select.replaceChildren();for(const item of data.results){const option=document.createElement('option');option.value=String(item.id);option.textContent=item.label;select.appendChild(option)}
+ if(data.results.length){weatherSearchedQuery=query;el('weatherResultsRow').hidden=false;el('weatherMessage').textContent='Выберите нужный город, область и страну'}else el('weatherMessage').textContent='Ничего не найдено. Попробуйте другое название.';
+ }catch(e){el('weatherMessage').textContent=e.message}finally{weatherBusy(false)}
+});
+el('weatherSave').addEventListener('click',async()=>{
+ const query=weatherSearchedQuery,id=Number(el('weatherResults').value);if(!query||!Number.isSafeInteger(id)||id<=0)return;
+ weatherBusy(true);try{const data=await request('/api/weather/location',{method:'POST',body:JSON.stringify({query,id})});el('weatherLocation').textContent=data.location;el('weatherMessage').textContent=data.message;el('weatherResultsRow').hidden=true;weatherSearchedQuery=''}catch(e){el('weatherMessage').textContent=e.message}finally{weatherBusy(false)}
+});
+el('weatherClear').addEventListener('click',async()=>{weatherBusy(true);try{const data=await request('/api/weather/location',{method:'POST',body:JSON.stringify({action:'clear'})});el('weatherLocation').textContent='Город не выбран';el('weatherMessage').textContent=data.message;el('weatherResultsRow').hidden=true;weatherSearchedQuery=''}catch(e){el('weatherMessage').textContent=e.message}finally{weatherBusy(false)}});
+refreshWeather();
 el('refresh').addEventListener('click',()=>refresh().catch(()=>{}));
 refresh().catch(()=>{});
 setInterval(()=>{if(!document.hidden)refresh().catch(()=>{})},5000);

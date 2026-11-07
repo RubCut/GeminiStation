@@ -48,6 +48,8 @@ jobs:
         run: ./tools/test_signing_setup.sh
       - name: Test web voice settings
         run: node tools/test_voice_settings.js
+      - name: Test weather panel
+        run: node tools/test_weather_ui.js
       - name: Test smart home room selection
         run: node tools/test_home_rooms.js
       - name: Test animation editor
